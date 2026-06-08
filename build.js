@@ -309,7 +309,7 @@ function renderPitch() {
     node.style.top = s.y + '%';
     if (item) {
       node.innerHTML = `
-        <div class="ps-name">${escapeHtml(lastName(item.player.name))}</div>
+        <div class="ps-name">${escapeHtml(displayLast(item.player))}</div>
         <div class="ps-meta">${item.nation.flag} <span>${s.tag}</span></div>
       `;
     } else {
@@ -399,9 +399,10 @@ async function submit() {
 
 // ─── utils ───────────────────────────────────────────────────────────────────
 
-function lastName(full) {
-  const parts = String(full || '').trim().split(/\s+/);
-  return parts.length === 1 ? full : parts[parts.length - 1];
+// Show the surname on the pitch. The Excel uses "LAST FIRST" order in `name`,
+// but also exposes the parsed parts as `.last` and `.shirt_name`.
+function displayLast(p) {
+  return p?.shirt_name || p?.last || p?.name || '';
 }
 
 // Real club crest from clubs.json if available; otherwise initials-in-circle.
