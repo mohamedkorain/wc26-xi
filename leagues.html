@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Leagues · WC26 XI</title>
+<link rel="stylesheet" href="styles.css" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+<header class="topbar">
+  <a href="index.html" class="brand">
+    <span class="brand-mark">WC26</span>
+    <span class="brand-sub">Build Your World Cup XI</span>
+  </a>
+  <div class="hdr-right" id="authSlot"></div>
+</header>
+
+<section class="setup">
+  <div class="setup-inner" style="max-width:680px;">
+    <h1 class="setup-title">My leagues</h1>
+    <p class="setup-sub">Join a league with a code, or create your own.</p>
+
+    <div class="setup-step">
+      <div class="setup-step-label">Create a new league</div>
+      <form id="createForm" style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;">
+        <input type="text" id="leagueName" required placeholder="League name (e.g. 'Korain Cup 2026')"
+               style="flex:1;min-width:240px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--text);font-size:14px;" />
+        <button type="submit" class="setup-start" style="margin:0;">Create</button>
+      </form>
+    </div>
+
+    <div class="setup-step">
+      <div class="setup-step-label">Join with a code</div>
+      <form id="joinForm" style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;">
+        <input type="text" id="joinCode" required placeholder="LEAGUE CODE (e.g. WC26-ABC123)"
+               style="flex:1;min-width:240px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--text);font-size:14px;text-transform:uppercase;" />
+        <button type="submit" class="ghost-btn" style="margin:0;">Join</button>
+      </form>
+    </div>
+
+    <div class="setup-step">
+      <div class="setup-step-label">Your leagues</div>
+      <div id="leaguesList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <p id="msg" style="color:var(--accent-2);font-size:13px;min-height:1.4em;"></p>
+  </div>
+</section>
+
+<script type="module">
+import { supabase } from './js/supabase-client.js';
+import { mountAuthWidget, currentUser } from './js/auth.js';
+
+const msg = document.getElementById('msg');
+
+async function init() {
+  await mountAuthWidget(document.getElementById('authSlot'));
+  const user = await currentUser();
+  if (!user) { location.href = 'login.html'; return; }
+  loadLeagues(user);
+}
+
+async function loadLeagues(user) {
+  // Owned leagues + leagues I'm a member of
+  const { data: mine } = await supabase
+    .from('leagues').select('*').eq('owner_id', user.id);
+  const { data: mems } = await supabase
+    .from('league_members').select('league_id, leagues(*)').eq('user_id', user.id);
+  const all = new Map();
+  for (const l of mine || []) all.set(l.id, l);
+  for (const m of mems || []) if (m.leagues) all.set(m.leagues.id, m.leagues);
+
+  const list = document.getElementById('leaguesList');
+  list.innerHTML = '';
+  if (!all.size) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:8px;">No leagues yet. Create or join one above.</div>';
+    return;
+  }
+  for (const l of all.values()) {
+    const card = document.createElement('a');
+    card.href = `league.html?code=${encodeURIComponent(l.code)}`;
+    card.style.cssText = 'background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-decoration:none;color:inherit;display:flex;justify-content:space-between;align-items:center;';
+    card.innerHTML = `
+      <div>
+        <div style="font-weight:800;font-size:16px;">${escapeHtml(l.name)}</div>
+        <div style="font-size:12px;color:var(--text-dim);">Code: <code>${l.code}</code></div>
+      </div>
+      <div style="color:var(--accent);font-size:13px;">Open →</div>
+    `;
+    list.appendChild(card);
+  }
+}
+
+document.getElementById('createForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('leagueName').value.trim();
+  const user = await currentUser();
+  const code = 'WC26-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+  const { data, error } = await supabase
+    .from('leagues').insert({ name, code, owner_id: user.id }).select().single();
+  if (error) { msg.style.color = 'var(--danger)'; msg.textContent = error.message; return; }
+  // owner is auto-member
+  await supabase.from('league_members').insert({ league_id: data.id, user_id: user.id });
+  location.href = `league.html?code=${data.code}`;
+};
+
+document.getElementById('joinForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  const user = await currentUser();
+  const { data: lg, error } = await supabase
+    .from('leagues').select('*').eq('code', code).single();
+  if (error || !lg) { msg.style.color = 'var(--danger)'; msg.textContent = 'League not found.'; return; }
+  await supabase.from('league_members').insert({ league_id: lg.id, user_id: user.id });
+  location.href = `league.html?code=${lg.code}`;
+};
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign in · WC26 XI</title>
+<link rel="stylesheet" href="styles.css" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+<header class="topbar">
+  <a href="index.html" class="brand">
+    <span class="brand-mark">WC26</span>
+    <span class="brand-sub">Build Your World Cup XI</span>
+  </a>
+</header>
+
+<section class="setup">
+  <div class="setup-inner" style="max-width:420px;">
+    <h1 class="setup-title">Sign in</h1>
+    <p class="setup-sub">We'll email you a one-tap login link. No password.</p>
+
+    <form id="loginForm" style="display:flex;flex-direction:column;gap:12px;text-align:left;">
+      <label style="font-size:12px;color:var(--text-dim);letter-spacing:1px;">EMAIL</label>
+      <input type="email" id="emailInput" required placeholder="you@example.com"
+             style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px;color:var(--text);font-size:15px;" />
+      <button type="submit" class="setup-start" style="margin-top:8px;">Send magic link →</button>
+    </form>
+    <p id="loginMsg" style="margin-top:16px;color:var(--accent-2);font-size:13px;min-height:1.4em;"></p>
+  </div>
+</section>
+
+<script type="module">
+import { signInWithEmail, currentUser } from './js/auth.js';
+
+// If already signed in, redirect to leagues
+(async () => {
+  const u = await currentUser();
+  if (u) location.href = 'leagues.html';
+})();
+
+document.getElementById('loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('emailInput').value.trim();
+  const msg = document.getElementById('loginMsg');
+  msg.style.color = 'var(--accent-2)';
+  msg.textContent = 'Sending…';
+  const { error } = await signInWithEmail(email, location.origin + '/leagues.html');
+  if (error) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = error.message;
+  } else {
+    msg.textContent = `Sent! Check ${email} for a sign-in link.`;
+  }
+};
+</script>
+</body>
+</html>
