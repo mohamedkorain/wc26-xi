@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>WC26 XI · Build Your Perfect World Cup XI</title>
-<meta name="description" content="Spin a 2026 World Cup nation, draft a player, and build your dream XI." />
+<title>HALO AMRIKA · Build Your World Cup XI</title>
+<meta name="description" content="Spin a nation, draft a player, build your fantasy World Cup XI. HALO AMRIKA — Saba7o USA Series 04." />
 <meta name="theme-color" content="#0a0a12" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,117 +15,106 @@
 
 <header class="topbar">
   <a href="index.html" class="brand">
-    <span class="brand-mark">WC26</span>
-    <span class="brand-sub">Build Your World Cup XI</span>
+    <span class="brand-mark">HALO AMRIKA</span>
+    <span class="brand-sub">Saba7o USA · Series 04</span>
   </a>
-  <div class="round-pill" id="roundPill">Round 1 / 11</div>
-  <div class="hdr-right">
-    <button class="icon-btn" id="resetBtn" title="Start over">↺</button>
-    <span id="authSlot" class="auth-slot-inline"></span>
-  </div>
+  <div class="hdr-right" id="authSlot"></div>
 </header>
 
-<div id="leagueBanner" class="league-banner hidden"></div>
-
-<!-- SETUP -->
-<section class="setup" id="setupScreen">
-  <div class="setup-inner">
-    <h1 class="setup-title">Build your XI</h1>
-    <p class="setup-sub">Spin a 2026 World Cup nation, draft a player, and fill out your starting XI.</p>
-
-    <div class="setup-step">
-      <div class="setup-step-label">Choose your formation</div>
-      <div class="formation-grid" id="formationGrid"></div>
-    </div>
-
-    <button class="setup-start" id="setupStart" disabled>Start drafting →</button>
-  </div>
-</section>
-
-<!-- GAME -->
-<main class="game hidden" id="gameScreen">
-  <section class="left-col">
-
-    <div class="spin-pane" id="spinPane">
-      <div class="pot-banner" id="potBanner"></div>
-      <div class="reels">
-        <div class="reel reel-flag" id="reelFlag">
-          <span class="reel-label">FLAG</span>
-          <span class="reel-value" id="reelFlagVal">🌍</span>
-        </div>
-        <div class="reel reel-team">
-          <span class="reel-label">NATION</span>
-          <span class="reel-value" id="reelTeamVal">???</span>
-        </div>
-      </div>
-      <div class="reel-captions"><span>Flag</span><span>Country</span></div>
-      <button class="spin-btn" id="spinBtn">SPIN</button>
-      <p class="spin-hint" id="spinHint">Spin to draw a nation, then draft a player.</p>
-      <p class="needed-hint" id="neededHint"></p>
-    </div>
-
-    <div class="draft-pane hidden" id="draftPane">
-      <div class="draft-head">
-        <div class="draft-title">
-          <span id="draftFlag">🌍</span>
-          <span id="draftTeamName">Nation</span>
-          <span class="draft-group" id="draftGroup">Group A</span>
-        </div>
-        <input class="draft-search" id="draftSearch" placeholder="Search player…" />
-      </div>
-      <div class="draft-subhead">
-        <span class="draft-instruct" id="draftInstruct">Pick a player for your XI</span>
-        <span class="draft-cols"><i>POS</i><i>CAPS</i><i>GOALS</i></span>
-      </div>
-      <div class="player-list" id="playerList"></div>
-    </div>
-  </section>
-
-  <section class="pitch-col">
-    <div class="pitch" id="pitch">
-      <div class="pitch-lines">
-        <div class="pl-box pl-box-top"></div>
-        <div class="pl-box pl-box-bottom"></div>
-        <div class="pl-circle"></div>
-        <div class="pl-halfway"></div>
-        <div class="pl-spot pl-spot-top"></div>
-        <div class="pl-spot pl-spot-bottom"></div>
-      </div>
-    </div>
-    <div class="formation-tag" id="formationTag">4-3-3</div>
-  </section>
-</main>
-
-<!-- RESULTS -->
-<section class="results hidden" id="resultsScreen">
-  <div class="results-inner">
-    <h1 class="results-title">Your WC26 XI</h1>
-    <p class="results-sub" id="resultsSub">11 players · 11 nations · 1 dream squad</p>
-    <div class="pitch results-pitch" id="resultsPitch">
-      <div class="pitch-lines">
-        <div class="pl-box pl-box-top"></div>
-        <div class="pl-box pl-box-bottom"></div>
-        <div class="pl-circle"></div>
-        <div class="pl-halfway"></div>
-      </div>
-    </div>
-    <div id="submitBox" class="hidden" style="margin:0 auto 18px;max-width:420px;text-align:left;">
-      <label style="display:block;font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:6px;">TEAM NAME</label>
-      <div style="display:flex;gap:8px;">
-        <input id="submitTeamName" placeholder="e.g. Korain United"
-               style="flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--text);font-size:14px;" />
-        <button class="primary-btn" id="submitXIBtn" style="margin:0;">Submit to <span id="submitLeagueLabel">league</span></button>
-      </div>
-      <p id="submitMsg" style="margin-top:8px;color:var(--accent-2);font-size:13px;min-height:1.2em;"></p>
-    </div>
-
-    <div class="results-buttons">
-      <button class="ghost-btn" id="copyXIBtn">Copy XI</button>
-      <button class="primary-btn" id="playAgainBtn">Play again</button>
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">A Saba7o Korah Production · Created by Ramez</div>
+    <h1 class="hero-title">HALO AMRIKA</h1>
+    <p class="hero-tag">Build your fantasy World Cup XI. Spin the randomizer, draft 12 players, climb the leaderboard.<br/><b>Jun 11 – Jul 19, 2026.</b></p>
+    <div class="hero-status" id="heroStatus">Loading…</div>
+    <div>
+      <a href="build.html" class="hero-cta" id="ctaBuild">Build my squad →</a>
+      <a href="#leaderboard" class="hero-cta ghost">View leaderboard</a>
     </div>
   </div>
 </section>
 
-<script type="module" src="app.js"></script>
+<section class="strip" id="leaderboard">
+  <div class="strip-inner">
+    <div class="pool-head">
+      <h2 class="strip-title" style="margin:0;">Leaderboard</h2>
+      <div class="pool-stats" id="lbStats">0 entries</div>
+    </div>
+    <div class="lb-head">
+      <div>#</div><div>TEAM NAME</div><div>OWNER</div><div style="text-align:right;">PTS</div>
+    </div>
+    <div class="lb-table" id="lbTable">
+      <div class="lb-empty">No squads submitted yet. Be the first — <a href="build.html" style="color:var(--accent);">Build my squad →</a></div>
+    </div>
+  </div>
+</section>
+
+<section class="strip strip-alt">
+  <div class="strip-inner two-col">
+    <div>
+      <h2 class="strip-title">Squad · 4-4-2</h2>
+      <div class="squad-grid">
+        <div class="sq-cell"><span class="sq-pos">GK</span> <span class="sq-n">×1</span></div>
+        <div class="sq-cell"><span class="sq-pos">CB</span> <span class="sq-n">×2</span></div>
+        <div class="sq-cell"><span class="sq-pos">FB</span> <span class="sq-n">×2</span></div>
+        <div class="sq-cell"><span class="sq-pos">CM</span> <span class="sq-n">×2</span></div>
+        <div class="sq-cell"><span class="sq-pos">WIN</span> <span class="sq-n">×2</span></div>
+        <div class="sq-cell"><span class="sq-pos">ST</span> <span class="sq-n">×2</span></div>
+        <div class="sq-cell wild"><span class="sq-pos">WILD</span> <span class="sq-n">×1</span></div>
+        <div class="sq-cell arab"><span class="sq-pos">ARAB</span> <span class="sq-n">≥1</span></div>
+      </div>
+      <p class="strip-note">12 picks per squad. 11 active starters earn points; wildcard sits on the bench. At least one player must be from an Arab nation.</p>
+    </div>
+    <div>
+      <h2 class="strip-title">Scoring</h2>
+      <table class="rules">
+        <tr><td>Team win (played 1'+)</td><td>+1</td></tr>
+        <tr><td>Bonus if full 90'</td><td>+1</td></tr>
+        <tr><td>Goal scored</td><td>+1</td></tr>
+        <tr><td>Assist</td><td>+1</td></tr>
+        <tr><td>Clean sheet (GK/CB/FB/CM, 45'+)</td><td>+1</td></tr>
+        <tr><td>MVP / Man of the Match</td><td>+1</td></tr>
+        <tr><td>Red card</td><td>−1</td></tr>
+      </table>
+      <p class="strip-note">Progression bonuses (per starter, cumulative): R32 +2 · R16 +2 · QF +3 · SF +4 · Final +4 · Champion +5 (max +20).</p>
+    </div>
+  </div>
+</section>
+
+<section class="strip">
+  <div class="strip-inner">
+    <div class="pool-head">
+      <h2 class="strip-title" style="margin:0;">Player Pool</h2>
+      <div class="pool-stats" id="poolStats"></div>
+    </div>
+
+    <div class="pool-filters">
+      <input id="filterSearch" placeholder="Search player or club…"
+             style="flex:2;min-width:180px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;" />
+      <select id="filterCat" class="pool-select"></select>
+      <select id="filterNation" class="pool-select"></select>
+      <select id="filterRole" class="pool-select">
+        <option value="">All roles</option>
+        <option value="GK">GK</option>
+        <option value="CB">CB</option>
+        <option value="FB">FB</option>
+        <option value="CM">CM</option>
+        <option value="WIN">WIN</option>
+        <option value="ST">ST</option>
+      </select>
+      <label class="pool-toggle"><input type="checkbox" id="filterArab" /> Arab only</label>
+    </div>
+
+    <div class="pool-list" id="poolList"></div>
+    <div class="pool-more" id="poolMore"></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div>HALO AMRIKA · Saba7o USA · Series 04 · A Saba7o Korah Production</div>
+  <div class="footer-sub">Game by Ramez · Hosted by Nsoo7y, Marei &amp; Orfy</div>
+</footer>
+
+<script type="module" src="audience.js"></script>
 </body>
 </html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Build My Squad · HALO AMRIKA</title>
+<link rel="stylesheet" href="styles.css" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<header class="topbar">
+  <a href="index.html" class="brand">
+    <span class="brand-mark">HALO AMRIKA</span>
+    <span class="brand-sub">Build My Squad</span>
+  </a>
+  <div class="hdr-right" id="authSlot"></div>
+</header>
+
+<main class="build">
+  <!-- LEFT — spinner + candidates -->
+  <section class="build-left">
+    <div class="build-card">
+      <h3>The Randomizer</h3>
+      <div class="spinner-display">
+        <div class="spinner-box flag" id="reelNation">
+          <span class="lbl">NATION</span>
+          <span class="val" id="reelNationVal">🌍</span>
+        </div>
+        <div class="spinner-box role" id="reelRole">
+          <span class="lbl">ROLE</span>
+          <span class="val" id="reelRoleVal">—</span>
+        </div>
+      </div>
+      <button class="spin-action" id="spinBtn">SPIN</button>
+      <p class="spin-hint" id="spinHint">12 picks total. Each spin gives you a nation + position. Pick one player from the matching list.</p>
+    </div>
+
+    <div class="build-card" id="candidatesCard" style="display:none;">
+      <h3>Pick from <span id="candHead" style="color:var(--text);text-transform:none;letter-spacing:0;font-size:15px;font-weight:800;"></span></h3>
+      <div class="candidates" id="candidates"></div>
+      <button class="ghost-btn" id="rerollBtn" style="margin-top:10px;width:100%;">Re-spin (don't like these?)</button>
+    </div>
+  </section>
+
+  <!-- RIGHT — squad + constraints + submit -->
+  <section class="build-right">
+    <div class="build-card">
+      <h3>Squad — 4-4-2</h3>
+      <div class="slots-grid" id="slotsGrid"></div>
+    </div>
+
+    <div class="build-card">
+      <h3>Status</h3>
+      <div id="constraints"></div>
+    </div>
+
+    <div class="build-card">
+      <h3>Submit</h3>
+      <div class="submit-row">
+        <input class="team-name-input" id="teamName" placeholder="Team name…" maxlength="40" />
+        <button class="submit-btn" id="submitBtn" disabled>Submit Squad</button>
+      </div>
+      <div class="submit-msg" id="submitMsg"></div>
+    </div>
+  </section>
+</main>
+
+<script type="module" src="build.js"></script>
+</body>
+</html>

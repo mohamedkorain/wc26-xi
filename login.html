@@ -36,7 +36,7 @@ import { signInWithEmail, currentUser } from './js/auth.js';
 // If already signed in, redirect to leagues
 (async () => {
   const u = await currentUser();
-  if (u) location.href = 'leagues.html';
+  if (u) location.href = 'build.html';
 })();
 
 document.getElementById('loginForm').onsubmit = async (e) => {
@@ -45,7 +45,7 @@ document.getElementById('loginForm').onsubmit = async (e) => {
   const msg = document.getElementById('loginMsg');
   msg.style.color = 'var(--accent-2)';
   msg.textContent = 'Sending…';
-  const { error } = await signInWithEmail(email, location.origin + '/leagues.html');
+  const { error } = await signInWithEmail(email, location.origin + '/build.html');
   if (error) {
     msg.style.color = 'var(--danger)';
     msg.textContent = error.message;

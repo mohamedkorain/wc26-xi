@@ -5,6 +5,15 @@ node_modules/
 # scraped source HTML (1.8MB, regenerable)
 scripts/raw_squads.html
 
+# local working notes (after macOS revoked access to ~/Desktop/wc26-xi-notes mid-session)
+.notes/
+
+# source assets used by the importer but not needed at runtime
+WC2026_SquadLists_WithPositions_AI.xlsx
+Halo Amrika — Game Pitch.pdf
+*.xlsx
+*.pdf
+
 # secrets (we currently use Supabase publishable key in client code — safe)
 .env
 .env.local
