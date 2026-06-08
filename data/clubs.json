@@ -809,154 +809,298 @@
     "source": "wikipedia"
   },
   "El Paso Locomotive FC (USA)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/0/00/El_Paso_Locomotive_FC_logo.svg/330px-El_Paso_Locomotive_FC_logo.svg.png",
+    "wiki_title": "El Paso Locomotive FC",
+    "source": "wikipedia"
   },
   "Elche CF (ESP)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/Elche_CF_logo.svg/250px-Elche_CF_logo.svg.png",
+    "wiki_title": "Elche CF",
+    "source": "wikipedia"
   },
   "Espérance De Tunisie (TUN)": {
     "error": "HTTP Error 429: Too Many Requests"
   },
   "Esteghlal Tehran FC (IRN)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/5/54/Esteghlal_F.C._Logo.svg/330px-Esteghlal_F.C._Logo.svg.png",
+    "wiki_title": "Esteghlal F.C.",
+    "source": "wikipedia"
   },
   "Estudiantes LP (ARG)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Estudiantes_de_la_Plata_crest_%282025%29_cropped.svg/960px-Estudiantes_de_la_Plata_crest_%282025%29_cropped.svg.png",
+    "wiki_title": "Estudiantes de La Plata",
+    "source": "wikipedia"
   },
   "Everton FC (ENG)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/7/7c/Everton_FC_logo.svg/330px-Everton_FC_logo.svg.png",
+    "wiki_title": "Everton F.C.",
+    "source": "wikipedia"
   },
   "FC Akron Tolyatti (RUS)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/0/0c/Akron_Togliatti.png",
+    "wiki_title": "FC Akron Tolyatti",
+    "source": "wikipedia"
   },
   "FC Astana (KAZ)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/9/96/FC_Astana_Logo.svg/250px-FC_Astana_Logo.svg.png",
+    "wiki_title": "FC Astana",
+    "source": "wikipedia"
   },
   "FC Augsburg (GER)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/FC_Augsburg_logo.svg/250px-FC_Augsburg_logo.svg.png",
+    "wiki_title": "FC Augsburg",
+    "source": "wikipedia"
   },
   "FC Barcelona (ESP)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona_%28crest%29.svg/250px-FC_Barcelona_%28crest%29.svg.png",
+    "wiki_title": "FC Barcelona",
+    "source": "wikipedia"
   },
   "FC Bayern München (GER)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/FC_Bayern_M%C3%BCnchen_logo_%282024%29.svg/960px-FC_Bayern_M%C3%BCnchen_logo_%282024%29.svg.png",
+    "wiki_title": "FC Bayern Munich",
+    "source": "wikipedia"
   },
   "FC Cincinnatti (USA)": {
     "error": "HTTP Error 429: Too Many Requests"
   },
   "FC Cosmos Koblenz (GER)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/5/51/FC_Cosmos_Koblenz_logo.jpg",
+    "wiki_title": "FC Cosmos Koblenz",
+    "source": "wikipedia"
   },
   "FC Dallas (USA)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/c/c9/FC_Dallas_logo.svg/330px-FC_Dallas_logo.svg.png",
+    "wiki_title": "FC Dallas",
+    "source": "wikipedia"
   },
   "FC Den Bosch (NED)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/b/ba/FC_Den_Bosch_logo.svg/330px-FC_Den_Bosch_logo.svg.png",
+    "wiki_title": "FC Den Bosch",
+    "source": "wikipedia"
   },
   "FC Dynamo Makhachkala (RUS)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/8/86/FC_Dynamo_Makhachkala_logo.svg/120px-FC_Dynamo_Makhachkala_logo.svg.png",
+    "wiki_title": "FC Dynamo Makhachkala",
+    "source": "wikipedia"
   },
   "FC Dynamo Moscow (RUS)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/e/e7/Dynamo_Moscow_logo.svg/250px-Dynamo_Moscow_logo.svg.png",
+    "wiki_title": "FC Dynamo Moscow",
+    "source": "wikipedia"
   },
   "FC FCSB (ROU)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Fcsb-logo.svg/500px-Fcsb-logo.svg.png",
+    "wiki_title": "FCSB",
+    "source": "wikipedia"
   },
   "FC Hradec Králové (CZE)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/d/d5/FC_Hradec_Kralove.png",
+    "wiki_title": "FC Hradec Králové",
+    "source": "wikipedia"
   },
   "FC Internazionale Milano (ITA)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/FC_Internazionale_Milano_2021.svg/960px-FC_Internazionale_Milano_2021.svg.png",
+    "wiki_title": "Inter Milan",
+    "source": "wikipedia"
   },
   "FC Juárez (MEX)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9d/FC_Ju%C3%A1rez_logo.svg/250px-FC_Ju%C3%A1rez_logo.svg.png",
+    "wiki_title": "FC Juárez",
+    "source": "wikipedia"
   },
   "FC Krasnodar (RUS)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/3/30/FC_Krasnodar_logo.svg/330px-FC_Krasnodar_logo.svg.png",
+    "wiki_title": "FC Krasnodar",
+    "source": "wikipedia"
   },
   "FC København (DEN)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/2/26/FC_Copenhagen_logo.svg/330px-FC_Copenhagen_logo.svg.png",
+    "wiki_title": "F.C. Copenhagen",
+    "source": "wikipedia"
   },
   "FC Lokomotiv Moscow (RUS)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/9/93/FC_Lokomotiv_Moscow_logo.svg/250px-FC_Lokomotiv_Moscow_logo.svg.png",
+    "wiki_title": "FC Lokomotiv Moscow",
+    "source": "wikipedia"
   },
   "FC Lorient (FRA)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/4/4c/FC_Lorient_logo.svg/330px-FC_Lorient_logo.svg.png",
+    "wiki_title": "FC Lorient",
+    "source": "wikipedia"
   },
   "FC Lugano (SUI)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Logo_FC_Lugano_2025.svg/1920px-Logo_FC_Lugano_2025.svg.png",
+    "wiki_title": "FC Lugano",
+    "source": "wikipedia"
   },
   "FC Machida Zelvia (JPN)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/FC_Machida_Zelvia_logo.svg/330px-FC_Machida_Zelvia_logo.svg.png",
+    "wiki_title": "FC Machida Zelvia",
+    "source": "wikipedia"
   },
   "FC Midtjylland (DEN)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/d/dd/FC_Midtjylland_logo.svg/330px-FC_Midtjylland_logo.svg.png",
+    "wiki_title": "FC Midtjylland",
+    "source": "wikipedia"
   },
   "FC Nantes (FRA)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Logo_FC_Nantes_%28avec_fond%29_-_2019.svg/500px-Logo_FC_Nantes_%28avec_fond%29_-_2019.svg.png",
+    "wiki_title": "FC Nantes",
+    "source": "wikipedia"
   },
   "FC Noah (ARM)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/6/6e/FC_Noah_logo_%282024%29.svg/250px-FC_Noah_logo_%282024%29.svg.png",
+    "wiki_title": "FC Noah",
+    "source": "wikipedia"
   },
   "FC Nordsjælland (DEN)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/2/23/FC_Nordsj%C3%A6lland_logo.svg/250px-FC_Nordsj%C3%A6lland_logo.svg.png",
+    "wiki_title": "FC Nordsjælland",
+    "source": "wikipedia"
   },
   "FC Pari Nizhny Novgorod (RUS)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/2/24/FC_Nizhny_Novgorod_emblem.svg/250px-FC_Nizhny_Novgorod_emblem.svg.png",
+    "wiki_title": "FC Pari Nizhny Novgorod",
+    "source": "wikipedia"
   },
   "FC Porto (POR)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f1/FC_Porto.svg/330px-FC_Porto.svg.png",
+    "wiki_title": "FC Porto",
+    "source": "wikipedia"
   },
   "FC Red Bull Salzburg (AUT)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/7/77/FC_Red_Bull_Salzburg_logo.svg/330px-FC_Red_Bull_Salzburg_logo.svg.png",
+    "wiki_title": "FC Red Bull Salzburg",
+    "source": "wikipedia"
   },
   "FC Rostov (RUS)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a2/FC_Rostov_logo.svg/330px-FC_Rostov_logo.svg.png",
+    "wiki_title": "FC Rostov",
+    "source": "wikipedia"
   },
   "FC Schalke 04 (GER)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/FC_Schalke_04_Logo.svg/960px-FC_Schalke_04_Logo.svg.png",
+    "wiki_title": "FC Schalke 04",
+    "source": "wikipedia"
   },
   "FC Seoul (KOR)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9e/FC_Seoul_logo.svg/250px-FC_Seoul_logo.svg.png",
+    "wiki_title": "FC Seoul",
+    "source": "wikipedia"
   },
   "FC Slovan Liberec (CZE)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/f/ff/Slovan_Liberec_logo_since_2024.png",
+    "wiki_title": "FC Slovan Liberec",
+    "source": "wikipedia"
   },
   "FC Sochaux-Montbéliard (FRA)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/7/7c/FC_Sochaux-Montbeliard_logo.svg/330px-FC_Sochaux-Montbeliard_logo.svg.png",
+    "wiki_title": "FC Sochaux-Montbéliard",
+    "source": "wikipedia"
   },
   "FC Spartak Moscow (RUS)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/9/93/FC_Spartak_Moscow_crest.svg/500px-FC_Spartak_Moscow_crest.svg.png",
+    "wiki_title": "FC Spartak Moscow",
+    "source": "wikipedia"
   },
   "FC St. Gallen (SUI)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/FC_St._Gallen_logo.svg/500px-FC_St._Gallen_logo.svg.png",
+    "wiki_title": "FC St. Gallen",
+    "source": "wikipedia"
   },
   "FC St. Pauli (GER)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/8/8f/FC_St._Pauli_logo_%282018%29.svg/250px-FC_St._Pauli_logo_%282018%29.svg.png",
+    "wiki_title": "FC St. Pauli",
+    "source": "wikipedia"
   },
   "FC Stade Nyonnais (SUI)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/8/89/FC_Stade_Nyonnais_logo.png",
+    "wiki_title": "FC Stade Nyonnais",
+    "source": "wikipedia"
   },
   "FC Tatran Prešov (SVK)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/7/7e/1FC_Tatran.png",
+    "wiki_title": "1. FC Tatran Prešov",
+    "source": "wikipedia"
   },
   "FC Tokyo (JPN)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/1/15/FC_Tokyo_Logo.svg/330px-FC_Tokyo_Logo.svg.png",
+    "wiki_title": "FC Tokyo",
+    "source": "wikipedia"
   },
   "FC Twente (NED)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/e/e3/FC_Twente.svg/330px-FC_Twente.svg.png",
+    "wiki_title": "FC Twente",
+    "source": "wikipedia"
   },
   "FC Utrecht (NED)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Logo_FC_Utrecht.svg/500px-Logo_FC_Utrecht.svg.png",
+    "wiki_title": "FC Utrecht",
+    "source": "wikipedia"
   },
   "FC Viktoria Plzeň (CZE)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/e/e3/Viktoria_Plzen_logo.svg/250px-Viktoria_Plzen_logo.svg.png",
+    "wiki_title": "FC Viktoria Plzeň",
+    "source": "wikipedia"
   },
   "FC Vizela (POR)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a2/F.C._Vizela_logo.svg/250px-F.C._Vizela_logo.svg.png",
+    "wiki_title": "F.C. Vizela",
+    "source": "wikipedia"
   },
   "FC Volendam (NED)": {
-    "error": "HTTP Error 429: Too Many Requests"
+    "error": "HTTP Error 429: Too Many Requests",
+    "badge": "https://upload.wikimedia.org/wikipedia/commons/3/35/FC_Volendam_logo.png",
+    "wiki_title": "FC Volendam",
+    "source": "wikipedia"
   },
   "FC Zenit St. Petersburg (RUS)": {
     "error": "HTTP Error 429: Too Many Requests"
