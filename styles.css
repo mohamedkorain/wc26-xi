@@ -461,6 +461,18 @@ input { font-family: inherit; }
 }
 .footer-sub { margin-top: 4px; opacity: 0.7; }
 
+/* ── RTL polish ──────────────────────────────────────────────── */
+[dir="rtl"] .brand { flex-direction: row-reverse; }
+[dir="rtl"] .hdr-right { flex-direction: row-reverse; }
+[dir="rtl"] .club-crest,
+[dir="rtl"] .club-badge { margin-right: 0; margin-left: 4px; }
+[dir="rtl"] .cand-pick { letter-spacing: 0; }
+[dir="rtl"] .lb-head,
+[dir="rtl"] .lb-row { direction: rtl; }
+[dir="rtl"] .lb-pts { text-align: left; }
+[dir="rtl"] .role-chip { letter-spacing: 0; }
+[dir="rtl"] .hero-cta.ghost { margin-left: 0; margin-right: 10px; }
+
 /* ── build (squad builder) ───────────────── */
 .build {
   display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px;

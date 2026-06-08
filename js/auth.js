@@ -1,5 +1,6 @@
 // Auth helpers shared across pages.
 import { supabase } from './supabase-client.js';
+import { t } from './i18n.js';
 
 export async function currentUser() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -22,17 +23,20 @@ export async function signOut() {
 //   <div id="authSlot"></div>
 //   mountAuthWidget(document.getElementById('authSlot'))
 export async function mountAuthWidget(el) {
-  const user = await currentUser();
-  if (user) {
-    el.innerHTML = `
-      <a href="leagues.html" class="hdr-link">My leagues</a>
-      <span class="hdr-email" title="${user.email}">${shortEmail(user.email)}</span>
-      <button class="hdr-btn" id="signOutBtn">Sign out</button>
-    `;
-    el.querySelector('#signOutBtn').onclick = signOut;
-  } else {
-    el.innerHTML = `<a href="login.html" class="hdr-btn primary">Sign in</a>`;
-  }
+  const render = async () => {
+    const user = await currentUser();
+    if (user) {
+      el.innerHTML = `
+        <span class="hdr-email" title="${user.email}">${shortEmail(user.email)}</span>
+        <button class="hdr-btn" id="signOutBtn">${t('auth.signout')}</button>
+      `;
+      el.querySelector('#signOutBtn').onclick = signOut;
+    } else {
+      el.innerHTML = `<a href="login.html" class="hdr-btn primary">${t('auth.signin')}</a>`;
+    }
+  };
+  await render();
+  window.addEventListener('langchange', render);
 }
 
 function shortEmail(e) {

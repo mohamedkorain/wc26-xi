@@ -1,6 +1,7 @@
 // HALO AMRIKA — randomizer squad builder.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
+import { t } from './js/i18n.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -68,6 +69,7 @@ async function boot() {
 
   wireUI();
   renderAll();
+  window.addEventListener('langchange', renderAll);
 }
 
 async function loadExistingEntry() {
@@ -266,9 +268,7 @@ function updateRerollButton() {
   if (!btn) return;
   const have = state.respinsLeft;
   btn.disabled = have <= 0 || state.spin == null;
-  btn.textContent = have > 0
-    ? `Re-spin (${have} left)`
-    : `Re-spins used — pick a player`;
+  btn.textContent = have > 0 ? t('reroll.left', { n: have }) : t('reroll.none');
 }
 
 // ─── render ──────────────────────────────────────────────────────────────────
@@ -279,13 +279,13 @@ function renderAll() {
   updateSubmitState();
   const filled = state.squad.filter(Boolean).length;
   if (filled >= 12) {
-    setHint('Squad complete — name it and submit below.');
+    setHint(t('spin.hint.done'));
     document.getElementById('spinBtn').disabled = true;
   } else if (state.locked) {
-    setHint('🔒 Submissions are locked.');
+    setHint(t('spin.locked'));
     document.getElementById('spinBtn').disabled = true;
   } else {
-    setHint(`${filled} of 12 picked — spin to draw your next nation + position.`);
+    setHint(t('spin.hint.next', { n: filled }));
   }
 }
 
@@ -323,11 +323,11 @@ function renderPitch() {
   const bench = document.getElementById('bench');
   const wildItem = state.squad[11];
   bench.innerHTML = `
-    <div class="bench-label">BENCH · Wildcard</div>
+    <div class="bench-label">${t('squad.bench')}</div>
     <div class="bench-slot ${wildItem ? 'filled' : 'empty'}">
       ${wildItem
-        ? `<span>${wildItem.nation.flag} <b>${escapeHtml(wildItem.player.name)}</b> <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(wildItem.player.club || '')}</span></span>`
-        : `<span>Wildcard slot — last pick, any position</span>`}
+        ? `<span>${wildItem.nation.flag} <b>${escapeHtml(displayLast(wildItem.player))}</b> <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(wildItem.player.club || '')}</span></span>`
+        : `<span>${t('squad.bench.empty')}</span>`}
     </div>
   `;
 }
@@ -336,13 +336,13 @@ function renderConstraints() {
   const filled = state.squad.filter(Boolean).length;
   const arab = state.squad.filter(s => s && s.nation.arab).length;
   document.getElementById('constraints').innerHTML = `
-    <div class="constraint-line">12 players drafted
+    <div class="constraint-line">${t('status.players')}
       <span class="${filled === 12 ? 'ok' : 'bad'}">${filled}/12</span>
     </div>
-    <div class="constraint-line">≥1 Arab player
+    <div class="constraint-line">${t('status.arab')}
       <span class="${arab >= 1 ? 'ok' : 'bad'}">${arab}</span>
     </div>
-    <div class="constraint-line">Formation
+    <div class="constraint-line">${t('status.formation')}
       <span class="ok">4-4-2</span>
     </div>
   `;
@@ -364,7 +364,7 @@ async function submit() {
   const name = document.getElementById('teamName').value.trim();
   const msg = document.getElementById('submitMsg');
   msg.style.color = 'var(--accent-2)';
-  msg.textContent = 'Saving…';
+  msg.textContent = t('submit.saving');
 
   const payload = {
     league_id: HALO_LEAGUE_ID,
@@ -394,7 +394,7 @@ async function submit() {
     return;
   }
   msg.style.color = 'var(--accent)';
-  msg.innerHTML = `Squad saved! <a href="index.html#leaderboard" style="color:var(--accent);">View leaderboard →</a> (You can still tinker until ${new Date(state.league.locked_at).toLocaleString()}.)`;
+  msg.innerHTML = t('submit.saved', { at: new Date(state.league.locked_at).toLocaleString() });
 }
 
 // ─── utils ───────────────────────────────────────────────────────────────────

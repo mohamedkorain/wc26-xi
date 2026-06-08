@@ -1,6 +1,7 @@
 // HALO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
+import { t } from './js/i18n.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -40,12 +41,24 @@ async function boot() {
   state.myUserId = user?.id || null;
 
   hydrateFilters();
-  document.getElementById('poolStats').textContent =
-    `${state.players.length.toLocaleString()} players · ${state.teams.length} nations · 6 categories`;
+  renderPoolStats();
   renderHeroStatus();
   renderLeaderboard();
   renderPool();
   wireFilters();
+  // Re-render dynamic strings on language change
+  window.addEventListener('langchange', () => {
+    hydrateFilters();
+    renderPoolStats();
+    renderHeroStatus();
+    renderLeaderboard();
+    renderPool();
+  });
+}
+
+function renderPoolStats() {
+  document.getElementById('poolStats').textContent =
+    t('pool.stats', { n: state.players.length.toLocaleString(), teams: state.teams.length });
 }
 
 function renderHeroStatus() {
@@ -58,14 +71,17 @@ function renderHeroStatus() {
   const now = new Date();
   const lock = new Date(state.league.locked_at);
   if (now >= lock) {
-    el.textContent = '🔒 Submissions locked · tournament live';
+    el.textContent = '🔒 ' + (t('spin.locked')?.replace('🔒 ','') || 'Submissions locked');
     document.getElementById('ctaBuild').style.display = 'none';
     return;
   }
   const diffMs = lock - now;
   const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  el.textContent = `Submissions open · locks in ${days}d ${hours}h (${lock.toLocaleString()})`;
+  const lockStr = lock.toLocaleString();
+  el.textContent = (document.documentElement.lang === 'ar')
+    ? `التشكيلات مفتوحة · تقفل خلال ${days} يوم ${hours} ساعة (${lockStr})`
+    : `Submissions open · locks in ${days}d ${hours}h (${lockStr})`;
 }
 
 async function renderLeaderboard() {
@@ -75,7 +91,8 @@ async function renderLeaderboard() {
 
   const lbStats = document.getElementById('lbStats');
   const lbTable = document.getElementById('lbTable');
-  lbStats.textContent = `${(entries || []).length} entr${(entries || []).length === 1 ? 'y' : 'ies'}`;
+  const n = (entries || []).length;
+  lbStats.textContent = n === 1 ? t('lb.entries.one') : t('lb.entries.n', { n });
 
   if (!entries || !entries.length) return;  // leave the empty-state message
 
@@ -112,14 +129,18 @@ async function renderLeaderboard() {
 
 function hydrateFilters() {
   const catSel = document.getElementById('filterCat');
-  catSel.innerHTML = '<option value="">All categories</option>' +
-    [1,2,3,4,5,6].map(c => `<option value="${c}">Category ${c}</option>`).join('');
+  catSel.innerHTML = `<option value="">${t('filter.all.cat')}</option>` +
+    [1,2,3,4,5,6].map(c => `<option value="${c}">${t('filter.cat', { n: c })}</option>`).join('');
 
   const natSel = document.getElementById('filterNation');
   const opts = state.teams
     .slice().sort((a,b) => a.name.localeCompare(b.name))
-    .map(t => `<option value="${t.name}">${t.flag} ${t.name}</option>`);
-  natSel.innerHTML = '<option value="">All nations</option>' + opts.join('');
+    .map(team => `<option value="${team.name}">${team.flag} ${team.name}</option>`);
+  natSel.innerHTML = `<option value="">${t('filter.all.nat')}</option>` + opts.join('');
+
+  // The "All roles" option also needs localizing
+  const roleSel = document.getElementById('filterRole');
+  if (roleSel?.options[0]) roleSel.options[0].textContent = t('filter.all.role');
 }
 
 function wireFilters() {
@@ -160,10 +181,10 @@ function renderPool() {
   `).join('');
   const more = document.getElementById('poolMore');
   if (filtered.length > visible) {
-    more.innerHTML = `<button class="ghost-btn" id="moreBtn">Show ${Math.min(PAGE_SIZE, filtered.length - visible)} more · ${filtered.length - visible} remaining</button>`;
+    more.innerHTML = `<button class="ghost-btn" id="moreBtn">${t('pool.more', { n: Math.min(PAGE_SIZE, filtered.length - visible), rest: filtered.length - visible })}</button>`;
     document.getElementById('moreBtn').onclick = () => { visible += PAGE_SIZE; renderPool(); };
   } else {
-    more.innerHTML = `<div style="color:var(--text-dim);font-size:12px;padding:8px;text-align:center;">${filtered.length} of ${state.players.length}</div>`;
+    more.innerHTML = `<div style="color:var(--text-dim);font-size:12px;padding:8px;text-align:center;">${filtered.length} / ${state.players.length}</div>`;
   }
 }
 
