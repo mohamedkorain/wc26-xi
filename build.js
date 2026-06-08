@@ -24,14 +24,18 @@ const SLOTS = [
 const ALL_ROLES = ['GK','CB','FB','CM','WIN','ST'];
 const ROLE_TARGETS = { GK:1, CB:2, FB:2, CM:2, WIN:2, ST:2 };
 
+const MAX_RESPINS = 3;
+
 const state = {
   teams: [],          // [{name,code,flag,category,arab}]
   byNation: {},       // nation name → players list (with .roles)
+  clubLogos: {},      // club name → {badge, name}
   league: null,
   user: null,
   squad: Array(12).fill(null),     // each: {slot, player, nation}
   spin: null,         // current spin: {nation:{name,code,flag,arab}, role}
   spinning: false,
+  respinsLeft: MAX_RESPINS,
   locked: false,
 };
 
@@ -42,13 +46,15 @@ async function boot() {
   if (!state.user) { location.href = 'login.html'; return; }
   mountAuthWidget(document.getElementById('authSlot'));
 
-  const [teams, players, league] = await Promise.all([
+  const [teams, players, league, clubs] = await Promise.all([
     fetch('data/teams.json').then(r => r.json()),
     fetch('data/players.json').then(r => r.json()),
     supabase.from('leagues').select('*').eq('id', HALO_LEAGUE_ID).maybeSingle(),
+    fetch('data/clubs.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
   ]);
   state.teams = teams.teams;
   for (const n of players.nations) state.byNation[n.name] = n.players;
+  state.clubLogos = clubs || {};
   state.league = league.data;
 
   if (!state.league) {
@@ -117,6 +123,13 @@ function assignSlotIndex(role) {
 function spin() {
   if (state.spinning || state.locked) return;
 
+  // Is this a re-spin? If state.spin is non-null, we already drew for this pick.
+  const isReSpin = state.spin != null;
+  if (isReSpin) {
+    if (state.respinsLeft <= 0) return;
+    state.respinsLeft -= 1;
+  }
+
   const candidate = pickRandomNationAndRole();
   if (!candidate) {
     setHint('No eligible spin possible.');
@@ -147,7 +160,7 @@ function spin() {
       state.spin = candidate;
       state.spinning = false;
       document.getElementById('spinBtn').disabled = true;     // stay disabled until pick or reroll
-      document.getElementById('rerollBtn').disabled = false;
+      updateRerollButton();
       setTimeout(() => showCandidates(candidate), 250);
     }
   };
@@ -239,12 +252,23 @@ function pickPlayer(player, nation, role) {
   if (slotIdx < 0) return;  // shouldn't happen
   state.squad[slotIdx] = { player, nation };
   state.spin = null;
+  state.respinsLeft = MAX_RESPINS;
   document.getElementById('candidatesCard').style.display = 'none';
   document.getElementById('reelNationVal').textContent = '🌍';
   document.getElementById('reelRoleVal').textContent = '—';
   document.getElementById('spinBtn').disabled = false;
-  document.getElementById('rerollBtn').disabled = false;
+  updateRerollButton();
   renderAll();
+}
+
+function updateRerollButton() {
+  const btn = document.getElementById('rerollBtn');
+  if (!btn) return;
+  const have = state.respinsLeft;
+  btn.disabled = have <= 0 || state.spin == null;
+  btn.textContent = have > 0
+    ? `Re-spin (${have} left)`
+    : `Re-spins used — pick a player`;
 }
 
 // ─── render ──────────────────────────────────────────────────────────────────
@@ -380,17 +404,28 @@ function lastName(full) {
   return parts.length === 1 ? full : parts[parts.length - 1];
 }
 
-// Initials-in-circle placeholder for club logos (real crests TBD).
+// Real club crest from clubs.json if available; otherwise initials-in-circle.
 function clubBadge(club) {
-  const name = String(club || '').replace(/\s*\([A-Z]{3,4}\)\s*$/, '').trim();
+  const raw = String(club || '');
+  const name = raw.replace(/\s*\([A-Z]{3,4}\)\s*$/, '').trim();
   if (!name) return '';
+  const cached = state.clubLogos?.[raw];
+  if (cached?.badge) {
+    return `<img class="club-crest" src="${escapeHtml(cached.badge)}" alt="" loading="lazy" onerror="this.outerHTML=window.__clubFallback(${JSON.stringify(name)})" />`;
+  }
+  return initialsBadge(name);
+}
+
+function initialsBadge(name) {
   const initials = name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('');
-  // deterministic color from name
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const hue = h % 360;
   return `<span class="club-badge" style="background:hsl(${hue},45%,28%);color:hsl(${hue},80%,82%);">${escapeHtml(initials)}</span>`;
 }
+
+// Expose fallback for inline onerror handlers (since we can't pass functions through HTML)
+window.__clubFallback = (name) => initialsBadge(String(name || ''));
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);

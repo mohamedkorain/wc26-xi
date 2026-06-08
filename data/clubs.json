@@ -1,0 +1,437 @@
+{
+  "1. FC Union Berlin (GER)": {
+    "name": "Union Berlin",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/q0o5001599679795.png",
+    "country": "Germany"
+  },
+  "1. FSV Mainz 05 (GER)": {
+    "name": "Mainz",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/fhm9v51552134916.png",
+    "country": "Germany"
+  },
+  "AC Milan (ITA)": {
+    "name": "AC Milan",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/wvspur1448806617.png",
+    "country": "Italy"
+  },
+  "AC Omonia (CYP)": {
+    "name": "Omonia 29M",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/1rijst1707410501.png",
+    "country": "Cyprus"
+  },
+  "AC Sparta Praha (CZE)": {
+    "name": "Sparta Prague",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/j00qct1718287150.png",
+    "country": "Czechia"
+  },
+  "ACF Fiorentina (ITA)": {
+    "name": null,
+    "badge": null,
+    "country": null
+  },
+  "AE Ki sia FC (GRE)": {
+    "name": "Šiauliai",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/ax1i4t1645740530.png",
+    "country": "Lithuania"
+  },
+  "AEK Athens (GRE)": {
+    "name": "AEK Athens",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/4nogst1602773624.png",
+    "country": "Greece"
+  },
+  "AEK Larnaca FC (CYP)": {
+    "name": "AEK Larnaca",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/150a2b1544814418.png",
+    "country": "Cyprus"
+  },
+  "AEL FC (GRE)": {
+    "name": "AEL",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/3gbfyf1755610003.png",
+    "country": "Greece"
+  },
+  "AEL Limassol (CYP)": {
+    "name": "AEL Limassol",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/kijo451579035930.png",
+    "country": "Cyprus"
+  },
+  "AFC Ajax (NED)": {
+    "name": "AFC Ajax Amateurs",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/edzvy31755495338.png",
+    "country": "The Netherlands"
+  },
+  "AFC Bournemouth (ENG)": {
+    "name": "AFC Bournemouth Women",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/gh5hc31761433174.png",
+    "country": "England"
+  },
+  "AIK Stockholm (SWE)": {
+    "name": null,
+    "badge": null,
+    "country": null
+  },
+  "AJ Auxerre (FRA)": {
+    "name": "Auxerre",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/lzdtbf1658753355.png",
+    "country": "France"
+  },
+  "APOEL FC (CYP)": {
+    "name": "APOEL Nicosia",
+    "badge": "https://www.thesportsdb.com/images/media/team/badge/j5m0pu1779579095.png",
+    "country": "Cyprus"
+  },
+  "AS Monaco (FRA)": {
+    "name": "Monaco",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/exjf5l1678808044.png",
+    "country": "Monaco"
+  },
+  "AS Nancy (FRA)": {
+    "name": "Nancy Lorraine",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/ve39pj1547899643.png",
+    "country": "France"
+  },
+  "AS Roma (ITA)": {
+    "name": "Roma",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/jwro2s1760820674.png",
+    "country": "Italy"
+  },
+  "AS Saint-Etienne (FRA)": {
+    "name": null,
+    "badge": null,
+    "country": null
+  },
+  "ASFAR (MAR)": {
+    "name": "FAR Rabat Women",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/trz42s1769528680.png",
+    "country": "Morocco"
+  },
+  "AZ Alkmaar (NED)": {
+    "name": "AZ Alkmaar",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/wtqwvv1473534757.png",
+    "country": "The Netherlands"
+  },
+  "Aarhus GF (DEN)": {
+    "name": "AGF Aarhus",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/vxuuts1473535487.png",
+    "country": "Denmark"
+  },
+  "Abha Club (KSA)": {
+    "name": null,
+    "badge": null,
+    "country": null
+  },
+  "Al Ahli FC (KSA)": {
+    "name": "Al-Ahli",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/1bbtgb1755192301.png",
+    "country": "Saudi Arabia"
+  },
+  "Al Ahly FC (EGY)": {
+    "name": "Al Ahly",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/x8753q1751421890.png",
+    "country": "Egypt"
+  },
+  "Al Ain FC (UAE)": {
+    "name": "Al Ain",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/0w2bk51747334688.png",
+    "country": "United Arab Emirates"
+  },
+  "Al Arabi SC (QAT)": {
+    "name": "Al-Arabi",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/9tudph1693026180.png",
+    "country": "Qatar"
+  },
+  "Al Bataeh Club (UAE)": {
+    "name": "Al Bataeh",
+    "badge": "https://r2.thesportsdb.com/images/media/team/badge/7zftaj1718211067.png",
+    "country": "United Arab Emirates"
+  },
+  "Al Dhafra SCC (UAE)": {
+    "name": null,
+    "badge": null,
+    "country": null
+  },
+  "Al Duhail SC (QAT)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Ettifaq FC (KSA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Faisaly SC (JOR)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Fayha FC (KSA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Gharafa SC (QAT)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Hilal SC (KSA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Hussein SC (JOR)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Ittihad (KSA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Ittihad Kalba SCC (UAE)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Jazira (UAE)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Karma SC (IRQ)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Najmah SC (KSA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Nasr SC (UAE)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Nassr FC (KSA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Qadsiah FC (KSA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Rayyan SC (QAT)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Sadd SC (QAT)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Sailiya SC (QAT)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Shabab FC (KSA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Shamal SC (QAT)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Shorta SC (IRQ)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Talaba SC (IRQ)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Ula Saudi FC (KSA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Wahda SC (UAE)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Wahdat SC (JOR)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Wakrah SC (QAT)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al Zawra'a SC (IRQ)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Al-Quwa Al-Jawiya (IRQ)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Alanyaspor (TUR)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Albirex Niigata (JPN)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Almere City FC (NED)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Angers SCO (FRA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Apollon Limassol (CYP)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Aris Limassol FC (CYP)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Arsenal FC (ENG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Aston Villa FC (ENG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Atalanta Bergamo (ITA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Athletic Club (ESP)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Athletico Paranaense (BRA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Atlanta United FC (USA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Atlas FC (MEX)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Atlético De Madrid (ESP)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Atlético Mineiro (BRA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Atlético Nacional (COL)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Atromitos FC (GRE)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Auckland FC (NZL)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "BSC Young Boys (SUI)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Baniyas Club (UAE)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Barnsley (ENG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Bayer Leverkusen (GER)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Başakşehir FK (TUR)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Beşiktaş JK (TUR)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Birmingham City FC (ENG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Bologna FC (ITA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Borussia Dortmund (GER)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Borussia Mönchengladbach (GER)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Botafogo (BRA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Braintree Town FC (ENG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Brentford FC (ENG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Brighton & Hove Albion FC (ENG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Brøndby IF (DEN)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Burnley FC (ENG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CA Boca Juniors (ARG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CA Huracán (ARG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CA Independiente (ARG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CA Lanús (ARG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CA Osasuna (ESP)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CA River Plate (ARG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CA Rosario Central (ARG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CA San Lorenzo (ARG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CA Talleres (ARG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CA Vélez Sars eld (ARG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CD Castellón (ESP)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CD Cobresal (CHI)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CD Guadalajara (MEX)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CD Marathón (HON)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CD Plaza Amador (PAN)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CD Tondela (POR)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CD Universidad Católica (ECU)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CD Universidad De Concepción (CHI)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CF Cruz Azul (MEX)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CF Estrela Da Amadora (POR)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CF Monterrey (MEX)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CF Pachuca (MEX)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CR Flamengo (BRA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CR Vasco Da Gama (BRA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CS Independiente Rivadavia (ARG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "CS Sfaxien (TUN)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Cagliari (ITA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Casa Pia AC (POR)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Celtic FC (SCO)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Cercle Brugge (BEL)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Cerro Porteño (PAR)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Charlotte FC (USA)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  "Charlton Athletic FC (ENG)": {
+    "error": "HTTP Error 429: Too Many Requests"
+  }
+}
