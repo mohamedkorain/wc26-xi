@@ -387,10 +387,24 @@ async function submit() {
     })),
   };
 
+  // Re-fetch the user right before submit so we know the session is still alive
+  const { data: { user: freshUser } } = await supabase.auth.getUser();
+  if (!freshUser) {
+    msg.style.color = 'var(--danger)';
+    msg.innerHTML = 'Your session expired. <a href="login.html" style="color:var(--accent);">Sign in again</a> and your draft will be re-loaded.';
+    return;
+  }
+  payload.user_id = freshUser.id;
+
   const { error } = await supabase.from('entries').upsert(payload, { onConflict: 'league_id,user_id' });
   if (error) {
+    console.error('[wc26] submit error:', error, 'payload user_id:', payload.user_id);
     msg.style.color = 'var(--danger)';
-    msg.textContent = error.message;
+    if (error.code === '42501' || /row-level security/i.test(error.message || '')) {
+      msg.innerHTML = 'Permission denied — your session may have expired. <a href="login.html" style="color:var(--accent);">Sign in again</a>, then resubmit.';
+    } else {
+      msg.textContent = `${error.message}${error.hint ? ' · ' + error.hint : ''}`;
+    }
     return;
   }
   msg.style.color = 'var(--accent)';
