@@ -4,23 +4,25 @@ import { mountAuthWidget, currentUser } from './js/auth.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 
-// Fixed 4-4-2 squad: 1 GK / 2 CB / 2 FB / 2 CM / 2 WIN / 2 ST / 1 WILD
+// 4-4-2 pitch positions for the 11 active starters; wildcard sits on bench.
+// Coordinates are % of the pitch (0,0 top-left). GK at bottom, attack up.
 const SLOTS = [
-  { tag: 'GK',  role: 'GK',  wild: false },
-  { tag: 'CB',  role: 'CB',  wild: false },
-  { tag: 'CB',  role: 'CB',  wild: false },
-  { tag: 'FB',  role: 'FB',  wild: false },
-  { tag: 'FB',  role: 'FB',  wild: false },
-  { tag: 'CM',  role: 'CM',  wild: false },
-  { tag: 'CM',  role: 'CM',  wild: false },
-  { tag: 'WIN', role: 'WIN', wild: false },
-  { tag: 'WIN', role: 'WIN', wild: false },
-  { tag: 'ST',  role: 'ST',  wild: false },
-  { tag: 'ST',  role: 'ST',  wild: false },
-  { tag: 'WILD', role: null, wild: true },
+  { tag: 'GK',   role: 'GK',  wild: false, x: 50, y: 90 },
+  { tag: 'LCB',  role: 'CB',  wild: false, x: 37, y: 70 },
+  { tag: 'RCB',  role: 'CB',  wild: false, x: 63, y: 70 },
+  { tag: 'LB',   role: 'FB',  wild: false, x: 13, y: 72 },
+  { tag: 'RB',   role: 'FB',  wild: false, x: 87, y: 72 },
+  { tag: 'LCM',  role: 'CM',  wild: false, x: 38, y: 48 },
+  { tag: 'RCM',  role: 'CM',  wild: false, x: 62, y: 48 },
+  { tag: 'LW',   role: 'WIN', wild: false, x: 13, y: 48 },
+  { tag: 'RW',   role: 'WIN', wild: false, x: 87, y: 48 },
+  { tag: 'ST',   role: 'ST',  wild: false, x: 36, y: 18 },
+  { tag: 'ST',   role: 'ST',  wild: false, x: 64, y: 18 },
+  { tag: 'WILD', role: null,  wild: true },
 ];
 
 const ALL_ROLES = ['GK','CB','FB','CM','WIN','ST'];
+const ROLE_TARGETS = { GK:1, CB:2, FB:2, CM:2, WIN:2, ST:2 };
 
 const state = {
   teams: [],          // [{name,code,flag,category,arab}]
@@ -92,18 +94,32 @@ function nextOpenSlotIndex() {
   return state.squad.findIndex(s => s == null);
 }
 
+// Remaining capacity per named role; plus whether wildcard is still open.
+function openRoleCounts() {
+  const counts = { GK:0, CB:0, FB:0, CM:0, WIN:0, ST:0 };
+  let wildOpen = false;
+  for (let i = 0; i < SLOTS.length; i++) {
+    if (state.squad[i] != null) continue;
+    if (SLOTS[i].wild) wildOpen = true;
+    else counts[SLOTS[i].role]++;
+  }
+  return { counts, wildOpen };
+}
+
+// Find which slot a picked player should fill given the rolled role.
+// Prefer a matching named slot; otherwise wildcard.
+function assignSlotIndex(role) {
+  let i = SLOTS.findIndex((s, idx) => state.squad[idx] == null && !s.wild && s.role === role);
+  if (i < 0) i = SLOTS.findIndex((s, idx) => state.squad[idx] == null && s.wild);
+  return i;
+}
+
 function spin() {
   if (state.spinning || state.locked) return;
-  const slotIdx = nextOpenSlotIndex();
-  if (slotIdx < 0) { setHint('Squad complete — name it and submit.'); return; }
-  const slot = SLOTS[slotIdx];
 
-  // What role + nation can we pick?
-  // For named slots: role is fixed. For wildcard: random role from any with eligible players.
-  // Must have at least one un-picked player matching.
-  const candidate = pickRandomNationAndRole(slot);
+  const candidate = pickRandomNationAndRole();
   if (!candidate) {
-    setHint('No eligible players left for this slot. Try again?');
+    setHint('No eligible spin possible.');
     return;
   }
 
@@ -132,41 +148,51 @@ function spin() {
       state.spinning = false;
       document.getElementById('spinBtn').disabled = true;     // stay disabled until pick or reroll
       document.getElementById('rerollBtn').disabled = false;
-      setTimeout(() => showCandidates(slotIdx, candidate), 250);
+      setTimeout(() => showCandidates(candidate), 250);
     }
   };
   requestAnimationFrame(tumble);
 }
 
-function pickRandomNationAndRole(slot) {
-  // Need to honor: ≥1 Arab if this is the last slot and we have no Arab yet.
+function pickRandomNationAndRole() {
+  // Randomizer chooses role + nation. We never reveal what slot the user is
+  // filling — the role is the surprise. Rules:
+  //   • Role is drawn from positions that still have capacity in the squad
+  //     (e.g. if you already have both CBs, CB never rolls). If only the
+  //     wildcard remains, role is drawn from all 6.
+  //   • Nation is then drawn from teams that have a yet-unpicked player at
+  //     that role. We skip nations that would leave us no eligible player.
+  //   • If we're on the LAST pick and have no Arab yet, force the nation
+  //     pool to Arab nations only.
+
+  const { counts, wildOpen } = openRoleCounts();
+  const totalOpen = Object.values(counts).reduce((a, b) => a + b, 0) + (wildOpen ? 1 : 0);
+  if (totalOpen === 0) return null;
+
+  const namedRolesOpen = Object.keys(counts).filter(r => counts[r] > 0);
+  const onlyWildcardLeft = namedRolesOpen.length === 0 && wildOpen;
+
+  const rolePool = onlyWildcardLeft ? ALL_ROLES.slice() : namedRolesOpen.slice();
+  shuffle(rolePool);
+
   const haveArab = state.squad.some(s => s && s.nation.arab);
-  const slotIdx = nextOpenSlotIndex();
-  const isLast = slotIdx === SLOTS.length - 1;
+  const isLastSpin = totalOpen === 1;
 
-  // Candidate role pool
-  const rolePool = slot.wild ? ALL_ROLES.slice() : [slot.role];
-
-  // Candidate nation pool — start with all teams not yet exhausted for the role
   const pickedPlayerKeys = new Set(
     state.squad.filter(Boolean).map(s => `${s.nation.name}|${s.player.name}`)
   );
 
-  let nationPool = state.teams.slice();
-  // Filter to Arab-only on the last slot if Arab constraint unsatisfied
-  if (isLast && !haveArab) nationPool = nationPool.filter(t => t.arab);
-
-  // Shuffle role pool, then find a nation that has eligible players matching
-  shuffle(rolePool);
   for (const role of rolePool) {
-    const nations = nationPool.filter(t => {
-      const players = state.byNation[t.name] || [];
-      return players.some(p =>
-        p.roles.includes(role) &&
-        !pickedPlayerKeys.has(`${t.name}|${p.name}`)
-      );
-    });
+    let nationPool = state.teams.slice();
+    if (isLastSpin && !haveArab) nationPool = nationPool.filter(t => t.arab);
+
+    const nations = nationPool.filter(t =>
+      (state.byNation[t.name] || []).some(p =>
+        p.roles.includes(role) && !pickedPlayerKeys.has(`${t.name}|${p.name}`)
+      )
+    );
     if (!nations.length) continue;
+
     const nation = nations[Math.floor(Math.random() * nations.length)];
     const candidates = (state.byNation[nation.name] || []).filter(p =>
       p.roles.includes(role) && !pickedPlayerKeys.has(`${nation.name}|${p.name}`)
@@ -185,11 +211,11 @@ function shuffle(a) {
 
 // ─── candidates ──────────────────────────────────────────────────────────────
 
-function showCandidates(slotIdx, spin) {
+function showCandidates(spin) {
   const card = document.getElementById('candidatesCard');
   card.style.display = '';
   document.getElementById('candHead').innerHTML =
-    `${spin.nation.flag} ${spin.nation.name} <span style="color:var(--accent);font-weight:800;">${spin.role}</span>`;
+    `${spin.nation.flag} ${escapeHtml(spin.nation.name)} <span style="color:var(--accent);font-weight:800;">${spin.role}</span>`;
   const list = document.getElementById('candidates');
   list.innerHTML = '';
   for (const p of spin.candidates) {
@@ -197,18 +223,20 @@ function showCandidates(slotIdx, spin) {
     row.className = 'cand-row';
     row.innerHTML = `
       <div class="cand-no">${p.no ?? ''}</div>
-      <div>
+      <div class="cand-meta">
         <div class="cand-name">${escapeHtml(p.name)}</div>
-        <div class="cand-club">${escapeHtml(p.club || '')}</div>
+        <div class="cand-club">${clubBadge(p.club)} <span>${escapeHtml(p.club || '')}</span></div>
       </div>
       <span class="cand-pick">PICK</span>
     `;
-    row.onclick = () => pickPlayer(slotIdx, p, spin.nation);
+    row.onclick = () => pickPlayer(p, spin.nation, spin.role);
     list.appendChild(row);
   }
 }
 
-function pickPlayer(slotIdx, player, nation) {
+function pickPlayer(player, nation, role) {
+  const slotIdx = assignSlotIndex(role);
+  if (slotIdx < 0) return;  // shouldn't happen
   state.squad[slotIdx] = { player, nation };
   state.spin = null;
   document.getElementById('candidatesCard').style.display = 'none';
@@ -222,43 +250,62 @@ function pickPlayer(slotIdx, player, nation) {
 // ─── render ──────────────────────────────────────────────────────────────────
 
 function renderAll() {
-  renderSlots();
+  renderPitch();
   renderConstraints();
   updateSubmitState();
-  const slotIdx = nextOpenSlotIndex();
-  if (slotIdx < 0) {
+  const filled = state.squad.filter(Boolean).length;
+  if (filled >= 12) {
     setHint('Squad complete — name it and submit below.');
     document.getElementById('spinBtn').disabled = true;
   } else if (state.locked) {
     setHint('🔒 Submissions are locked.');
     document.getElementById('spinBtn').disabled = true;
   } else {
-    setHint(`Round ${slotIdx + 1} of 12 — next slot: ${SLOTS[slotIdx].tag}`);
+    setHint(`${filled} of 12 picked — spin to draw your next nation + position.`);
   }
 }
 
-function renderSlots() {
-  const grid = document.getElementById('slotsGrid');
-  const next = nextOpenSlotIndex();
-  grid.innerHTML = SLOTS.map((s, i) => {
+function renderPitch() {
+  const pitch = document.getElementById('pitch442');
+  pitch.innerHTML = '';
+  // pitch background lines
+  pitch.innerHTML = `
+    <div class="pl-box pl-box-top"></div>
+    <div class="pl-box pl-box-bottom"></div>
+    <div class="pl-circle"></div>
+    <div class="pl-halfway"></div>
+  `;
+  for (let i = 0; i < SLOTS.length; i++) {
+    const s = SLOTS[i];
+    if (s.wild) continue;
     const item = state.squad[i];
-    const isNext = i === next;
-    const cls = ['slot-card'];
-    if (s.wild) cls.push('wild');
-    if (item) cls.push('filled');
-    if (isNext) cls.push('next');
+    const node = document.createElement('div');
+    node.className = 'pitch-slot' + (item ? ' filled' : ' empty');
+    node.style.left = s.x + '%';
+    node.style.top = s.y + '%';
     if (item) {
-      return `<div class="${cls.join(' ')}">
-        <div class="slot-tag">${s.tag}</div>
-        <div class="slot-name">${escapeHtml(lastName(item.player.name))}</div>
-        <div class="slot-nation">${item.nation.flag} ${item.nation.code}</div>
-      </div>`;
+      node.innerHTML = `
+        <div class="ps-name">${escapeHtml(lastName(item.player.name))}</div>
+        <div class="ps-meta">${item.nation.flag} <span>${s.tag}</span></div>
+      `;
+    } else {
+      node.innerHTML = `
+        <div class="ps-empty">${s.tag}</div>
+      `;
     }
-    return `<div class="${cls.join(' ')}">
-      <div class="slot-tag">${s.tag}</div>
-      <div class="slot-empty">${isNext ? '⟵ next' : 'empty'}</div>
-    </div>`;
-  }).join('');
+    pitch.appendChild(node);
+  }
+  // wildcard on bench
+  const bench = document.getElementById('bench');
+  const wildItem = state.squad[11];
+  bench.innerHTML = `
+    <div class="bench-label">BENCH · Wildcard</div>
+    <div class="bench-slot ${wildItem ? 'filled' : 'empty'}">
+      ${wildItem
+        ? `<span>${wildItem.nation.flag} <b>${escapeHtml(wildItem.player.name)}</b> <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(wildItem.player.club || '')}</span></span>`
+        : `<span>Wildcard slot — last pick, any position</span>`}
+    </div>
+  `;
 }
 
 function renderConstraints() {
@@ -332,6 +379,19 @@ function lastName(full) {
   const parts = String(full || '').trim().split(/\s+/);
   return parts.length === 1 ? full : parts[parts.length - 1];
 }
+
+// Initials-in-circle placeholder for club logos (real crests TBD).
+function clubBadge(club) {
+  const name = String(club || '').replace(/\s*\([A-Z]{3,4}\)\s*$/, '').trim();
+  if (!name) return '';
+  const initials = name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('');
+  // deterministic color from name
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const hue = h % 360;
+  return `<span class="club-badge" style="background:hsl(${hue},45%,28%);color:hsl(${hue},80%,82%);">${escapeHtml(initials)}</span>`;
+}
+
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 }

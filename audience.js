@@ -152,7 +152,7 @@ function renderPool() {
       <div class="pr-flag" title="${escapeHtml(p.nation)} · Cat ${p.category}">${p.flag}</div>
       <div class="pr-meta">
         <div class="pr-name">${escapeHtml(p.name || '')}</div>
-        <div class="pr-club">${escapeHtml(p.club || '')}</div>
+        <div class="pr-club">${clubBadge(p.club)}<span>${escapeHtml(p.club || '')}</span></div>
       </div>
       <div class="pr-roles">${p.roles.map(r => `<span class="role-chip role-${r}">${r}</span>`).join('')}</div>
       <div class="pr-cat cat-${p.category}">C${p.category}</div>
@@ -165,6 +165,16 @@ function renderPool() {
   } else {
     more.innerHTML = `<div style="color:var(--text-dim);font-size:12px;padding:8px;text-align:center;">${filtered.length} of ${state.players.length}</div>`;
   }
+}
+
+function clubBadge(club) {
+  const name = String(club || '').replace(/\s*\([A-Z]{3,4}\)\s*$/, '').trim();
+  if (!name) return '';
+  const initials = name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('');
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const hue = h % 360;
+  return `<span class="club-badge" style="background:hsl(${hue},45%,28%);color:hsl(${hue},80%,82%);">${escapeHtml(initials)}</span>`;
 }
 
 function escapeHtml(s) {
