@@ -734,7 +734,7 @@ input { font-family: inherit; }
   background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
   padding: 18px;
 }
-.my-squad-card .pitch442 { aspect-ratio: 1 / 1.25; max-width: 460px; margin: 0 auto; }
+.my-squad-card .pitch442 { aspect-ratio: 1 / 1.25; width: 100%; max-width: 460px; margin: 0 auto; }
 .my-squad-card .bench { margin-top: 10px; max-width: 460px; margin-left: auto; margin-right: auto; }
 
 /* ── pitch (4-4-2) inside the build squad card ────────────────── */
