@@ -43,6 +43,7 @@ async function boot() {
   hydrateFilters();
   renderPoolStats();
   renderHeroStatus();
+  renderMySquad();
   renderLeaderboard();
   renderPool();
   wireFilters();
@@ -51,6 +52,7 @@ async function boot() {
     hydrateFilters();
     renderPoolStats();
     renderHeroStatus();
+    renderMySquad();
     renderLeaderboard();
     renderPool();
   });
@@ -59,6 +61,85 @@ async function boot() {
 function renderPoolStats() {
   document.getElementById('poolStats').textContent =
     t('pool.stats', { n: state.players.length.toLocaleString(), teams: state.teams.length });
+}
+
+// Pitch coords matching build.js SLOTS (active 11)
+const PITCH_COORDS = [
+  { x: 50, y: 90, tag: 'GK' },
+  { x: 37, y: 70, tag: 'LCB' },
+  { x: 63, y: 70, tag: 'RCB' },
+  { x: 13, y: 72, tag: 'LB' },
+  { x: 87, y: 72, tag: 'RB' },
+  { x: 38, y: 48, tag: 'LCM' },
+  { x: 62, y: 48, tag: 'RCM' },
+  { x: 13, y: 48, tag: 'LW' },
+  { x: 87, y: 48, tag: 'RW' },
+  { x: 36, y: 18, tag: 'ST' },
+  { x: 64, y: 18, tag: 'ST' },
+];
+
+async function renderMySquad() {
+  if (!state.myUserId) { document.getElementById('mySquadStrip').style.display = 'none'; return; }
+  const { data: entry } = await supabase
+    .from('entries').select('*')
+    .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle();
+  if (!entry) { document.getElementById('mySquadStrip').style.display = 'none'; return; }
+
+  document.getElementById('mySquadStrip').style.display = '';
+  const submittedAt = new Date(entry.submitted_at).toLocaleString();
+  document.getElementById('mySquadMeta').innerHTML =
+    `${escapeHtml(entry.team_name)} · ${entry.formation} · ${t('mysquad.submitted', { at: submittedAt })}`;
+
+  const xi = entry.xi_json || [];
+  const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
+  const wild = xi.find(x => x.wild);
+
+  // Pitch HTML
+  const slotsHtml = starters.map((item, i) => {
+    const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
+    return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;">
+      <div class="ps-flag">${item.nation_code ? flagFromCode(item.nation_code) : ''}</div>
+      <div class="ps-name">${escapeHtml(displayLast(item))}</div>
+      <div class="ps-tag">${coord.tag}</div>
+    </div>`;
+  }).join('');
+
+  const benchHtml = wild ? `
+    <div class="bench-label">${t('squad.bench')}</div>
+    <div class="bench-slot filled">
+      <span>${flagFromCode(wild.nation_code)} <b>${escapeHtml(displayLast(wild))}</b>
+        <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(wild.club || '')}</span>
+      </span>
+    </div>
+  ` : '';
+
+  document.getElementById('mySquadCard').innerHTML = `
+    <div class="my-squad-card">
+      <div class="pitch-wrap">
+        <div class="pitch442">
+          <div class="pl-box pl-box-top"></div>
+          <div class="pl-box pl-box-bottom"></div>
+          <div class="pl-circle"></div>
+          <div class="pl-halfway"></div>
+          ${slotsHtml}
+        </div>
+        <div class="bench">${benchHtml}</div>
+      </div>
+      <div style="margin-top:14px;text-align:center;">
+        <a href="build.html" class="ghost-btn" style="text-decoration:none;display:inline-block;">${t('mysquad.edit')}</a>
+      </div>
+    </div>
+  `;
+}
+
+function displayLast(item) {
+  return item.shirt_name || item.last || item.name || '';
+}
+
+// Build a flag emoji from a 3-letter code by mapping back through teams.json
+function flagFromCode(code) {
+  const team = state.teams.find(t => t.code === code);
+  return team?.flag || '';
 }
 
 function renderHeroStatus() {
