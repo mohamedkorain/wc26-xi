@@ -57,6 +57,8 @@ async function boot() {
     renderLeaderboard();
     renderPool();
   });
+  // Re-render leaderboard if user just set their display name
+  window.addEventListener('displaynamechange', () => renderLeaderboard());
 }
 
 function renderPoolStats() {

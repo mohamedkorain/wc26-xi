@@ -100,6 +100,8 @@ const DICT = {
     'auth.signin':    'Sign in',
     'auth.signout':   'Sign out',
     'auth.myleagues': 'My leagues',
+    'auth.editname':  'Edit display name',
+    'auth.nameprompt':'Set your display name (shown on the leaderboard):',
   },
   ar: {
     'hero.eyebrow':   'من إنتاج صباحو كرة',
@@ -192,6 +194,8 @@ const DICT = {
     'auth.signin':    'تسجيل دخول',
     'auth.signout':   'خروج',
     'auth.myleagues': 'دوريّاتي',
+    'auth.editname':  'تعديل الاسم المعروض',
+    'auth.nameprompt':'اختار اسم يبان في الترتيب:',
   },
 };
 
