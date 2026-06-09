@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sign in · WC26 XI</title>
+<title>Sign in · HALLO AMRIKA</title>
 <link rel="stylesheet" href="styles.css" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 </head>
@@ -12,27 +12,30 @@
   <a href="index.html" class="brand">
     <span class="brand-mark" data-i18n="brand.mark">HALLO AMRIKA</span>
   </a>
+  <div class="hdr-right">
+    <button class="hdr-btn" id="langToggle" title="عربي / English">عربي</button>
+  </div>
 </header>
 
 <section class="setup">
   <div class="setup-inner" style="max-width:420px;">
-    <h1 class="setup-title">Sign in</h1>
-    <p class="setup-sub">We'll email you a one-tap login link. No password.</p>
+    <h1 class="setup-title" data-i18n="login.title">Sign in</h1>
+    <p class="setup-sub" data-i18n="login.sub">We'll email you a one-tap login link. No password.</p>
 
     <form id="loginForm" style="display:flex;flex-direction:column;gap:12px;text-align:left;">
-      <label style="font-size:12px;color:var(--text-dim);letter-spacing:1px;">EMAIL</label>
-      <input type="email" id="emailInput" required placeholder="you@example.com"
+      <label style="font-size:12px;color:var(--text-dim);letter-spacing:1px;" data-i18n="login.email">EMAIL</label>
+      <input type="email" id="emailInput" required placeholder="you@example.com" data-i18n-placeholder="login.placeholder"
              style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px;color:var(--text);font-size:15px;" />
-      <button type="submit" class="setup-start" style="margin-top:8px;">Send magic link →</button>
+      <button type="submit" class="setup-start" style="margin-top:8px;" data-i18n="login.send">Send magic link →</button>
     </form>
 
     <div style="margin:20px 0;display:flex;align-items:center;gap:10px;color:var(--text-dim);font-size:11px;letter-spacing:1px;">
       <span style="flex:1;border-top:1px solid var(--line);"></span>
-      OR
+      <span data-i18n="login.or">OR</span>
       <span style="flex:1;border-top:1px solid var(--line);"></span>
     </div>
 
-    <button id="guestBtn" class="ghost-btn" style="width:100%;">
+    <button id="guestBtn" class="ghost-btn" style="width:100%;" data-i18n="login.guest">
       Continue as guest (testing) →
     </button>
 
@@ -40,11 +43,12 @@
   </div>
 </section>
 
+<script type="module" src="js/i18n.js"></script>
 <script type="module">
 import { signInWithEmail, currentUser } from './js/auth.js';
 import { supabase } from './js/supabase-client.js';
+import { t } from './js/i18n.js';
 
-// If already signed in, redirect
 (async () => {
   const u = await currentUser();
   if (u) location.href = 'build.html';
@@ -55,20 +59,20 @@ document.getElementById('loginForm').onsubmit = async (e) => {
   const email = document.getElementById('emailInput').value.trim();
   const msg = document.getElementById('loginMsg');
   msg.style.color = 'var(--accent-2)';
-  msg.textContent = 'Sending…';
+  msg.textContent = t('login.sending');
   const { error } = await signInWithEmail(email, location.origin + '/build.html');
   if (error) {
     msg.style.color = 'var(--danger)';
     msg.textContent = error.message;
   } else {
-    msg.textContent = `Sent! Check ${email} for a sign-in link.`;
+    msg.textContent = t('login.sent', { email });
   }
 };
 
 document.getElementById('guestBtn').onclick = async () => {
   const msg = document.getElementById('loginMsg');
   msg.style.color = 'var(--accent-2)';
-  msg.textContent = 'Creating guest session…';
+  msg.textContent = t('login.guesting');
   const { error } = await supabase.auth.signInAnonymously();
   if (error) {
     msg.style.color = 'var(--danger)';
