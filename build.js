@@ -12,8 +12,8 @@ const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 // bucket (DEF covers CB+FB).
 const SLOTS = [
   { idx: 0,  tag: 'GK',  role: 'GK',  bucket: 'GK_ST', x: 50, y: 90 },
-  { idx: 1,  tag: 'LCB', role: 'CB',  bucket: 'DEF',   x: 37, y: 70 },
-  { idx: 2,  tag: 'RCB', role: 'CB',  bucket: 'DEF',   x: 63, y: 70 },
+  { idx: 1,  tag: 'LCB', role: 'CB',  bucket: 'DEF',   x: 37, y: 72 },
+  { idx: 2,  tag: 'RCB', role: 'CB',  bucket: 'DEF',   x: 63, y: 72 },
   { idx: 3,  tag: 'LB',  role: 'FB',  bucket: 'DEF',   x: 13, y: 72 },
   { idx: 4,  tag: 'RB',  role: 'FB',  bucket: 'DEF',   x: 87, y: 72 },
   { idx: 5,  tag: 'LCM', role: 'CM',  bucket: 'MID',   x: 38, y: 48 },

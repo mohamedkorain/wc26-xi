@@ -70,8 +70,8 @@ function renderPoolStats() {
 // Pitch coords matching build.js SLOTS (active 11)
 const PITCH_COORDS = [
   { x: 50, y: 90, tag: 'GK' },
-  { x: 37, y: 70, tag: 'LCB' },
-  { x: 63, y: 70, tag: 'RCB' },
+  { x: 37, y: 72, tag: 'LCB' },
+  { x: 63, y: 72, tag: 'RCB' },
   { x: 13, y: 72, tag: 'LB' },
   { x: 87, y: 72, tag: 'RB' },
   { x: 38, y: 48, tag: 'LCM' },
