@@ -103,7 +103,7 @@ async function renderMySquad() {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
-      <div class="ps-name" data-len="${name.length >= 16 ? 'xxlong' : name.length >= 13 ? 'xlong' : name.length >= 10 ? 'long' : 'normal'}">${escapeHtml(name)}</div>
+      <div class="ps-name" style="font-size:${name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11}px;${name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : ''}">${escapeHtml(name)}</div>
       <div class="ps-tag">${coord.tag}</div>
     </div>`;
   }).join('');
@@ -260,7 +260,7 @@ async function openSquadModal(entryId) {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
-      <div class="ps-name" data-len="${name.length >= 16 ? 'xxlong' : name.length >= 13 ? 'xlong' : name.length >= 10 ? 'long' : 'normal'}">${escapeHtml(name)}</div>
+      <div class="ps-name" style="font-size:${name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11}px;${name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : ''}">${escapeHtml(name)}</div>
       <div class="ps-tag">${coord.tag}</div>
     </div>`;
   }).join('');

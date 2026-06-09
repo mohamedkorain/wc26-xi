@@ -422,10 +422,11 @@ function renderPitch() {
     node.style.left = s.x + '%';
     node.style.top = s.y + '%';
     if (item) {
-      const name = displayLast(item.player);
+      const name = displayLast(item.player) || '?';
+      const sz = nameFontSize(name);
       node.innerHTML = `
         <div class="ps-flag">${flagImg(item.nation.code, { width: 20, cls: 'flag-img', fallback: item.nation.flag })}</div>
-        <div class="ps-name" data-len="${nameLenClass(name)}">${escapeHtml(name)}</div>
+        <div class="ps-name" style="font-size:${sz}px;${name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : ''}">${escapeHtml(name)}</div>
         <div class="ps-tag">${s.tag}</div>
       `;
     } else {
@@ -615,12 +616,12 @@ function showSubmitConfirmation(teamName) {
 // ─── utils ───────────────────────────────────────────────────────────────────
 
 function displayLast(p) { return p?.shirt_name || p?.last || p?.name || ''; }
-function nameLenClass(s) {
+function nameFontSize(s) {
   const n = (s || '').length;
-  if (n >= 16) return 'xxlong';
-  if (n >= 13) return 'xlong';
-  if (n >= 10) return 'long';
-  return 'normal';
+  if (n >= 16) return 8;
+  if (n >= 13) return 9;
+  if (n >= 10) return 10;
+  return 11;
 }
 
 function clubBadge(club) {
