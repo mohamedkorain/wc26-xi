@@ -229,7 +229,7 @@ const DICT = {
     'bucket.gk_st':   'حارس / مهاجم',
     'bucket.def':     'مدافع',
     'bucket.mid':     'لاعب وسط',
-    'bucket.wild':    'ورقة حرة',
+    'bucket.wild':    'ورقة رابحة',
     'categories':     'الفئات (حد أقصى ٢ لكل واحدة)',
     'spin.wildcard.hint': '١١ من ١٢ — آخر لفّة للورقة الرابحة (أي مركز).',
     'reset.btn':      '↺ ابدأ من جديد',
