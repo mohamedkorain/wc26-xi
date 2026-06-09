@@ -104,8 +104,8 @@ function resetSquad() {
   state.catPicks = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 };
   state.spin = null;
   document.getElementById('candidatesCard').style.display = 'none';
-  document.getElementById('bucketCard').style.display = 'none';
   document.getElementById('reelNationVal').textContent = '🌍';
+  document.getElementById('reelRoleVal').textContent = '—';
   document.getElementById('submitMsg').textContent = '';
   renderAll();
 }
@@ -142,39 +142,66 @@ function spin() {
   if (state.spinning || state.locked) return;
   if (picksCount() >= 12) return;
 
-  const pool = nationPool();
-  if (!pool.length) { setHint('No eligible nation left.'); return; }
+  // Decide the final (nation, bucket) pair now. For wildcard: nation only.
+  const draw = rollNationAndBucket();
+  if (!draw) { setHint('No eligible spin possible.'); return; }
 
   state.spinning = true;
   document.getElementById('spinBtn').disabled = true;
-  document.getElementById('bucketCard').style.display = 'none';
   document.getElementById('candidatesCard').style.display = 'none';
   document.getElementById('reelNation').classList.add('spinning');
+  document.getElementById('reelRole').classList.add('spinning');
 
-  const finalNation = pool[Math.floor(Math.random() * pool.length)];
   const flagEl = document.getElementById('reelNationVal');
+  const roleEl = document.getElementById('reelRoleVal');
   const start = performance.now();
   const tumble = () => {
     flagEl.textContent = state.teams[Math.floor(Math.random() * state.teams.length)].flag;
-    if (performance.now() - start < 1100) {
+    roleEl.textContent = BUCKETS[Math.floor(Math.random() * BUCKETS.length)];
+    if (performance.now() - start < 1200) {
       requestAnimationFrame(tumble);
     } else {
-      flagEl.textContent = finalNation.flag + ' ' + finalNation.code;
+      flagEl.textContent = draw.nation.flag + ' ' + draw.nation.code;
+      roleEl.textContent = draw.bucket || t('bucket.wild');
       document.getElementById('reelNation').classList.remove('spinning');
-      state.spin = { nation: finalNation, isWildcard: isWildcardTurn() };
+      document.getElementById('reelRole').classList.remove('spinning');
+      state.spin = { nation: draw.nation, bucket: draw.bucket, isWildcard: isWildcardTurn() };
       state.spinning = false;
-      setTimeout(showAfterSpin, 250);
+      setTimeout(() => showCandidates(draw.candidates, draw.bucket), 250);
     }
   };
   requestAnimationFrame(tumble);
 }
 
-// After spin: wildcard turn → straight to candidates (any player); else → bucket picker.
-function showAfterSpin() {
-  if (state.spin.isWildcard) {
-    showCandidates(allPlayersOf(state.spin.nation), null);
-  } else {
-    showBucketPicker();
+// Randomizer chooses NATION + BUCKET. For wildcard, bucket is null (any role).
+function rollNationAndBucket() {
+  const nations = nationPool();
+  if (!nations.length) return null;
+
+  if (isWildcardTurn()) {
+    const nation = nations[Math.floor(Math.random() * nations.length)];
+    return { nation, bucket: null, candidates: allPlayersOf(nation) };
+  }
+
+  const opens = openBucketsForCurrentSquad();
+  const buckets = BUCKETS.filter(b => opens[b] > 0);
+  shuffle(buckets);
+
+  // Try each bucket in random order; for each, find nations that have
+  // at least one un-picked player matching, and pick one at random.
+  for (const bucket of buckets) {
+    const eligible = nations.filter(n => bucketCandidatesIn(n, bucket).length > 0);
+    if (!eligible.length) continue;
+    const nation = eligible[Math.floor(Math.random() * eligible.length)];
+    return { nation, bucket, candidates: bucketCandidatesIn(nation, bucket) };
+  }
+  return null;
+}
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
   }
 }
 
@@ -232,9 +259,8 @@ function showBucketPicker() {
 function showCandidates(candidates, bucket) {
   const card = document.getElementById('candidatesCard');
   card.style.display = '';
-  document.getElementById('bucketCard').style.display = 'none';
   document.getElementById('candHead').innerHTML =
-    `${state.spin.nation.flag} ${escapeHtml(state.spin.nation.name)} <span style="color:var(--accent);font-weight:800;">${bucket || t('bucket.wild')}</span>`;
+    `<span class="cand-head-flag">${state.spin.nation.flag}</span> ${escapeHtml(state.spin.nation.name)} <span style="color:var(--accent);font-weight:800;">${bucket || t('bucket.wild')}</span>`;
   const list = document.getElementById('candidates');
   list.innerHTML = '';
   if (!candidates.length) {
@@ -244,6 +270,7 @@ function showCandidates(candidates, bucket) {
     const row = document.createElement('div');
     row.className = 'cand-row';
     row.innerHTML = `
+      <div class="cand-flag">${state.spin.nation.flag}</div>
       <div class="cand-no">${p.no ?? ''}</div>
       <div class="cand-meta">
         <div class="cand-name">${escapeHtml(p.name)} <span class="cand-roles">${p.roles.map(r => `<span class="role-chip role-${r}">${r}</span>`).join('')}</span></div>
@@ -254,13 +281,7 @@ function showCandidates(candidates, bucket) {
     row.onclick = () => pickPlayer(p, state.spin.nation, bucket);
     list.appendChild(row);
   }
-  document.getElementById('backToBucketsBtn').style.display =
-    (bucket && !state.spin.isWildcard) ? '' : 'none';
 }
-
-document.addEventListener('click', e => {
-  if (e.target?.id === 'backToBucketsBtn') showBucketPicker();
-});
 
 function pickPlayer(player, nation, bucket) {
   const slotIdx = assignSlotIndex(player, bucket, state.spin.isWildcard);
@@ -272,8 +293,8 @@ function pickPlayer(player, nation, bucket) {
   state.catPicks[nation.category] = (state.catPicks[nation.category] || 0) + 1;
   state.spin = null;
   document.getElementById('candidatesCard').style.display = 'none';
-  document.getElementById('bucketCard').style.display = 'none';
   document.getElementById('reelNationVal').textContent = '🌍';
+  document.getElementById('reelRoleVal').textContent = '—';
   document.getElementById('spinBtn').disabled = false;
   renderAll();
 }
@@ -347,8 +368,9 @@ function renderPitch() {
     node.style.left = s.x + '%';
     node.style.top = s.y + '%';
     node.innerHTML = item ? `
+      <div class="ps-flag">${item.nation.flag}</div>
       <div class="ps-name">${escapeHtml(displayLast(item.player))}</div>
-      <div class="ps-meta">${item.nation.flag} <span>${s.tag}</span></div>
+      <div class="ps-tag">${s.tag}</div>
     ` : `<div class="ps-empty">${s.tag}</div>`;
     pitch.appendChild(node);
   }

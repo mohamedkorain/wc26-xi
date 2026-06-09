@@ -28,25 +28,23 @@
         <h3 data-i18n="build.randomizer" style="margin:0;">The Randomizer</h3>
         <button id="resetSquadBtn" class="hdr-btn" style="font-size:11px;padding:6px 10px;" data-i18n="reset.btn">↺ Start over</button>
       </div>
-      <div class="spinner-single">
-        <div class="spinner-box flag big" id="reelNation">
+      <div class="spinner-display">
+        <div class="spinner-box flag" id="reelNation">
           <span class="lbl" data-i18n="reel.nation">NATION</span>
           <span class="val" id="reelNationVal">🌍</span>
+        </div>
+        <div class="spinner-box role" id="reelRole">
+          <span class="lbl" data-i18n="reel.role">POSITION</span>
+          <span class="val" id="reelRoleVal">—</span>
         </div>
       </div>
       <button class="spin-action" id="spinBtn" data-i18n="spin">SPIN</button>
       <p class="spin-hint" id="spinHint" data-i18n="spin.hint">12 picks total. Each spin draws a nation; then pick a position bucket and a player.</p>
     </div>
 
-    <div class="build-card" id="bucketCard" style="display:none;">
-      <h3><span data-i18n="pick.from">Pick from</span> <span id="bucketHead" style="color:var(--text);text-transform:none;letter-spacing:0;font-size:15px;font-weight:800;"></span></h3>
-      <div class="bucket-grid" id="bucketGrid"></div>
-    </div>
-
     <div class="build-card" id="candidatesCard" style="display:none;">
       <h3><span data-i18n="pick.player">Pick a player —</span> <span id="candHead" style="color:var(--text);text-transform:none;letter-spacing:0;font-size:15px;font-weight:800;"></span></h3>
       <div class="candidates" id="candidates"></div>
-      <button class="ghost-btn" id="backToBucketsBtn" style="margin-top:10px;width:100%;display:none;" data-i18n="back.buckets">← Back to position buckets</button>
     </div>
 
   </section>
