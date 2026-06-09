@@ -2,6 +2,7 @@
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
 import { t } from './js/i18n.js';
+import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 const LB_PAGE_SIZE = 100;
@@ -101,7 +102,7 @@ async function renderMySquad() {
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;">
-      <div class="ps-flag">${item.nation_code ? flagFromCode(item.nation_code) : ''}</div>
+      <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
       <div class="ps-name">${escapeHtml(displayLast(item))}</div>
       <div class="ps-tag">${coord.tag}</div>
     </div>`;
@@ -110,7 +111,7 @@ async function renderMySquad() {
   const benchHtml = wild ? `
     <div class="bench-label">${t('squad.bench')}</div>
     <div class="bench-slot filled">
-      <span>${flagFromCode(wild.nation_code)} <b>${escapeHtml(displayLast(wild))}</b>
+      <span>${flagImg(wild.nation_code, { width: 20, cls: 'flag-img', fallback: '' })} <b>${escapeHtml(displayLast(wild))}</b>
         <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(wild.club || '')}</span>
       </span>
     </div>
@@ -139,7 +140,7 @@ function displayLast(item) {
   return item.shirt_name || item.last || item.name || '';
 }
 
-// Build a flag emoji from a 3-letter code by mapping back through teams.json
+// Kept for callers that still want the emoji fallback
 function flagFromCode(code) {
   const team = state.teams.find(t => t.code === code);
   return team?.flag || '';
@@ -250,7 +251,7 @@ function hydrateFilters() {
   const natSel = document.getElementById('filterNation');
   const opts = state.teams
     .slice().sort((a,b) => a.name.localeCompare(b.name))
-    .map(team => `<option value="${team.name}">${team.flag} ${team.name}</option>`);
+    .map(team => `<option value="${team.name}">${team.name}</option>`);
   natSel.innerHTML = `<option value="">${t('filter.all.nat')}</option>` + opts.join('');
 
   // The "All roles" option also needs localizing
@@ -285,7 +286,7 @@ function renderPool() {
   const list = document.getElementById('poolList');
   list.innerHTML = filtered.slice(0, visible).map(p => `
     <div class="pool-row">
-      <div class="pr-flag" title="${escapeHtml(p.nation)} · Cat ${p.category}">${p.flag}</div>
+      <div class="pr-flag" title="${escapeHtml(p.nation)} · Cat ${p.category}">${flagImg(p.nation_code, { width: 40, cls: 'flag-img', fallback: p.flag })}</div>
       <div class="pr-meta">
         <div class="pr-name">${escapeHtml(p.name || '')}</div>
         <div class="pr-club">${clubBadge(p.club)}<span>${escapeHtml(p.club || '')}</span></div>

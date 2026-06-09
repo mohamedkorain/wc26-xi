@@ -3,6 +3,7 @@
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
 import { t } from './js/i18n.js';
+import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -10,22 +11,25 @@ const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 // `bucket` is what the player picks at; multiple slot roles can fold into one
 // bucket (DEF covers CB+FB).
 const SLOTS = [
-  { idx: 0,  tag: 'GK',  role: 'GK',  bucket: 'GK',  x: 50, y: 90 },
-  { idx: 1,  tag: 'LCB', role: 'CB',  bucket: 'DEF', x: 37, y: 70 },
-  { idx: 2,  tag: 'RCB', role: 'CB',  bucket: 'DEF', x: 63, y: 70 },
-  { idx: 3,  tag: 'LB',  role: 'FB',  bucket: 'DEF', x: 13, y: 72 },
-  { idx: 4,  tag: 'RB',  role: 'FB',  bucket: 'DEF', x: 87, y: 72 },
-  { idx: 5,  tag: 'LCM', role: 'CM',  bucket: 'MID', x: 38, y: 48 },
-  { idx: 6,  tag: 'RCM', role: 'CM',  bucket: 'MID', x: 62, y: 48 },
-  { idx: 7,  tag: 'LW',  role: 'WIN', bucket: 'WIN', x: 13, y: 48 },
-  { idx: 8,  tag: 'RW',  role: 'WIN', bucket: 'WIN', x: 87, y: 48 },
-  { idx: 9,  tag: 'ST',  role: 'ST',  bucket: 'FWD', x: 36, y: 18 },
-  { idx: 10, tag: 'ST',  role: 'ST',  bucket: 'FWD', x: 64, y: 18 },
-  { idx: 11, tag: 'WILD',role: null,  bucket: null,  wild: true },
+  { idx: 0,  tag: 'GK',  role: 'GK',  bucket: 'GK_ST', x: 50, y: 90 },
+  { idx: 1,  tag: 'LCB', role: 'CB',  bucket: 'DEF',   x: 37, y: 70 },
+  { idx: 2,  tag: 'RCB', role: 'CB',  bucket: 'DEF',   x: 63, y: 70 },
+  { idx: 3,  tag: 'LB',  role: 'FB',  bucket: 'DEF',   x: 13, y: 72 },
+  { idx: 4,  tag: 'RB',  role: 'FB',  bucket: 'DEF',   x: 87, y: 72 },
+  { idx: 5,  tag: 'LCM', role: 'CM',  bucket: 'MID',   x: 38, y: 48 },
+  { idx: 6,  tag: 'RCM', role: 'CM',  bucket: 'MID',   x: 62, y: 48 },
+  { idx: 7,  tag: 'LW',  role: 'WIN', bucket: 'MID',   x: 13, y: 48 },
+  { idx: 8,  tag: 'RW',  role: 'WIN', bucket: 'MID',   x: 87, y: 48 },
+  { idx: 9,  tag: 'ST',  role: 'ST',  bucket: 'GK_ST', x: 36, y: 18 },
+  { idx: 10, tag: 'ST',  role: 'ST',  bucket: 'GK_ST', x: 64, y: 18 },
+  { idx: 11, tag: 'WILD',role: null,  bucket: null,    wild: true },
 ];
 
-const BUCKETS = ['GK', 'DEF', 'MID', 'WIN', 'FWD'];
-const BUCKET_ROLES = { GK: ['GK'], DEF: ['CB','FB'], MID: ['CM'], WIN: ['WIN'], FWD: ['ST'] };
+// Three groupings only: GK + ST share a bucket; DEF folds CB+FB; MID folds CM+WIN.
+// Inside a bucket, picks are role-strict — a CB can only fill a CB slot, etc.
+const BUCKETS = ['GK_ST', 'DEF', 'MID'];
+const BUCKET_ROLES = { GK_ST: ['GK','ST'], DEF: ['CB','FB'], MID: ['CM','WIN'] };
+const ROLE_TO_BUCKET = { GK:'GK_ST', ST:'GK_ST', CB:'DEF', FB:'DEF', CM:'MID', WIN:'MID' };
 const MAX_PER_CATEGORY = 2;
 
 const state = {
@@ -141,13 +145,14 @@ function spin() {
   const roleEl = document.getElementById('reelRoleVal');
   const start = performance.now();
   const tumble = () => {
-    flagEl.textContent = state.teams[Math.floor(Math.random() * state.teams.length)].flag;
+    const tn = state.teams[Math.floor(Math.random() * state.teams.length)];
+    flagEl.innerHTML = flagImg(tn.code, { width: 80, cls: 'flag-img-big', fallback: tn.flag });
     roleEl.textContent = BUCKETS[Math.floor(Math.random() * BUCKETS.length)];
     if (performance.now() - start < 1200) {
       requestAnimationFrame(tumble);
     } else {
-      flagEl.textContent = draw.nation.flag + ' ' + draw.nation.code;
-      roleEl.textContent = draw.bucket || t('bucket.wild');
+      flagEl.innerHTML = flagImg(draw.nation.code, { width: 80, cls: 'flag-img-big', fallback: draw.nation.flag }) + ` <span class="reel-code">${draw.nation.code}</span>`;
+      roleEl.textContent = draw.bucket ? t('bucket.' + draw.bucket.toLowerCase()) : t('bucket.wild');
       document.getElementById('reelNation').classList.remove('spinning');
       document.getElementById('reelRole').classList.remove('spinning');
       state.spin = { nation: draw.nation, bucket: draw.bucket, isWildcard: isWildcardTurn() };
@@ -197,21 +202,34 @@ function allPlayersOf(nation) {
 
 // ─── bucket picker ───────────────────────────────────────────────────────────
 
-function openBucketsForCurrentSquad() {
-  // Which buckets still have an open slot?
-  const out = { GK: 0, DEF: 0, MID: 0, WIN: 0, FWD: 0 };
+// Open ROLES per bucket (strict — only roles whose slots still have capacity).
+function openRolesInBucket(bucket) {
+  const roles = BUCKET_ROLES[bucket];
+  const open = new Set();
   for (let i = 0; i < 11; i++) {
     if (state.squad[i] != null) continue;
-    out[SLOTS[i].bucket]++;
+    if (roles.includes(SLOTS[i].role)) open.add(SLOTS[i].role);
+  }
+  return [...open];
+}
+
+function openBucketsForCurrentSquad() {
+  const out = { GK_ST: 0, DEF: 0, MID: 0 };
+  for (let i = 0; i < 11; i++) {
+    if (state.squad[i] != null) continue;
+    out[ROLE_TO_BUCKET[SLOTS[i].role]]++;
   }
   return out;
 }
 
+// Candidates from a nation in a bucket: STRICT role match — a CB only shows
+// if a CB slot is open, an FB only if an FB slot is open, etc.
 function bucketCandidatesIn(nation, bucket) {
-  const roles = BUCKET_ROLES[bucket];
+  const openRoles = openRolesInBucket(bucket);
+  if (!openRoles.length) return [];
   const used = new Set(state.squad.filter(Boolean).map(s => `${s.nation.name}|${s.player.name}`));
   return (state.byNation[nation.name] || []).filter(p =>
-    p.roles?.some(r => roles.includes(r)) && !used.has(`${nation.name}|${p.name}`)
+    p.roles?.some(r => openRoles.includes(r)) && !used.has(`${nation.name}|${p.name}`)
   );
 }
 
@@ -245,7 +263,7 @@ function showCandidates(candidates, bucket) {
   const card = document.getElementById('candidatesCard');
   card.style.display = '';
   document.getElementById('candHead').innerHTML =
-    `<span class="cand-head-flag">${state.spin.nation.flag}</span> ${escapeHtml(state.spin.nation.name)} <span style="color:var(--accent);font-weight:800;">${bucket || t('bucket.wild')}</span>`;
+    `${flagImg(state.spin.nation.code, { width: 40, cls: 'flag-img-mid', fallback: state.spin.nation.flag })} ${escapeHtml(state.spin.nation.name)} <span style="color:var(--accent);font-weight:800;">${bucket ? t('bucket.' + bucket.toLowerCase()) : t('bucket.wild')}</span>`;
   const list = document.getElementById('candidates');
   list.innerHTML = '';
   if (!candidates.length) {
@@ -255,7 +273,7 @@ function showCandidates(candidates, bucket) {
     const row = document.createElement('div');
     row.className = 'cand-row';
     row.innerHTML = `
-      <div class="cand-flag">${state.spin.nation.flag}</div>
+      <div class="cand-flag">${flagImg(state.spin.nation.code, { width: 40, cls: 'flag-img', fallback: state.spin.nation.flag })}</div>
       <div class="cand-no">${p.no ?? ''}</div>
       <div class="cand-meta">
         <div class="cand-name">${escapeHtml(p.name)} <span class="cand-roles">${p.roles.map(r => `<span class="role-chip role-${r}">${r}</span>`).join('')}</span></div>
@@ -284,26 +302,14 @@ function pickPlayer(player, nation, bucket) {
   renderAll();
 }
 
+// STRICT slot assignment: only land in a slot whose ROLE matches one of the
+// player's roles. No fallback "any DEF slot" — if no exact role match, the
+// pick would not have been offered in the first place.
 function assignSlotIndex(player, bucket, isWildcard) {
   if (isWildcard) return 11;
-  // For bucket-driven picks, find the first open slot that matches.
-  // DEF: prefer same-role match (CB→CB slot, FB→FB slot); fall back to any DEF slot.
-  if (bucket === 'DEF') {
-    // Player likely has CB or FB role.
-    for (const r of ['CB', 'FB']) {
-      if (player.roles.includes(r)) {
-        for (let i = 0; i < 11; i++) {
-          if (state.squad[i] == null && SLOTS[i].role === r) return i;
-        }
-      }
-    }
-    // Fall back: any open DEF slot
-    for (let i = 0; i < 11; i++) if (state.squad[i] == null && SLOTS[i].bucket === 'DEF') return i;
-    return -1;
-  }
-  // GK / MID / WIN / FWD: any open slot with matching bucket
   for (let i = 0; i < 11; i++) {
-    if (state.squad[i] == null && SLOTS[i].bucket === bucket) return i;
+    if (state.squad[i] != null) continue;
+    if (player.roles?.includes(SLOTS[i].role)) return i;
   }
   return -1;
 }
@@ -353,7 +359,7 @@ function renderPitch() {
     node.style.left = s.x + '%';
     node.style.top = s.y + '%';
     node.innerHTML = item ? `
-      <div class="ps-flag">${item.nation.flag}</div>
+      <div class="ps-flag">${flagImg(item.nation.code, { width: 20, cls: 'flag-img', fallback: item.nation.flag })}</div>
       <div class="ps-name">${escapeHtml(displayLast(item.player))}</div>
       <div class="ps-tag">${s.tag}</div>
     ` : `<div class="ps-empty">${s.tag}</div>`;
