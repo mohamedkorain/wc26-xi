@@ -582,7 +582,7 @@ function showSubmitConfirmation(teamName) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   const shareText = encodeURIComponent(
-    `🏆 I built my HALLO AMRIKA fantasy XI: "${teamName}"\n\nBuild yours: https://haloamrika.saba7okorah.com`
+    `🏆 I built my HALLO AMRIKA fantasy XI: "${teamName}"\n\nBuild yours: https://halloamrika.saba7okorah.com`
   );
   modal.innerHTML = `
     <div class="modal-card">
@@ -602,7 +602,7 @@ function showSubmitConfirmation(teamName) {
   document.body.appendChild(modal);
   document.getElementById('modalCloseBtn').onclick = () => modal.remove();
   document.getElementById('modalCopyBtn').onclick = () => {
-    navigator.clipboard.writeText(`I built my HALLO AMRIKA XI "${teamName}"! Build yours: https://haloamrika.saba7okorah.com`);
+    navigator.clipboard.writeText(`I built my HALLO AMRIKA XI "${teamName}"! Build yours: https://halloamrika.saba7okorah.com`);
     document.getElementById('modalCopyBtn').textContent = t('share.copied');
   };
 }

@@ -118,7 +118,7 @@ async function renderMySquad() {
   ` : '';
 
   const shareText = encodeURIComponent(
-    `🏆 I built my HALLO AMRIKA fantasy XI: "${entry.team_name}"\n\nBuild yours: https://haloamrika.saba7okorah.com`
+    `🏆 I built my HALLO AMRIKA fantasy XI: "${entry.team_name}"\n\nBuild yours: https://halloamrika.saba7okorah.com`
   );
 
   document.getElementById('mySquadCard').innerHTML = `
