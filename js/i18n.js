@@ -9,6 +9,7 @@
 
 const DICT = {
   en: {
+    'brand.mark':     'HALO AMRIKA',
     'hero.eyebrow':   'A Saba7o Korah Production',
     'hero.tag':       'Build your fantasy World Cup XI. Spin the randomizer, draft 12 players, climb the leaderboard.<br/><b>Jun 11 – Jul 19, 2026.</b>',
     'hero.loading':   'Loading…',
@@ -112,6 +113,7 @@ const DICT = {
     'auth.nameprompt':'Set your display name (shown on the leaderboard):',
   },
   ar: {
+    'brand.mark':     'هاللو امريكا',
     'hero.eyebrow':   'من إنتاج صباحو كرة',
     'hero.tag':       'ابني تشكيلتك لكأس العالم. لُف العجلة، اختار ١٢ لاعب، واطلع على القمة.<br/><b>١١ يونيو – ١٩ يوليو ٢٠٢٦.</b>',
     'hero.loading':   'جاري التحميل…',
@@ -215,7 +217,19 @@ const DICT = {
   },
 };
 
-let LANG = localStorage.getItem('wc26.lang') || 'en';
+// Read at module-load time. Cross-page navigation on the same origin keeps
+// localStorage, so once the user picks AR it stays AR everywhere.
+let LANG = (() => {
+  try { return localStorage.getItem('wc26.lang') || 'en'; }
+  catch { return 'en'; }
+})();
+
+// Set <html lang/dir> synchronously so first-paint isn't briefly LTR before
+// the DOMContentLoaded handler runs.
+try {
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
+} catch {}
 
 export function getLang() { return LANG; }
 
