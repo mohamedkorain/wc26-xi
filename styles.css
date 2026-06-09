@@ -374,9 +374,14 @@ input { font-family: inherit; }
   animation: float 6s ease-in-out infinite alternate;
 }
 .hero-art img { width: 100%; height: auto; display: block; }
+.hero-art.saba-art img {
+  /* Silhouette is pure black on white → invert to white silhouette to
+     show against the dark theme. */
+  filter: invert(1);
+}
 .hero-art.saba-art {
-  filter: drop-shadow(0 12px 36px rgba(92, 240, 194, 0.20))
-          drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 12px 36px rgba(92, 240, 194, 0.30))
+          drop-shadow(0 0 18px rgba(92, 240, 194, 0.15));
 }
 .hero-art.wc-art {
   filter: drop-shadow(0 12px 36px rgba(230, 57, 70, 0.22))
