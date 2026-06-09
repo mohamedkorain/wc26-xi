@@ -165,47 +165,78 @@ function renderHeroStatus() {
     : `Submissions open · locks in ${days}d ${hours}h (${lockStr})`;
 }
 
-async function renderLeaderboard() {
-  const { data: entries } = await supabase
-    .from('entries').select('id, team_name, formation, user_id, submitted_at')
-    .eq('league_id', HALO_LEAGUE_ID);
+async function renderLeaderboard(reset = true) {
+  if (reset) {
+    state.lbRows = [];
+    state.lbLoaded = 0;
+    // Fetch total count once (cheap RPC)
+    const { data: cnt } = await supabase.rpc('entry_count', { p_league_id: HALO_LEAGUE_ID });
+    state.lbTotal = cnt ?? 0;
+    const lbStats = document.getElementById('lbStats');
+    lbStats.textContent = state.lbTotal === 1 ? t('lb.entries.one') : t('lb.entries.n', { n: state.lbTotal });
+    document.getElementById('lbTable').innerHTML = '';
+  }
 
-  const lbStats = document.getElementById('lbStats');
-  const lbTable = document.getElementById('lbTable');
-  const n = (entries || []).length;
-  lbStats.textContent = n === 1 ? t('lb.entries.one') : t('lb.entries.n', { n });
+  if (state.lbTotal === 0) {
+    document.getElementById('lbTable').innerHTML =
+      `<div class="lb-empty">${t('lb.empty')}</div>`;
+    return;
+  }
 
-  if (!entries || !entries.length) return;  // leave the empty-state message
+  // Paginated leaderboard query (top points first, ties broken by submission order).
+  // Uses the aggregated view → tiny payload per row.
+  const from = state.lbLoaded;
+  const to   = state.lbLoaded + LB_PAGE_SIZE - 1;
+  const { data: rows, error } = await supabase
+    .from('leaderboard_totals')
+    .select('entry_id, team_name, formation, user_id, submitted_at, total_points')
+    .eq('league_id', HALO_LEAGUE_ID)
+    .order('total_points', { ascending: false })
+    .order('submitted_at', { ascending: true })
+    .range(from, to);
 
-  // Pull profile display_names
-  const ids = entries.map(e => e.user_id);
-  const { data: profs } = await supabase
-    .from('profiles').select('id, email, display_name').in('id', ids);
-  const profiles = {};
-  for (const p of profs || []) profiles[p.id] = p;
+  if (error) {
+    document.getElementById('lbTable').innerHTML =
+      `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(error.message)} — has supabase/leaderboard_view.sql been run?</div>`;
+    return;
+  }
 
-  // Aggregate points
-  const totals = {};
-  const { data: scores } = await supabase
-    .from('scores').select('entry_id, points').in('entry_id', entries.map(e => e.id));
-  for (const s of scores || []) totals[s.entry_id] = (totals[s.entry_id] || 0) + s.points;
+  // Hydrate owner names for just the new rows
+  const newIds = (rows || []).map(r => r.user_id);
+  let profiles = {};
+  if (newIds.length) {
+    const { data: profs } = await supabase
+      .from('profiles').select('id, email, display_name').in('id', newIds);
+    for (const p of profs || []) profiles[p.id] = p;
+  }
+  for (const r of rows || []) {
+    r.ownerName = profiles[r.user_id]?.display_name || profiles[r.user_id]?.email || '—';
+  }
 
-  const rows = entries
-    .map(e => ({
-      ...e,
-      points: totals[e.id] || 0,
-      ownerName: profiles[e.user_id]?.display_name || profiles[e.user_id]?.email || '—',
-    }))
-    .sort((a, b) => b.points - a.points || a.submitted_at.localeCompare(b.submitted_at));
+  state.lbRows.push(...(rows || []));
+  state.lbLoaded += (rows || []).length;
 
-  lbTable.innerHTML = rows.map((r, i) => `
+  document.getElementById('lbTable').innerHTML = state.lbRows.map((r, i) => `
     <div class="lb-row${r.user_id === state.myUserId ? ' me' : ''}">
       <div class="lb-rank">${i + 1}</div>
       <div class="lb-team">${escapeHtml(r.team_name)}<span class="lb-form">· ${r.formation}</span></div>
       <div class="lb-owner">${escapeHtml(r.ownerName)}</div>
-      <div class="lb-pts">${r.points}</div>
+      <div class="lb-pts">${r.total_points}</div>
     </div>
-  `).join('');
+  `).join('') + renderLoadMore();
+
+  const btn = document.getElementById('lbLoadMore');
+  if (btn) btn.onclick = () => renderLeaderboard(false);
+}
+
+function renderLoadMore() {
+  if (state.lbLoaded >= state.lbTotal) {
+    return `<div style="color:var(--text-dim);font-size:12px;padding:10px;text-align:center;">${state.lbTotal} / ${state.lbTotal}</div>`;
+  }
+  const next = Math.min(LB_PAGE_SIZE, state.lbTotal - state.lbLoaded);
+  return `<div style="margin-top:12px;text-align:center;">
+    <button class="ghost-btn" id="lbLoadMore">${t('lb.loadmore', { n: next, rest: state.lbTotal - state.lbLoaded })}</button>
+  </div>`;
 }
 
 function hydrateFilters() {

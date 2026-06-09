@@ -22,6 +22,7 @@ const DICT = {
     'lb.empty':       'No squads submitted yet. Be the first — <a href="build.html" style="color:var(--accent);">Build my squad →</a>',
     'lb.entries.one': '1 entry',
     'lb.entries.n':   '{n} entries',
+    'lb.loadmore':    'Load {n} more · {rest} remaining',
 
     'squad.title':    'Squad · 4-4-2',
     'squad.note':     '12 picks per squad. 11 active starters earn points; wildcard sits on the bench. At least one player must be from an Arab nation.',
@@ -114,6 +115,7 @@ const DICT = {
     'lb.empty':       'لسه ما حدش بعت تشكيلة. كن أول واحد — <a href="build.html" style="color:var(--accent);">ابدأ التشكيلة →</a>',
     'lb.entries.one': 'تشكيلة واحدة',
     'lb.entries.n':   '{n} تشكيلة',
+    'lb.loadmore':    'حمّل {n} كمان · باقي {rest}',
 
     'squad.title':    'التشكيلة · ٤-٤-٢',
     'squad.note':     '١٢ اختيار لكل تشكيلة. ١١ لاعب أساسي يجيبوا النقاط؛ والاحتياطي (الورقة الحرة) قاعد على الدكة. لازم لاعب واحد على الأقل يكون من منتخب عربي.',
