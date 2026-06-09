@@ -24,3 +24,24 @@ export function flagImg(code, opts = {}) {
   const srcset = `https://flagcdn.com/w${w * 2}/${iso}.png 2x`;
   return `<img class="${cls}" src="${src}" srcset="${srcset}" alt="${code}" loading="lazy" onerror="this.outerHTML='<span class=\\'${cls}-fallback\\'>${opts.fallback || ''}</span>'" />`;
 }
+
+// Returns just the URL for a flag at the given width (no <img> wrapper).
+// Used for spin animation where we mutate a single <img> src rather than
+// recreate the element on every tumble frame (otherwise the browser
+// re-fetches each flag and mobile shows blanks).
+export function flagUrl(code, width = 80) {
+  const iso = FIFA_TO_ISO[(code || '').toUpperCase()];
+  if (!iso) return '';
+  return `https://flagcdn.com/w${width}/${iso}.png`;
+}
+
+// Pre-warm the browser cache for every nation's flag so the spin reel
+// renders instantly on mobile.
+export function preloadFlags(codes, width = 80) {
+  for (const c of codes) {
+    const url = flagUrl(c, width);
+    if (!url) continue;
+    const img = new Image();
+    img.src = url;
+  }
+}

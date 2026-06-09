@@ -3,7 +3,7 @@
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
 import { t } from './js/i18n.js';
-import { flagImg } from './js/flags.js';
+import { flagImg, flagUrl, preloadFlags } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -63,6 +63,10 @@ async function boot() {
   for (const n of players.nations) state.byNation[n.name] = n.players;
   state.clubLogos = clubs || {};
   state.league = league.data;
+
+  // Pre-warm all flag image URLs so the spin reel doesn't go blank on mobile
+  preloadFlags(state.teams.map(t => t.code), 80);
+  preloadFlags(state.teams.map(t => t.code), 160);
   if (!state.league) {
     document.body.innerHTML = `<pre style="padding:30px;color:#ff6b6b;">HALO AMRIKA league not set up — admin must run supabase/seed_halo.sql.</pre>`;
     return;
@@ -143,15 +147,36 @@ function spin() {
 
   const flagEl = document.getElementById('reelNationVal');
   const roleEl = document.getElementById('reelRoleVal');
+
+  // Ensure a single persistent <img> + code span exist inside the reel.
+  // Mutating .src is much faster than rebuilding innerHTML each frame,
+  // and the preloaded cache makes the swap instant on mobile.
+  let img = flagEl.querySelector('img.reel-flag');
+  let code = flagEl.querySelector('.reel-code');
+  if (!img) {
+    flagEl.innerHTML = '';
+    img = document.createElement('img');
+    img.className = 'reel-flag flag-img-big';
+    img.alt = '';
+    flagEl.appendChild(img);
+    code = document.createElement('span');
+    code.className = 'reel-code';
+    flagEl.appendChild(code);
+  }
+  code.textContent = '';
+
   const start = performance.now();
   const tumble = () => {
     const tn = state.teams[Math.floor(Math.random() * state.teams.length)];
-    flagEl.innerHTML = flagImg(tn.code, { width: 80, cls: 'flag-img-big', fallback: tn.flag });
+    const u = flagUrl(tn.code, 160);
+    if (u) img.src = u;
     roleEl.textContent = BUCKETS[Math.floor(Math.random() * BUCKETS.length)];
     if (performance.now() - start < 1200) {
       requestAnimationFrame(tumble);
     } else {
-      flagEl.innerHTML = flagImg(draw.nation.code, { width: 80, cls: 'flag-img-big', fallback: draw.nation.flag }) + ` <span class="reel-code">${draw.nation.code}</span>`;
+      const finalUrl = flagUrl(draw.nation.code, 160);
+      if (finalUrl) img.src = finalUrl;
+      code.textContent = draw.nation.code;
       roleEl.textContent = draw.bucket ? t('bucket.' + draw.bucket.toLowerCase()) : t('bucket.wild');
       document.getElementById('reelNation').classList.remove('spinning');
       document.getElementById('reelRole').classList.remove('spinning');
