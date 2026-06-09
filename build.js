@@ -1,4 +1,4 @@
-// HALO AMRIKA — squad builder (v2: nation-only randomizer, 5-bucket picker,
+// HALLO AMRIKA — squad builder (v2: nation-only randomizer, 5-bucket picker,
 // max 2 per category, wildcard, sub-in step).
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
@@ -68,7 +68,7 @@ async function boot() {
   preloadFlags(state.teams.map(t => t.code), 80);
   preloadFlags(state.teams.map(t => t.code), 160);
   if (!state.league) {
-    document.body.innerHTML = `<pre style="padding:30px;color:#ff6b6b;">HALO AMRIKA league not set up — admin must run supabase/seed_halo.sql.</pre>`;
+    document.body.innerHTML = `<pre style="padding:30px;color:#ff6b6b;">HALLO AMRIKA league not set up — admin must run supabase/seed_halo.sql.</pre>`;
     return;
   }
   state.locked = new Date() >= new Date(state.league.locked_at);
@@ -582,7 +582,7 @@ function showSubmitConfirmation(teamName) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   const shareText = encodeURIComponent(
-    `🏆 I built my HALO AMRIKA fantasy XI: "${teamName}"\n\nBuild yours: https://haloamrika.saba7okorah.com`
+    `🏆 I built my HALLO AMRIKA fantasy XI: "${teamName}"\n\nBuild yours: https://haloamrika.saba7okorah.com`
   );
   modal.innerHTML = `
     <div class="modal-card">
@@ -602,7 +602,7 @@ function showSubmitConfirmation(teamName) {
   document.body.appendChild(modal);
   document.getElementById('modalCloseBtn').onclick = () => modal.remove();
   document.getElementById('modalCopyBtn').onclick = () => {
-    navigator.clipboard.writeText(`I built my HALO AMRIKA XI "${teamName}"! Build yours: https://haloamrika.saba7okorah.com`);
+    navigator.clipboard.writeText(`I built my HALLO AMRIKA XI "${teamName}"! Build yours: https://haloamrika.saba7okorah.com`);
     document.getElementById('modalCopyBtn').textContent = t('share.copied');
   };
 }

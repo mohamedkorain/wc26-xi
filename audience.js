@@ -1,4 +1,4 @@
-// HALO AMRIKA audience view — public, read-only.
+// HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
 import { t } from './js/i18n.js';
@@ -118,7 +118,7 @@ async function renderMySquad() {
   ` : '';
 
   const shareText = encodeURIComponent(
-    `🏆 I built my HALO AMRIKA fantasy XI: "${entry.team_name}"\n\nBuild yours: https://haloamrika.saba7okorah.com`
+    `🏆 I built my HALLO AMRIKA fantasy XI: "${entry.team_name}"\n\nBuild yours: https://haloamrika.saba7okorah.com`
   );
 
   document.getElementById('mySquadCard').innerHTML = `

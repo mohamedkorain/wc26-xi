@@ -1,4 +1,4 @@
-// Minimal i18n for HALO AMRIKA — EN ⇄ AR.
+// Minimal i18n for HALLO AMRIKA — EN ⇄ AR.
 // Usage:
 //   <h1 data-i18n="hero.title">English fallback</h1>
 //   <input data-i18n-placeholder="filter.search" placeholder="…">
@@ -9,7 +9,7 @@
 
 const DICT = {
   en: {
-    'brand.mark':     'HALO AMRIKA',
+    'brand.mark':     'HALLO AMRIKA',
     'hero.eyebrow':   'A Saba7o Koraa Production',
     'hero.tag':       'Build your fantasy World Cup XI. Spin the randomizer, draft 12 players, climb the leaderboard.<br/><b>Jun 11 – Jul 19, 2026.</b>',
     'hero.loading':   'Loading…',
@@ -61,7 +61,7 @@ const DICT = {
     'filter.arab':    'Arab only',
     'pool.more':      'Show {n} more · {rest} remaining',
 
-    'footer.line1':   'HALO AMRIKA · Saba7o USA · Series 04 · A Saba7o Korah Production',
+    'footer.line1':   'HALLO AMRIKA · Saba7o USA · Series 04 · A Saba7o Korah Production',
     'footer.line2':   'Hosted by Nsoo7y, Marei & Orfy',
 
     // build page
