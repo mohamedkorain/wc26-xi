@@ -729,6 +729,60 @@ input { font-family: inherit; }
   text-align: center; font-size: 18px; color: var(--accent-2); font-weight: 800;
 }
 
+/* ── modal overlay (submit confirmation + squad viewer) ──────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: fadein 0.2s;
+}
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.modal-card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 16px; padding: 28px;
+  max-width: 420px; width: 100%; max-height: 90vh; overflow-y: auto;
+  position: relative; text-align: center;
+  animation: popin 0.2s;
+}
+@keyframes popin { from { transform: scale(0.95); } to { transform: scale(1); } }
+.modal-x {
+  position: absolute; top: 12px; right: 12px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--bg-2); border: 1px solid var(--line);
+  font-size: 20px; color: var(--text); line-height: 1;
+}
+.modal-x:hover { background: var(--panel-2); }
+.modal-badge { font-size: 50px; margin-bottom: 10px; }
+.modal-title { font-size: 24px; font-weight: 900; margin-bottom: 8px; }
+.modal-sub { color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
+.modal-actions { display: flex; flex-direction: column; gap: 8px; }
+.modal-btn {
+  padding: 12px 18px; border-radius: 10px; font-weight: 800; font-size: 14px;
+  text-decoration: none; display: block; text-align: center;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+}
+.modal-btn:hover { transform: translateY(-1px); }
+.modal-btn.primary { background: var(--accent); color: #0a0a12; border-color: var(--accent); }
+.modal-btn.whatsapp { background: #25D366; color: #0a0a12; border-color: #25D366; }
+.modal-btn.copy { background: var(--bg-2); }
+.modal-btn.ghost { background: transparent; color: var(--text-dim); }
+
+/* ── clickable leaderboard rows ─────────────────────────────── */
+.lb-row.clickable { cursor: pointer; transition: border-color 0.1s, transform 0.1s; }
+.lb-row.clickable:hover { border-color: var(--accent); transform: translateX(2px); }
+
+/* ── wildcard help icon ─────────────────────────────────────── */
+.wildcard-help {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-2); border: 1px solid var(--line);
+  color: var(--accent-2); font-weight: 800; font-size: 12px;
+  cursor: help;
+}
+.wildcard-help:hover { background: var(--panel-2); border-color: var(--accent-2); }
+
 /* ── homepage "My Squad" card ────────────────────────────────── */
 .my-squad-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 14px;

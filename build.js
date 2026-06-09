@@ -550,6 +550,36 @@ async function submit() {
   }
   msg.style.color = 'var(--accent)';
   msg.innerHTML = t('submit.saved', { at: new Date(state.league.locked_at).toLocaleString() });
+  showSubmitConfirmation(name);
+}
+
+function showSubmitConfirmation(teamName) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  const shareText = encodeURIComponent(
+    `🏆 I built my HALO AMRIKA fantasy XI: "${teamName}"\n\nBuild yours: https://haloamrika.saba7okorah.com`
+  );
+  modal.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-badge">✅</div>
+      <h2 class="modal-title">${t('submit.modal.title')}</h2>
+      <p class="modal-sub">${t('submit.modal.sub', { name: escapeHtml(teamName) })}</p>
+      <div class="modal-actions">
+        <a href="https://wa.me/?text=${shareText}" target="_blank" rel="noopener" class="modal-btn whatsapp">
+          ${t('share.whatsapp')}
+        </a>
+        <button class="modal-btn copy" id="modalCopyBtn">${t('share.copy')}</button>
+        <a href="index.html#leaderboard" class="modal-btn primary">${t('submit.modal.view')}</a>
+        <button class="modal-btn ghost" id="modalCloseBtn">${t('submit.modal.close')}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('modalCloseBtn').onclick = () => modal.remove();
+  document.getElementById('modalCopyBtn').onclick = () => {
+    navigator.clipboard.writeText(`I built my HALO AMRIKA XI "${teamName}"! Build yours: https://haloamrika.saba7okorah.com`);
+    document.getElementById('modalCopyBtn').textContent = t('share.copied');
+  };
 }
 
 // ─── utils ───────────────────────────────────────────────────────────────────

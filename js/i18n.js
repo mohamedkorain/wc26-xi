@@ -13,7 +13,16 @@ const DICT = {
     'hero.tag':       'Build your fantasy World Cup XI. Spin the randomizer, draft 12 players, climb the leaderboard.<br/><b>Jun 11 – Jul 19, 2026.</b>',
     'hero.loading':   'Loading…',
     'cta.build':      'Build my squad →',
+    'cta.viewsquad':  'View my squad ↓',
     'cta.lb':         'View leaderboard',
+    'share.whatsapp': '📱 Share on WhatsApp',
+    'share.copy':     'Copy link',
+    'share.copied':   '✓ Copied!',
+    'submit.modal.title': 'Squad submitted!',
+    'submit.modal.sub':   '"{name}" is on the leaderboard. Share with friends — every signup is one more squad to beat.',
+    'submit.modal.view':  'View leaderboard →',
+    'submit.modal.close': 'Close',
+    'wildcard.help': 'WILDCARD: your 12th pick, sits on the bench. After the 12-pick draft you can swap them with a starter of the same position. Use it as a safety net for a position you regret.',
 
     'lb.title':       'Leaderboard',
     'lb.team':        'TEAM NAME',
@@ -107,7 +116,16 @@ const DICT = {
     'hero.tag':       'ابني تشكيلتك لكأس العالم. لُف العجلة، اختار ١٢ لاعب، واطلع على القمة.<br/><b>١١ يونيو – ١٩ يوليو ٢٠٢٦.</b>',
     'hero.loading':   'جاري التحميل…',
     'cta.build':      '← ابدأ التشكيلة',
+    'cta.viewsquad':  '↓ شوف تشكيلتك',
     'cta.lb':         'الترتيب',
+    'share.whatsapp': '📱 شير على واتساب',
+    'share.copy':     'انسخ اللينك',
+    'share.copied':   '✓ اتنسخ!',
+    'submit.modal.title': 'التشكيلة اتبعتت!',
+    'submit.modal.sub':   '"{name}" دلوقتي في الترتيب. شيرها مع أصحابك — كل تسجيل تشكيلة جديدة لازم تتغلب عليها.',
+    'submit.modal.view':  '← شوف الترتيب',
+    'submit.modal.close': 'إغلاق',
+    'wildcard.help': 'الورقة الحرة: الاختيار رقم ١٢ بيقعد على الدكة. بعد ما تخلص التشكيلة، تقدر تبدّله مع أساسي في نفس المركز. استخدمه لو ندمت على لاعب.',
 
     'lb.title':       'الترتيب',
     'lb.team':        'اسم الفريق',
@@ -227,6 +245,9 @@ function applyToDom() {
   }
   for (const el of document.querySelectorAll('[data-i18n-placeholder]')) {
     el.placeholder = t(el.dataset.i18nPlaceholder);
+  }
+  for (const el of document.querySelectorAll('[data-i18n-title]')) {
+    el.title = t(el.dataset.i18nTitle);
   }
 }
 

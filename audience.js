@@ -117,6 +117,10 @@ async function renderMySquad() {
     </div>
   ` : '';
 
+  const shareText = encodeURIComponent(
+    `🏆 I built my HALO AMRIKA fantasy XI: "${entry.team_name}"\n\nBuild yours: https://haloamrika.saba7okorah.com`
+  );
+
   document.getElementById('mySquadCard').innerHTML = `
     <div class="my-squad-card">
       <div class="pitch-wrap">
@@ -129,11 +133,19 @@ async function renderMySquad() {
         </div>
         <div class="bench">${benchHtml}</div>
       </div>
-      <div style="margin-top:14px;text-align:center;">
-        <a href="build.html" class="ghost-btn" style="text-decoration:none;display:inline-block;">${t('mysquad.edit')}</a>
+      <div style="margin-top:14px;text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <a href="https://wa.me/?text=${shareText}" target="_blank" rel="noopener" class="ghost-btn" style="text-decoration:none;background:#25D366;color:#0a0a12;border-color:#25D366;">${t('share.whatsapp')}</a>
+        <a href="build.html" class="ghost-btn" style="text-decoration:none;">${t('mysquad.edit')}</a>
       </div>
     </div>
   `;
+
+  // Toggle the hero CTA button text
+  const cta = document.getElementById('ctaBuild');
+  if (cta) {
+    cta.textContent = t('cta.viewsquad');
+    cta.setAttribute('href', '#mySquadStrip');
+  }
 }
 
 function displayLast(item) {
@@ -221,7 +233,7 @@ async function renderLeaderboard(reset = true) {
   state.lbLoaded += (rows || []).length;
 
   document.getElementById('lbTable').innerHTML = state.lbRows.map((r, i) => `
-    <div class="lb-row${r.user_id === state.myUserId ? ' me' : ''}">
+    <div class="lb-row clickable${r.user_id === state.myUserId ? ' me' : ''}" data-entry="${r.entry_id}">
       <div class="lb-rank">${i + 1}</div>
       <div class="lb-team">${escapeHtml(r.team_name)}<span class="lb-form">· ${r.formation}</span></div>
       <div class="lb-owner">${escapeHtml(r.ownerName)}</div>
@@ -229,8 +241,61 @@ async function renderLeaderboard(reset = true) {
     </div>
   `).join('') + renderLoadMore();
 
+  for (const row of document.querySelectorAll('.lb-row.clickable')) {
+    row.onclick = () => openSquadModal(row.dataset.entry);
+  }
   const btn = document.getElementById('lbLoadMore');
   if (btn) btn.onclick = () => renderLeaderboard(false);
+}
+
+async function openSquadModal(entryId) {
+  const { data: entry } = await supabase
+    .from('entries').select('*').eq('id', entryId).maybeSingle();
+  if (!entry) return;
+  const xi = entry.xi_json || [];
+  const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
+  const wild = xi.find(x => x.wild);
+
+  const slotsHtml = starters.map((item, i) => {
+    const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
+    return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;">
+      <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
+      <div class="ps-name">${escapeHtml(displayLast(item))}</div>
+      <div class="ps-tag">${coord.tag}</div>
+    </div>`;
+  }).join('');
+
+  const benchHtml = wild ? `
+    <div class="bench-label">${t('squad.bench')}</div>
+    <div class="bench-slot filled">
+      <span>${flagImg(wild.nation_code, { width: 20, cls: 'flag-img', fallback: '' })} <b>${escapeHtml(displayLast(wild))}</b>
+        <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(wild.club || '')}</span>
+      </span>
+    </div>
+  ` : '';
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:560px;">
+      <button class="modal-x" id="squadModalX">×</button>
+      <h2 class="modal-title">${escapeHtml(entry.team_name)}</h2>
+      <p class="modal-sub">${entry.formation} · ${new Date(entry.submitted_at).toLocaleDateString()}</p>
+      <div class="pitch-wrap">
+        <div class="pitch442" style="aspect-ratio:1/1.25;width:100%;max-width:460px;margin:0 auto;">
+          <div class="pl-box pl-box-top"></div>
+          <div class="pl-box pl-box-bottom"></div>
+          <div class="pl-circle"></div>
+          <div class="pl-halfway"></div>
+          ${slotsHtml}
+        </div>
+        <div class="bench" style="max-width:460px;margin:10px auto 0;">${benchHtml}</div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('squadModalX').onclick = () => modal.remove();
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 }
 
 function renderLoadMore() {
