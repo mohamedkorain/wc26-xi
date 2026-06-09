@@ -421,11 +421,16 @@ function renderPitch() {
     node.className = 'pitch-slot' + (item ? ' filled' : ' empty');
     node.style.left = s.x + '%';
     node.style.top = s.y + '%';
-    node.innerHTML = item ? `
-      <div class="ps-flag">${flagImg(item.nation.code, { width: 20, cls: 'flag-img', fallback: item.nation.flag })}</div>
-      <div class="ps-name">${escapeHtml(displayLast(item.player))}</div>
-      <div class="ps-tag">${s.tag}</div>
-    ` : `<div class="ps-empty">${s.tag}</div>`;
+    if (item) {
+      const name = displayLast(item.player);
+      node.innerHTML = `
+        <div class="ps-flag">${flagImg(item.nation.code, { width: 20, cls: 'flag-img', fallback: item.nation.flag })}</div>
+        <div class="ps-name" data-len="${nameLenClass(name)}">${escapeHtml(name)}</div>
+        <div class="ps-tag">${s.tag}</div>
+      `;
+    } else {
+      node.innerHTML = `<div class="ps-empty">${s.tag}</div>`;
+    }
     pitch.appendChild(node);
   }
   // bench wildcard
