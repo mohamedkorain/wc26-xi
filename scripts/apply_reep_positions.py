@@ -19,6 +19,7 @@ from collections import defaultdict
 
 ROOT = Path(__file__).resolve().parent.parent
 PLAYERS_JSON = ROOT / "data" / "players.json"
+OVERRIDES_JSON = ROOT / "scripts" / "manual_role_overrides.json"
 PEOPLE_URL = "https://raw.githubusercontent.com/withqwerty/reep/main/data/people.csv"
 PEOPLE_CSV = Path("/tmp/reep_people.csv")
 
@@ -140,6 +141,20 @@ def main() -> None:
     print(f"  ambiguous (multiple reep matches, kept Excel): {ambiguous}")
     print(f"  no DOB in source: {no_dob}")
     print(f"  no reep match (kept Excel): {no_match}")
+
+    # Apply manual overrides last (final say)
+    if OVERRIDES_JSON.exists():
+        overrides = json.loads(OVERRIDES_JSON.read_text())
+        overrides = {k: v for k, v in overrides.items() if not k.startswith("_")}
+        applied = 0
+        for nation in data["nations"]:
+            for p in nation["players"]:
+                if p.get("name") in overrides:
+                    p["roles"] = overrides[p["name"]]
+                    p["roles_source"] = "manual"
+                    p.pop("reep_position", None)
+                    applied += 1
+        print(f"  manual overrides applied: {applied}")
 
     PLAYERS_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2))
     print(f"\nWrote {PLAYERS_JSON}")

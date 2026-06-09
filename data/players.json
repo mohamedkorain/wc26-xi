@@ -7930,8 +7930,10 @@
           "dob": "2000-01-07",
           "pos_raw": "MF",
           "roles": [
-            "CM"
-          ]
+            "WIN",
+            "ST"
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 12,

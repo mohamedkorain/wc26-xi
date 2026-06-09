@@ -287,19 +287,57 @@ function showCandidates(candidates, bucket) {
 }
 
 function pickPlayer(player, nation, bucket) {
-  const slotIdx = assignSlotIndex(player, bucket, state.spin.isWildcard);
-  if (slotIdx < 0) {
-    setHint('No matching slot for that player.');
+  if (state.spin.isWildcard) {
+    finalisePick(11, player, nation, bucket);
     return;
   }
+  // Find every open slot whose role matches one of the player's roles.
+  const valid = [];
+  for (let i = 0; i < 11; i++) {
+    if (state.squad[i] != null) continue;
+    if (player.roles?.includes(SLOTS[i].role)) valid.push(i);
+  }
+  if (!valid.length) { setHint('No matching slot for that player.'); return; }
+
+  // If only one distinct ROLE among valid slots, auto-pick the first one
+  // (L vs R doesn't matter — slots within a role are positional cosmetics).
+  const uniqueRoles = new Set(valid.map(i => SLOTS[i].role));
+  if (uniqueRoles.size === 1) {
+    finalisePick(valid[0], player, nation, bucket);
+    return;
+  }
+  // Otherwise (multi-role player + multiple roles still open) → user picks.
+  showSlotChooser(valid, player, nation, bucket);
+}
+
+function finalisePick(slotIdx, player, nation, bucket) {
   state.squad[slotIdx] = { player, nation, bucket: bucket || 'WILD' };
   state.catPicks[nation.category] = (state.catPicks[nation.category] || 0) + 1;
   state.spin = null;
   document.getElementById('candidatesCard').style.display = 'none';
+  document.getElementById('slotChooserCard').style.display = 'none';
   document.getElementById('reelNationVal').textContent = '🌍';
   document.getElementById('reelRoleVal').textContent = '—';
   document.getElementById('spinBtn').disabled = false;
   renderAll();
+}
+
+function showSlotChooser(validSlots, player, nation, bucket) {
+  document.getElementById('candidatesCard').style.display = 'none';
+  const card = document.getElementById('slotChooserCard');
+  card.style.display = '';
+  document.getElementById('slotChooserHead').innerHTML =
+    `${escapeHtml(player.name)} — ${t('slot.choose')}`;
+  const grid = document.getElementById('slotChooserGrid');
+  grid.innerHTML = '';
+  for (const i of validSlots) {
+    const s = SLOTS[i];
+    const btn = document.createElement('button');
+    btn.className = 'bucket-btn';
+    btn.innerHTML = `<div class="bk-tag">${s.tag}</div><div class="bk-meta">${s.role}</div>`;
+    btn.onclick = () => finalisePick(i, player, nation, bucket);
+    grid.appendChild(btn);
+  }
 }
 
 // STRICT slot assignment: only land in a slot whose ROLE matches one of the

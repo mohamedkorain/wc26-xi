@@ -1,0 +1,4 @@
+{
+  "_comment": "Manual overrides for players the Excel AI / Reep mis-classified. Key = full PLAYER NAME from Excel. Value = roles array. Edit and re-run scripts/apply_reep_positions.py to apply.",
+  "SEMENYO Antoine": ["WIN", "ST"]
+}
