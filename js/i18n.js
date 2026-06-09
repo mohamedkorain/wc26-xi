@@ -10,7 +10,7 @@
 const DICT = {
   en: {
     'brand.mark':     'HALO AMRIKA',
-    'hero.eyebrow':   'A Saba7o Korah Production',
+    'hero.eyebrow':   'A Saba7o Koraa Production',
     'hero.tag':       'Build your fantasy World Cup XI. Spin the randomizer, draft 12 players, climb the leaderboard.<br/><b>Jun 11 – Jul 19, 2026.</b>',
     'hero.loading':   'Loading…',
     'cta.build':      'Build my squad →',
@@ -27,7 +27,7 @@ const DICT = {
 
     'lb.title':       'Leaderboard',
     'lb.team':        'TEAM NAME',
-    'lb.owner':       'OWNER',
+    'lb.owner':       'COACH',
     'lb.pts':         'PTS',
     'lb.empty':       'No squads submitted yet. Be the first — <a href="build.html" style="color:var(--accent);">Build my squad →</a>',
     'lb.entries.one': '1 entry',
@@ -114,7 +114,7 @@ const DICT = {
   },
   ar: {
     'brand.mark':     'هاللو امريكا',
-    'hero.eyebrow':   'من إنتاج صباحو كرة',
+    'hero.eyebrow':   'من إنتاج صباحو كوره',
     'hero.tag':       'ابني تشكيلتك لكأس العالم. لُف العجلة، اختار ١٢ لاعب، واطلع على القمة.<br/><b>١١ يونيو – ١٩ يوليو ٢٠٢٦.</b>',
     'hero.loading':   'جاري التحميل…',
     'cta.build':      '← ابدأ التشكيلة',
@@ -131,7 +131,7 @@ const DICT = {
 
     'lb.title':       'الترتيب',
     'lb.team':        'اسم الفريق',
-    'lb.owner':       'المالك',
+    'lb.owner':       'المدرب',
     'lb.pts':         'نقاط',
     'lb.empty':       'لسه ما حدش بعت تشكيلة. كن أول واحد — <a href="build.html" style="color:var(--accent);">ابدأ التشكيلة →</a>',
     'lb.entries.one': 'تشكيلة واحدة',
