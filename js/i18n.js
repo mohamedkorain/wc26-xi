@@ -61,7 +61,7 @@ const DICT = {
     'filter.arab':    'Arab only',
     'pool.more':      'Show {n} more · {rest} remaining',
 
-    'footer.line1':   'HALLO AMRIKA · Saba7o USA · Series 04 · A Saba7o Korah Production',
+    'footer.line1':   'HALLO AMRIKA · A Saba7o Koraa Production',
     'footer.line2':   'Hosted by Nsoo7y, Marei & Orfy',
 
     // build page
