@@ -26,14 +26,26 @@
              style="background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:12px;color:var(--text);font-size:15px;" />
       <button type="submit" class="setup-start" style="margin-top:8px;">Send magic link →</button>
     </form>
+
+    <div style="margin:20px 0;display:flex;align-items:center;gap:10px;color:var(--text-dim);font-size:11px;letter-spacing:1px;">
+      <span style="flex:1;border-top:1px solid var(--line);"></span>
+      OR
+      <span style="flex:1;border-top:1px solid var(--line);"></span>
+    </div>
+
+    <button id="guestBtn" class="ghost-btn" style="width:100%;">
+      Continue as guest (testing) →
+    </button>
+
     <p id="loginMsg" style="margin-top:16px;color:var(--accent-2);font-size:13px;min-height:1.4em;"></p>
   </div>
 </section>
 
 <script type="module">
 import { signInWithEmail, currentUser } from './js/auth.js';
+import { supabase } from './js/supabase-client.js';
 
-// If already signed in, redirect to leagues
+// If already signed in, redirect
 (async () => {
   const u = await currentUser();
   if (u) location.href = 'build.html';
@@ -52,6 +64,19 @@ document.getElementById('loginForm').onsubmit = async (e) => {
   } else {
     msg.textContent = `Sent! Check ${email} for a sign-in link.`;
   }
+};
+
+document.getElementById('guestBtn').onclick = async () => {
+  const msg = document.getElementById('loginMsg');
+  msg.style.color = 'var(--accent-2)';
+  msg.textContent = 'Creating guest session…';
+  const { error } = await supabase.auth.signInAnonymously();
+  if (error) {
+    msg.style.color = 'var(--danger)';
+    msg.innerHTML = `${error.message}<br/><small style="color:var(--text-dim);">Enable Anonymous sign-in in Supabase → Auth → Providers</small>`;
+    return;
+  }
+  location.href = 'build.html';
 };
 </script>
 </body>
