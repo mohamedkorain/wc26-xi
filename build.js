@@ -610,6 +610,13 @@ function showSubmitConfirmation(teamName) {
 // ─── utils ───────────────────────────────────────────────────────────────────
 
 function displayLast(p) { return p?.shirt_name || p?.last || p?.name || ''; }
+function nameLenClass(s) {
+  const n = (s || '').length;
+  if (n >= 16) return 'xxlong';
+  if (n >= 13) return 'xlong';
+  if (n >= 10) return 'long';
+  return 'normal';
+}
 
 function clubBadge(club) {
   const raw = String(club || '');

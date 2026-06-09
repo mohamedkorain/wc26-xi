@@ -886,8 +886,12 @@ input { font-family: inherit; }
 .pitch-slot .ps-name {
   font-size: 11px; font-weight: 800;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 90px;
+  max-width: 110px;
+  direction: ltr; unicode-bidi: isolate;  /* names stay LTR even when page is RTL */
 }
+.pitch-slot .ps-name[data-len="long"]   { font-size: 10px; max-width: 120px; }
+.pitch-slot .ps-name[data-len="xlong"]  { font-size:  9px; max-width: 130px; letter-spacing: -0.3px; }
+.pitch-slot .ps-name[data-len="xxlong"] { font-size:  8px; max-width: 140px; letter-spacing: -0.4px; }
 .pitch-slot .ps-tag {
   font-size: 9px; letter-spacing: 1px; font-weight: 800;
   color: var(--text-dim);
