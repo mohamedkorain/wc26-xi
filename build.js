@@ -93,6 +93,21 @@ function wireUI() {
   document.getElementById('spinBtn').onclick = spin;
   document.getElementById('submitBtn').onclick = submit;
   document.getElementById('teamName').oninput = updateSubmitState;
+  document.getElementById('resetSquadBtn').onclick = resetSquad;
+}
+
+function resetSquad() {
+  if (state.locked) return;
+  const filled = picksCount();
+  if (filled > 0 && !confirm(t('reset.confirm'))) return;
+  state.squad = Array(12).fill(null);
+  state.catPicks = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 };
+  state.spin = null;
+  document.getElementById('candidatesCard').style.display = 'none';
+  document.getElementById('bucketCard').style.display = 'none';
+  document.getElementById('reelNationVal').textContent = '🌍';
+  document.getElementById('submitMsg').textContent = '';
+  renderAll();
 }
 
 // ─── spin: nation only ───────────────────────────────────────────────────────
