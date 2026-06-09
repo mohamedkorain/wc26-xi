@@ -1,4 +1,8 @@
 {
   "_comment": "Manual overrides for players the Excel AI / Reep mis-classified. Key = full PLAYER NAME from Excel. Value = roles array. Edit and re-run scripts/apply_reep_positions.py to apply.",
-  "SEMENYO Antoine": ["WIN", "ST"]
+
+  "SEMENYO Antoine":  ["WIN", "ST"],
+
+  "_wrong_reep_match_block": "reep matched the wrong player with the same DOB+lastname. Excel POS was right.",
+  "ARAUJO Ronald":    ["CB"]
 }

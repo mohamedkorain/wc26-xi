@@ -18693,10 +18693,9 @@
           "dob": "1999-03-07",
           "pos_raw": "DF",
           "roles": [
-            "CM"
+            "CB"
           ],
-          "roles_source": "reep",
-          "reep_position": "Attacking Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 5,
