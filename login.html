@@ -29,16 +29,6 @@
       <button type="submit" class="setup-start" style="margin-top:8px;" data-i18n="login.send">Send magic link →</button>
     </form>
 
-    <div style="margin:20px 0;display:flex;align-items:center;gap:10px;color:var(--text-dim);font-size:11px;letter-spacing:1px;">
-      <span style="flex:1;border-top:1px solid var(--line);"></span>
-      <span data-i18n="login.or">OR</span>
-      <span style="flex:1;border-top:1px solid var(--line);"></span>
-    </div>
-
-    <button id="guestBtn" class="ghost-btn" style="width:100%;" data-i18n="login.guest">
-      Continue as guest (testing) →
-    </button>
-
     <p id="loginMsg" style="margin-top:16px;color:var(--accent-2);font-size:13px;min-height:1.4em;"></p>
   </div>
 </section>
@@ -46,7 +36,6 @@
 <script type="module" src="js/i18n.js"></script>
 <script type="module">
 import { signInWithEmail, currentUser } from './js/auth.js';
-import { supabase } from './js/supabase-client.js';
 import { t } from './js/i18n.js';
 
 (async () => {
@@ -69,18 +58,6 @@ document.getElementById('loginForm').onsubmit = async (e) => {
   }
 };
 
-document.getElementById('guestBtn').onclick = async () => {
-  const msg = document.getElementById('loginMsg');
-  msg.style.color = 'var(--accent-2)';
-  msg.textContent = t('login.guesting');
-  const { error } = await supabase.auth.signInAnonymously();
-  if (error) {
-    msg.style.color = 'var(--danger)';
-    msg.innerHTML = `${error.message}<br/><small style="color:var(--text-dim);">Enable Anonymous sign-in in Supabase → Auth → Providers</small>`;
-    return;
-  }
-  location.href = 'build.html';
-};
 </script>
 </body>
 </html>
