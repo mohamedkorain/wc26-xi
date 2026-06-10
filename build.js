@@ -167,9 +167,9 @@ function spin() {
 
   const start = performance.now();
   const tumble = () => {
-    // On the FINAL frame, only set the chosen nation+role — no random
-    // assignment (otherwise iOS Safari sometimes keeps the random flag
-    // even though our subsequent assignment wins on desktop).
+    // FINAL frame — only set the chosen nation + role (no random
+    // assignment in this frame, otherwise iOS Safari sometimes keeps
+    // the random flag while the code text reads the chosen nation).
     if (performance.now() - start >= 1200) {
       const finalUrl = flagUrl(draw.nation.code, 160);
       if (finalUrl) img.src = finalUrl;
@@ -180,7 +180,14 @@ function spin() {
       state.spin = { nation: draw.nation, bucket: draw.bucket, isWildcard: isWildcardTurn() };
       state.spinning = false;
       setTimeout(() => showCandidates(draw.candidates, draw.bucket), 250);
+      return;
     }
+    // Mid-tumble — random nation + random role bucket
+    const tn = state.teams[Math.floor(Math.random() * state.teams.length)];
+    const u = flagUrl(tn.code, 160);
+    if (u) img.src = u;
+    roleEl.textContent = BUCKETS[Math.floor(Math.random() * BUCKETS.length)];
+    requestAnimationFrame(tumble);
   };
   requestAnimationFrame(tumble);
 }
