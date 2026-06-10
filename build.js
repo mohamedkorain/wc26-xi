@@ -167,13 +167,10 @@ function spin() {
 
   const start = performance.now();
   const tumble = () => {
-    const tn = state.teams[Math.floor(Math.random() * state.teams.length)];
-    const u = flagUrl(tn.code, 160);
-    if (u) img.src = u;
-    roleEl.textContent = BUCKETS[Math.floor(Math.random() * BUCKETS.length)];
-    if (performance.now() - start < 1200) {
-      requestAnimationFrame(tumble);
-    } else {
+    // On the FINAL frame, only set the chosen nation+role — no random
+    // assignment (otherwise iOS Safari sometimes keeps the random flag
+    // even though our subsequent assignment wins on desktop).
+    if (performance.now() - start >= 1200) {
       const finalUrl = flagUrl(draw.nation.code, 160);
       if (finalUrl) img.src = finalUrl;
       code.textContent = draw.nation.code;
