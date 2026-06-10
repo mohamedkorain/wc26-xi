@@ -6184,8 +6184,9 @@
           "dob": "1996-02-02",
           "pos_raw": "DF",
           "roles": [
-            "CB"
-          ]
+            "FB"
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 4,
