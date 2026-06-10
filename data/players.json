@@ -1352,10 +1352,10 @@
           "dob": "1989-04-19",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "ST"
           ],
-          "roles_source": "reep",
-          "reep_position": "Centre-Forward"
+          "roles_source": "manual"
         },
         {
           "no": 8,
@@ -1384,10 +1384,10 @@
           "dob": "1994-03-17",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
           ],
-          "roles_source": "reep",
-          "reep_position": "Central Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 10,
@@ -1542,10 +1542,10 @@
           "dob": "1999-08-01",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
           ],
-          "roles_source": "reep",
-          "reep_position": "Attacking Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 20,
@@ -4243,10 +4243,10 @@
           "dob": "1991-06-19",
           "pos_raw": "FW",
           "roles": [
-            "CM"
+            "WIN",
+            "ST"
           ],
-          "roles_source": "reep",
-          "reep_position": "Attacking Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 10,
@@ -4339,10 +4339,10 @@
           "dob": "1995-02-09",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
           ],
-          "roles_source": "reep",
-          "reep_position": "Central Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 16,
@@ -5083,10 +5083,10 @@
           "dob": "2002-07-25",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "ST"
           ],
-          "roles_source": "reep",
-          "reep_position": "Centre-Forward"
+          "roles_source": "manual"
         },
         {
           "no": 10,
@@ -5179,10 +5179,10 @@
           "dob": "2000-12-29",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "CM"
           ],
-          "roles_source": "reep",
-          "reep_position": "Attacking Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 16,
@@ -7036,10 +7036,10 @@
           "dob": "1997-05-15",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "ST"
           ],
-          "roles_source": "reep",
-          "reep_position": "Centre-Forward"
+          "roles_source": "manual"
         },
         {
           "no": 8,
@@ -7068,8 +7068,10 @@
           "dob": "1997-08-06",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "ST"
-          ]
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 10,
@@ -7082,8 +7084,10 @@
           "dob": "1998-12-20",
           "pos_raw": "FW",
           "roles": [
-            "WIN"
-          ]
+            "WIN",
+            "ST"
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 11,
@@ -7302,10 +7306,10 @@
           "dob": "2003-08-17",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
           ],
-          "roles_source": "reep",
-          "reep_position": "Attacking Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 25,
@@ -7501,10 +7505,10 @@
           "dob": "2003-02-26",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
           ],
-          "roles_source": "reep",
-          "reep_position": "Attacking Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 11,
@@ -7613,10 +7617,10 @@
           "dob": "2003-05-03",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
           ],
-          "roles_source": "reep",
-          "reep_position": "Attacking Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 18,
@@ -10366,8 +10370,10 @@
           "dob": "1997-06-10",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "ST"
-          ]
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 11,
@@ -11513,10 +11519,10 @@
           "dob": "1999-05-05",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
           ],
-          "roles_source": "reep",
-          "reep_position": "Attacking Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 8,
@@ -11561,10 +11567,10 @@
           "dob": "1994-02-13",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "ST"
           ],
-          "roles_source": "reep",
-          "reep_position": "Second Striker"
+          "roles_source": "manual"
         },
         {
           "no": 11,
@@ -11689,10 +11695,10 @@
           "dob": "1999-01-19",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "ST"
           ],
-          "roles_source": "reep",
-          "reep_position": "Centre-Forward"
+          "roles_source": "manual"
         },
         {
           "no": 19,
@@ -12080,10 +12086,10 @@
           "dob": "1990-02-19",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "ST"
           ],
-          "roles_source": "reep",
-          "reep_position": "Centre-Forward"
+          "roles_source": "manual"
         },
         {
           "no": 18,
@@ -13123,8 +13129,10 @@
           "dob": "1999-08-31",
           "pos_raw": "MF",
           "roles": [
-            "CM"
-          ]
+            "WIN",
+            "ST"
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 8,
@@ -13165,8 +13173,10 @@
           "dob": "1994-02-10",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
-          ]
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 11,
@@ -14709,10 +14719,10 @@
           "dob": "1994-10-18",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
           ],
-          "roles_source": "reep",
-          "reep_position": "Central Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 8,
@@ -14769,10 +14779,10 @@
           "dob": "1995-02-22",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
           ],
-          "roles_source": "reep",
-          "reep_position": "Central Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 12,
@@ -15930,8 +15940,10 @@
           "dob": "1992-07-08",
           "pos_raw": "FW",
           "roles": [
-            "WIN"
-          ]
+            "WIN",
+            "ST"
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 8,
@@ -15972,8 +15984,10 @@
           "dob": "1992-08-10",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
-          ]
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 11,
@@ -16098,8 +16112,10 @@
           "dob": "2001-02-19",
           "pos_raw": "MF",
           "roles": [
+            "WIN",
             "CM"
-          ]
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 20,
@@ -17119,10 +17135,10 @@
           "dob": "1997-02-14",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "ST"
           ],
-          "roles_source": "reep",
-          "reep_position": "Centre-Forward"
+          "roles_source": "manual"
         },
         {
           "no": 8,
@@ -17369,10 +17385,10 @@
           "dob": "2000-12-04",
           "pos_raw": "FW",
           "roles": [
+            "WIN",
             "ST"
           ],
-          "roles_source": "reep",
-          "reep_position": "Centre-Forward"
+          "roles_source": "manual"
         },
         {
           "no": 24,

@@ -3,6 +3,48 @@
 
   "SEMENYO Antoine":  ["WIN", "ST"],
 
-  "_wrong_reep_match_block": "reep matched the wrong player with the same DOB+lastname. Excel POS was right.",
-  "ARAUJO Ronald":    ["CB"]
+  "_wrong_reep_match_block": "reep matched the wrong player with the same DOB+lastname.",
+  "ARAUJO Ronald":    ["CB"],
+
+  "_winger_amendments_block": "Players who can play winger but were tagged as CM/ST only.",
+
+  "MBAPPE Kylian":           ["WIN", "ST"],
+  "SON Heungmin":            ["WIN", "ST"],
+
+  "DEMBELE Ousmane":         ["WIN", "ST"],
+  "THURAM Marcus":           ["WIN", "ST"],
+  "CHERKI Rayan":            ["WIN", "CM"],
+
+  "MUSIALA Jamal":           ["WIN", "CM"],
+  "WIRTZ Florian":           ["WIN", "CM"],
+
+  "MALEN Donyell":           ["WIN", "ST"],
+  "KLUIVERT Justin":         ["WIN", "CM"],
+  "DEPAY Memphis":           ["WIN", "ST"],
+
+  "KRAMARIC Andrej":         ["WIN", "ST"],
+  "PASALIC Mario":           ["WIN", "CM"],
+
+  "HLOZEK Adam":             ["WIN", "ST"],
+  "SULC Pavel":              ["WIN", "CM"],
+
+  "BAUMGARTNER Christoph":   ["WIN", "CM"],
+  "SABITZER Marcel":         ["WIN", "CM"],
+  "ARNAUTOVIC Marko":        ["WIN", "ST"],
+
+  "McGINN John":             ["WIN", "CM"],
+  "CHRISTIE Ryan":           ["WIN", "CM"],
+
+  "EMBOLO Breel":            ["WIN", "ST"],
+  "AMDOUNI Zeki":            ["WIN", "ST"],
+
+  "LEE Kangin":              ["WIN", "CM"],
+  "LEE Jaesung":             ["WIN", "CM"],
+
+  "MOUSA ALTAMARI":          ["WIN", "ST"],
+
+  "ALMIRON Miguel":          ["WIN", "CM"],
+  "SOSA Ramon":              ["WIN", "ST"],
+
+  "BARBAROUSES Kosta":       ["WIN", "ST"]
 }
