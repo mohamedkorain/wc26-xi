@@ -1590,10 +1590,9 @@
           "dob": "2001-05-26",
           "pos_raw": "MF",
           "roles": [
-            "WIN"
+            "FB"
           ],
-          "roles_source": "reep",
-          "reep_position": "Left Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 23,
@@ -2161,10 +2160,9 @@
           "dob": "1993-06-20",
           "pos_raw": "DF",
           "roles": [
-            "CB"
+            "FB"
           ],
-          "roles_source": "reep",
-          "reep_position": "Centre-Back"
+          "roles_source": "manual"
         },
         {
           "no": 6,
@@ -2706,10 +2704,10 @@
           "dob": "1991-07-15",
           "pos_raw": "DF",
           "roles": [
-            "CB"
+            "CB",
+            "FB"
           ],
-          "roles_source": "reep",
-          "reep_position": "Centre-Back"
+          "roles_source": "manual"
         },
         {
           "no": 14,
@@ -3352,8 +3350,9 @@
           "dob": "1988-05-20",
           "pos_raw": "DF",
           "roles": [
-            "FB"
-          ]
+            "CB"
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 3,
@@ -3706,8 +3705,9 @@
           "dob": "2000-06-05",
           "pos_raw": "DF",
           "roles": [
-            "FB"
-          ]
+            "CB"
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 26,
@@ -4165,8 +4165,10 @@
           "dob": "2002-01-23",
           "pos_raw": "DF",
           "roles": [
-            "CB"
-          ]
+            "CB",
+            "FB"
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 5,
@@ -4698,10 +4700,9 @@
           "dob": "2002-03-29",
           "pos_raw": "FW",
           "roles": [
-            "WIN"
+            "ST"
           ],
-          "roles_source": "reep",
-          "reep_position": "Left Winger"
+          "roles_source": "manual"
         },
         {
           "no": 12,
@@ -15247,10 +15248,10 @@
           "dob": "1999-02-25",
           "pos_raw": "DF",
           "roles": [
-            "WIN"
+            "WIN",
+            "FB"
           ],
-          "roles_source": "reep",
-          "reep_position": "Right Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 16,
@@ -15407,8 +15408,9 @@
           "dob": "2004-12-29",
           "pos_raw": "DF",
           "roles": [
-            "ST"
-          ]
+            "FB"
+          ],
+          "roles_source": "manual"
         },
         {
           "no": 26,
