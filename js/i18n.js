@@ -10,7 +10,7 @@
 const DICT = {
   en: {
     'brand.mark':     'HALLO AMRIKA',
-    'hero.eyebrow':   'A Saba7o Koraa Production',
+    'hero.eyebrow':   'A Saba7o Korah Production',
     'hero.tag':       'Build your fantasy World Cup XI. Spin the randomizer, draft 12 players, climb the leaderboard.<br/><b>Jun 11 – Jul 19, 2026.</b>',
     'hero.loading':   'Loading…',
     'cta.build':      'Build my squad →',
@@ -77,7 +77,7 @@ const DICT = {
     'filter.arab':    'Arab only',
     'pool.more':      'Show {n} more · {rest} remaining',
 
-    'footer.line1':   'HALLO AMRIKA · A Saba7o Koraa Production',
+    'footer.line1':   'HALLO AMRIKA · A Saba7o Korah Production',
     'footer.line2':   'Hosted by Nsoo7y, Marei & Orfy',
 
     // build page

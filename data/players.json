@@ -13538,10 +13538,10 @@
           "dob": "1994-09-08",
           "pos_raw": "MF",
           "roles": [
-            "CM"
+            "CM",
+            "WIN"
           ],
-          "roles_source": "reep",
-          "reep_position": "Attacking Midfield"
+          "roles_source": "manual"
         },
         {
           "no": 9,
