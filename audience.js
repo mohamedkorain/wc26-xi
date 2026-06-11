@@ -309,12 +309,23 @@ function renderHeroStatus() {
     return;
   }
   const diffMs = lock - now;
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const totalMins = Math.floor(diffMs / (1000 * 60));
+  const days = Math.floor(totalMins / (60 * 24));
+  const hours = Math.floor((totalMins % (60 * 24)) / 60);
+  const mins = totalMins % 60;
+  const isAr = document.documentElement.lang === 'ar';
+  let remaining;
+  if (days > 0) {
+    remaining = isAr ? `${days} يوم ${hours} ساعة` : `${days}d ${hours}h`;
+  } else if (hours > 0) {
+    remaining = isAr ? `${hours} ساعة ${mins} دقيقة` : `${hours}h ${mins}m`;
+  } else {
+    remaining = isAr ? `${mins} دقيقة` : `${mins}m`;
+  }
   const lockStr = lock.toLocaleString();
-  el.textContent = (document.documentElement.lang === 'ar')
-    ? `التشكيلات مفتوحة · تقفل خلال ${days} يوم ${hours} ساعة (${lockStr})`
-    : `Submissions open · locks in ${days}d ${hours}h (${lockStr})`;
+  el.textContent = isAr
+    ? `التشكيلات مفتوحة · تقفل خلال ${remaining} (${lockStr})`
+    : `Submissions open · locks in ${remaining} (${lockStr})`;
 }
 
 async function renderLeaderboard(reset = true) {
