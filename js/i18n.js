@@ -34,6 +34,7 @@ const DICT = {
     'lb.entries.n':   '{n} entries',
     'lb.loadmore':    'Load {n} more · {rest} remaining',
     'lb.jumpme':      '🎯 Jump to my rank',
+    'lb.lockedmsg':   '🔒 Standings unlock when the tournament kicks off. Build your squad and your rank will appear once scoring begins.',
 
     'squad.title':    'Squad · 4-4-2',
     'squad.note':     '12 picks per squad. 11 active starters earn points; wildcard sits on the bench. At least one player must be from an Arab nation.',
@@ -167,6 +168,7 @@ const DICT = {
     'lb.entries.n':   '{n} تشكيلة',
     'lb.loadmore':    'حمّل {n} كمان · باقي {rest}',
     'lb.jumpme':      '🎯 شوف ترتيبي',
+    'lb.lockedmsg':   '🔒 الترتيب هيظهر لما البطولة تبدأ. ابني تشكيلتك دلوقتي وترتيبك هيبان أول ما النقاط تبدأ.',
 
     'squad.title':    'التشكيلة · ٤-٤-٢',
     'squad.note':     'بتختار ١٢ لاعب في تشكيلتك. الـ١١ الأساسيين اللي بيجمعوا لك النقاط، وفيه لاعب احتياطي واحد على الدكة يعتبر ورقتك الرابحة. وطبعًا لازم يكون عندك لاعب واحد على الأقل من منتخب عربي.',

@@ -35,7 +35,8 @@ async function boot() {
   // Render above-the-fold stuff IMMEDIATELY
   renderHeroStatus();
   renderMySquad();
-  renderLeaderboard();
+  // Leaderboard hidden pre-tournament; see index.html lb-locked-card
+  // renderLeaderboard();
 
   // SLOW PATH: player pool waits for players.json (background)
   playersP.then(players => {
@@ -69,10 +70,7 @@ async function boot() {
   // Re-render leaderboard if user just set their display name
   window.addEventListener('displaynamechange', () => renderLeaderboard());
 
-  // Wire up the "Jump to my rank" button + render the My Rank card
-  if (state.myUserId) {
-    await renderMyRankCard();
-  }
+  // Leaderboard + rank card hidden pre-tournament
 }
 
 async function renderMyRankCard() {

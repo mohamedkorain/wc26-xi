@@ -557,6 +557,17 @@ input { font-family: inherit; }
   color: var(--text-dim); font-size: 13px; padding: 18px; text-align: center;
   background: var(--panel); border: 1px dashed var(--line); border-radius: 12px;
 }
+.lb-locked-card {
+  background: linear-gradient(135deg, var(--panel-2) 0%, var(--panel) 100%);
+  border: 1.5px dashed var(--accent-2);
+  border-radius: 14px;
+  padding: 28px 24px;
+  text-align: center;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+}
 
 /* ── player pool ─────────────────────────── */
 .pool-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
