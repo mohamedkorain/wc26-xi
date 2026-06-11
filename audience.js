@@ -60,6 +60,43 @@ async function boot() {
   });
   // Re-render leaderboard if user just set their display name
   window.addEventListener('displaynamechange', () => renderLeaderboard());
+
+  // Wire up the "Jump to my rank" button (only if signed in)
+  const jumpBtn = document.getElementById('jumpToMeBtn');
+  if (state.myUserId && jumpBtn) {
+    const { data: myRank } = await supabase.rpc('user_rank', {
+      p_league_id: HALO_LEAGUE_ID,
+      p_user_id: state.myUserId,
+    });
+    if (myRank) {
+      jumpBtn.style.display = '';
+      jumpBtn.onclick = () => jumpToMyRank(myRank);
+    }
+  }
+}
+
+async function jumpToMyRank(rank) {
+  // Load enough pages to cover the user's rank
+  const neededPages = Math.ceil(rank / LB_PAGE_SIZE);
+  state.lbRows = [];
+  state.lbLoaded = 0;
+  // Fetch fresh count
+  const { data: cnt } = await supabase.rpc('entry_count', { p_league_id: HALO_LEAGUE_ID });
+  state.lbTotal = cnt ?? 0;
+  document.getElementById('lbStats').textContent =
+    state.lbTotal === 1 ? t('lb.entries.one') : t('lb.entries.n', { n: state.lbTotal });
+  document.getElementById('lbTable').innerHTML = '';
+  // Loop loading pages
+  for (let p = 0; p < neededPages; p++) {
+    await renderLeaderboard(false);
+  }
+  // Scroll to my row + flash highlight
+  const me = document.querySelector('.lb-row.me');
+  if (me) {
+    me.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    me.classList.add('flash');
+    setTimeout(() => me.classList.remove('flash'), 1800);
+  }
 }
 
 function renderPoolStats() {

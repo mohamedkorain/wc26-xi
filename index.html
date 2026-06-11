@@ -74,7 +74,10 @@
   <div class="strip-inner">
     <div class="pool-head">
       <h2 class="strip-title" style="margin:0;" data-i18n="lb.title">Leaderboard</h2>
-      <div class="pool-stats" id="lbStats">0 entries</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button id="jumpToMeBtn" class="hdr-btn" style="display:none;font-size:11px;padding:6px 10px;" data-i18n="lb.jumpme">🎯 Jump to my rank</button>
+        <div class="pool-stats" id="lbStats">0 entries</div>
+      </div>
     </div>
     <div class="lb-head">
       <div>#</div><div data-i18n="lb.team">TEAM NAME</div><div data-i18n="lb.owner">OWNER</div><div style="text-align:right;" data-i18n="lb.pts">PTS</div>

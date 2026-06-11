@@ -509,6 +509,13 @@ input { font-family: inherit; }
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
 }
 .lb-row.me { border-color: var(--accent); background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%); }
+.lb-row.flash {
+  animation: rowFlash 1.8s ease-out;
+}
+@keyframes rowFlash {
+  0%   { box-shadow: 0 0 0 4px var(--accent-2); transform: scale(1.02); }
+  100% { box-shadow: 0 0 0 0 transparent;       transform: scale(1); }
+}
 .lb-rank { font-weight: 800; color: var(--accent); font-size: 16px; }
 .lb-team { font-weight: 700; }
 .lb-team .lb-form { color: var(--text-dim); font-weight: 400; font-size: 11px; margin-left: 6px; }
