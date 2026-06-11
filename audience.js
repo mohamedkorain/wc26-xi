@@ -43,6 +43,10 @@ async function boot() {
   const sharedSquadId = new URLSearchParams(location.search).get('squad');
   if (sharedSquadId) openSquadModal(sharedSquadId);
 
+  renderCalendar();
+  // Update countdowns every minute
+  setInterval(renderCalendar, 60_000);
+
   // Players pool — background load
   hydrateFilters();
   renderPoolStats();
@@ -236,6 +240,53 @@ function displayLast(item) {
 function flagFromCode(code) {
   const team = state.teams.find(t => t.code === code);
   return team?.flag || '';
+}
+
+// WC26 round schedule — kickoff of the FIRST match of each round
+// (UTC ISO timestamps). Source: FIFA published schedule.
+// Adjust if FIFA tweaks times — easy 1-line edits below.
+const TOURNAMENT_SCHEDULE = [
+  { key: 'gw1',     dateUTC: '2026-06-11T19:00:00Z' }, // Mexico opener, Azteca
+  { key: 'gw2',     dateUTC: '2026-06-14T16:00:00Z' }, // MD2 first match
+  { key: 'gw3',     dateUTC: '2026-06-17T16:00:00Z' }, // MD3 first match
+  { key: 'r32',     dateUTC: '2026-06-28T16:00:00Z' },
+  { key: 'r16',     dateUTC: '2026-07-04T16:00:00Z' },
+  { key: 'qf',      dateUTC: '2026-07-09T20:00:00Z' },
+  { key: 'sf',      dateUTC: '2026-07-14T20:00:00Z' },
+  { key: 'final',   dateUTC: '2026-07-19T19:00:00Z' },
+];
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  if (!grid) return;
+  const now = Date.now();
+  grid.innerHTML = TOURNAMENT_SCHEDULE.map(row => {
+    const ts = new Date(row.dateUTC).getTime();
+    const isPast = ts <= now;
+    const cairo = new Date(ts).toLocaleString('en-GB', {
+      timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+    });
+    const remaining = formatRemaining(ts - now);
+    const cls = isPast ? 'cal-row past' : 'cal-row';
+    return `
+      <div class="${cls}">
+        <div class="cal-name">${t('cal.round.' + row.key)}</div>
+        <div class="cal-date">${cairo} <span class="cal-tz">Cairo</span></div>
+        <div class="cal-cd">${isPast ? '<span class="cal-locked">🔒 ' + t('cal.locked') + '</span>' : '⏱️ ' + remaining}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function formatRemaining(ms) {
+  if (ms <= 0) return '';
+  const totalMin = Math.floor(ms / 60_000);
+  const d = Math.floor(totalMin / (60 * 24));
+  const h = Math.floor((totalMin % (60 * 24)) / 60);
+  const m = totalMin % 60;
+  if (d > 0) return `${d}${t('cal.d')} ${h}${t('cal.h')}`;
+  if (h > 0) return `${h}${t('cal.h')} ${m}${t('cal.m')}`;
+  return `${m}${t('cal.m')}`;
 }
 
 function renderHeroStatus() {

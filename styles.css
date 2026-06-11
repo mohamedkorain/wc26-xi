@@ -557,6 +557,27 @@ input { font-family: inherit; }
   color: var(--text-dim); font-size: 13px; padding: 18px; text-align: center;
   background: var(--panel); border: 1px dashed var(--line); border-radius: 12px;
 }
+/* ── tournament calendar ─────────────────────────────────────── */
+.cal-grid {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.cal-row {
+  display: grid; grid-template-columns: 1fr 1.2fr auto; gap: 14px; align-items: center;
+  padding: 12px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  transition: border-color 0.1s;
+}
+.cal-row:hover { border-color: var(--accent); }
+.cal-row.past { opacity: 0.55; }
+.cal-name { font-weight: 800; font-size: 15px; }
+.cal-date { color: var(--text-dim); font-size: 13px; }
+.cal-tz   { font-size: 10px; opacity: 0.6; letter-spacing: 1px; margin-left: 4px; }
+.cal-cd   { font-weight: 700; font-size: 13px; color: var(--accent); text-align: right; min-width: 110px; }
+.cal-locked { color: var(--text-dim); font-weight: 600; }
+@media (max-width: 600px) {
+  .cal-row { grid-template-columns: 1fr; gap: 4px; padding: 12px; }
+  .cal-cd  { text-align: left; }
+}
+
 .lb-locked-card {
   background: linear-gradient(135deg, var(--panel-2) 0%, var(--panel) 100%);
   border: 1.5px dashed var(--accent-2);
