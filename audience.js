@@ -38,6 +38,11 @@ async function boot() {
   // Leaderboard hidden pre-tournament; see index.html lb-locked-card
   // renderLeaderboard();
 
+  // If the visitor arrived via a share link (?squad=<entryId>), pop that
+  // squad's viewer modal right away — no scrolling, no hunting.
+  const sharedSquadId = new URLSearchParams(location.search).get('squad');
+  if (sharedSquadId) openSquadModal(sharedSquadId);
+
   // Players pool — background load
   hydrateFilters();
   renderPoolStats();
