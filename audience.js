@@ -44,8 +44,9 @@ async function boot() {
   if (sharedSquadId) openSquadModal(sharedSquadId);
 
   renderCalendar();
-  // Update countdowns every minute
-  setInterval(renderCalendar, 60_000);
+  // Update countdowns every minute (so the page flips to "locked" UX
+  // without a refresh if the user is still here when the deadline hits)
+  setInterval(() => { renderCalendar(); renderHeroStatus(); }, 60_000);
 
   // Players pool — background load
   hydrateFilters();
@@ -306,6 +307,17 @@ function renderHeroStatus() {
   if (now >= lock) {
     el.textContent = '🔒 ' + (t('spin.locked')?.replace('🔒 ','') || 'Submissions locked');
     document.getElementById('ctaBuild').style.display = 'none';
+    // Show the lock banner at the top of the page
+    const banner = document.getElementById('lockBanner');
+    if (banner) {
+      banner.textContent = t('lock.banner');
+      banner.style.display = 'block';
+    }
+    // For signed-out visitors, replace "Sign in" with locked indicator (spares Resend emails)
+    if (!state.myUserId) {
+      const slot = document.getElementById('authSlot');
+      if (slot) slot.innerHTML = `<span class="hdr-btn" style="opacity:.6;cursor:not-allowed;">${t('lock.signin')}</span>`;
+    }
     return;
   }
   const diffMs = lock - now;
