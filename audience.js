@@ -61,17 +61,41 @@ async function boot() {
   // Re-render leaderboard if user just set their display name
   window.addEventListener('displaynamechange', () => renderLeaderboard());
 
-  // Wire up the "Jump to my rank" button (only if signed in)
+  // Wire up the "Jump to my rank" button + render the My Rank card
+  if (state.myUserId) {
+    await renderMyRankCard();
+  }
+}
+
+async function renderMyRankCard() {
+  const card = document.getElementById('myRankCard');
   const jumpBtn = document.getElementById('jumpToMeBtn');
-  if (state.myUserId && jumpBtn) {
-    const { data: myRank } = await supabase.rpc('user_rank', {
-      p_league_id: HALO_LEAGUE_ID,
-      p_user_id: state.myUserId,
-    });
-    if (myRank) {
-      jumpBtn.style.display = '';
-      jumpBtn.onclick = () => jumpToMyRank(myRank);
-    }
+  if (!card) return;
+
+  const [rankRes, entryRes] = await Promise.all([
+    supabase.rpc('user_rank', { p_league_id: HALO_LEAGUE_ID, p_user_id: state.myUserId }),
+    supabase.from('leaderboard_totals')
+      .select('team_name, formation, total_points')
+      .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle(),
+  ]);
+  const rank = rankRes.data;
+  const entry = entryRes.data;
+  if (!rank || !entry) { card.style.display = 'none'; if (jumpBtn) jumpBtn.style.display = 'none'; return; }
+
+  card.style.display = '';
+  card.innerHTML = `
+    <div class="mr-label">${t('mysquad.title')}</div>
+    <div class="mr-row">
+      <div class="mr-rank">#${rank}</div>
+      <div class="mr-team">${escapeHtml(entry.team_name)}<span class="mr-form">· ${entry.formation}</span></div>
+      <div class="mr-pts">${entry.total_points}</div>
+    </div>
+  `;
+  card.onclick = () => jumpToMyRank(rank);
+
+  if (jumpBtn) {
+    jumpBtn.style.display = '';
+    jumpBtn.onclick = () => jumpToMyRank(rank);
   }
 }
 
