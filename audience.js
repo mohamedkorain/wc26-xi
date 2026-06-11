@@ -19,44 +19,52 @@ let visible = PAGE_SIZE;
 
 async function boot() {
   mountAuthWidget(document.getElementById('authSlot'));
-  const [teams, players, league, user] = await Promise.all([
+
+  // FAST PATH: things needed for hero + leaderboard + My Squad — load these first.
+  // The 700KB players.json is only needed for the pool browser below the fold.
+  const playersP = fetch('data/players.json').then(r => r.json());
+  const [teams, league, user] = await Promise.all([
     fetch('data/teams.json').then(r => r.json()),
-    fetch('data/players.json').then(r => r.json()),
     supabase.from('leagues').select('*').eq('id', HALO_LEAGUE_ID).maybeSingle(),
     currentUser(),
   ]);
   state.teams = teams.teams;
-  for (const n of players.nations) {
-    const t = state.teams.find(x => x.name === n.name);
-    for (const p of n.players) {
-      state.players.push({
-        ...p,
-        nation: n.name,
-        nation_code: t?.code || '',
-        flag: t?.flag || '',
-        category: n.category,
-        arab: n.arab,
-      });
-    }
-  }
   state.league = league.data;
   state.myUserId = user?.id || null;
 
-  hydrateFilters();
-  renderPoolStats();
+  // Render above-the-fold stuff IMMEDIATELY
   renderHeroStatus();
   renderMySquad();
   renderLeaderboard();
-  renderPool();
-  wireFilters();
-  // Re-render dynamic strings on language change
-  window.addEventListener('langchange', () => {
+
+  // SLOW PATH: player pool waits for players.json (background)
+  playersP.then(players => {
+    for (const n of players.nations) {
+      const t = state.teams.find(x => x.name === n.name);
+      for (const p of n.players) {
+        state.players.push({
+          ...p,
+          nation: n.name,
+          nation_code: t?.code || '',
+          flag: t?.flag || '',
+          category: n.category,
+          arab: n.arab,
+        });
+      }
+    }
     hydrateFilters();
     renderPoolStats();
+    renderPool();
+    wireFilters();
+  });
+  // Re-render dynamic strings on language change (only those that are ready)
+  window.addEventListener('langchange', () => {
+    if (state.players.length) hydrateFilters();
+    if (state.players.length) renderPoolStats();
     renderHeroStatus();
     renderMySquad();
     renderLeaderboard();
-    renderPool();
+    if (state.players.length) renderPool();
   });
   // Re-render leaderboard if user just set their display name
   window.addEventListener('displaynamechange', () => renderLeaderboard());
