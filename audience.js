@@ -77,7 +77,7 @@ async function boot() {
     if (state.players.length) renderPoolStats();
     renderHeroStatus();
     renderMySquad();
-    renderLeaderboard();
+    renderCalendar();
     if (state.players.length) renderPool();
   });
   // Re-render leaderboard if user just set their display name
@@ -259,19 +259,24 @@ const TOURNAMENT_SCHEDULE = [
 function renderCalendar() {
   const grid = document.getElementById('calGrid');
   if (!grid) return;
+  const isArabic = document.documentElement.lang === 'ar';
+  const locale = isArabic ? 'ar-EG' : 'en-GB';
+  const tzLabel = isArabic ? 'القاهرة' : 'Cairo';
   const now = Date.now();
   grid.innerHTML = TOURNAMENT_SCHEDULE.map(row => {
     const ts = new Date(row.dateUTC).getTime();
     const isPast = ts <= now;
-    const cairo = new Date(ts).toLocaleString('en-GB', {
-      timeZone: 'Africa/Cairo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+    const cairo = new Date(ts).toLocaleString(locale, {
+      timeZone: 'Africa/Cairo',
+      weekday: 'short', day: 'numeric', month: 'short',
+      hour: '2-digit', minute: '2-digit',
     });
     const remaining = formatRemaining(ts - now);
     const cls = isPast ? 'cal-row past' : 'cal-row';
     return `
       <div class="${cls}">
         <div class="cal-name">${t('cal.round.' + row.key)}</div>
-        <div class="cal-date">${cairo} <span class="cal-tz">Cairo</span></div>
+        <div class="cal-date">${cairo} <span class="cal-tz">${tzLabel}</span></div>
         <div class="cal-cd">${isPast ? '<span class="cal-locked">🔒 ' + t('cal.locked') + '</span>' : '⏱️ ' + remaining}</div>
       </div>
     `;
