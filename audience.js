@@ -5,7 +5,7 @@ import { t } from './js/i18n.js';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
-const LB_PAGE_SIZE = 100;
+const LB_PAGE_SIZE = 20;
 
 const state = {
   teams: [],
