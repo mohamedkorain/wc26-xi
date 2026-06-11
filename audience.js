@@ -38,6 +38,10 @@ async function boot() {
   // Leaderboard hidden pre-tournament; see index.html lb-locked-card
   // renderLeaderboard();
 
+  // Players pool — background load
+  hydrateFilters();
+  renderPoolStats();
+
   // SLOW PATH: player pool waits for players.json (background)
   playersP.then(players => {
     for (const n of players.nations) {
@@ -187,8 +191,9 @@ async function renderMySquad() {
     </div>
   ` : '';
 
+  const squadUrl = `https://halloamrika.saba7okorah.com/?squad=${entry.id}`;
   const shareText = encodeURIComponent(
-    `🏆 I built my HALLO AMRIKA fantasy XI: "${entry.team_name}"\n\nBuild yours: https://halloamrika.saba7okorah.com`
+    `🏆 I built my HALLO AMRIKA fantasy XI: "${entry.team_name}"\n\nSee my squad + build yours: ${squadUrl}`
   );
 
   document.getElementById('mySquadCard').innerHTML = `

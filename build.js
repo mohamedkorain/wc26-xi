@@ -572,7 +572,9 @@ async function submit() {
       category: item.nation.category,
     })),
   };
-  const { error } = await supabase.from('entries').upsert(payload, { onConflict: 'league_id,user_id' });
+  const { data: upserted, error } = await supabase.from('entries')
+    .upsert(payload, { onConflict: 'league_id,user_id' })
+    .select('id').single();
   if (error) {
     console.error('[wc26] submit error:', error);
     msg.style.color = 'var(--danger)';
@@ -585,14 +587,17 @@ async function submit() {
   }
   msg.style.color = 'var(--accent)';
   msg.innerHTML = t('submit.saved', { at: new Date(state.league.locked_at).toLocaleString() });
-  showSubmitConfirmation(name);
+  showSubmitConfirmation(name, upserted?.id);
 }
 
-function showSubmitConfirmation(teamName) {
+function showSubmitConfirmation(teamName, entryId) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
+  const squadUrl = entryId
+    ? `https://halloamrika.saba7okorah.com/?squad=${entryId}`
+    : `https://halloamrika.saba7okorah.com`;
   const shareText = encodeURIComponent(
-    `🏆 I built my HALLO AMRIKA fantasy XI: "${teamName}"\n\nBuild yours: https://halloamrika.saba7okorah.com`
+    `🏆 I built my HALLO AMRIKA fantasy XI: "${teamName}"\n\nSee my squad + build yours: ${squadUrl}`
   );
   modal.innerHTML = `
     <div class="modal-card">
@@ -612,7 +617,7 @@ function showSubmitConfirmation(teamName) {
   document.body.appendChild(modal);
   document.getElementById('modalCloseBtn').onclick = () => modal.remove();
   document.getElementById('modalCopyBtn').onclick = () => {
-    navigator.clipboard.writeText(`I built my HALLO AMRIKA XI "${teamName}"! Build yours: https://halloamrika.saba7okorah.com`);
+    navigator.clipboard.writeText(`I built my HALLO AMRIKA XI "${teamName}"! See my squad + build yours: ${squadUrl}`);
     document.getElementById('modalCopyBtn').textContent = t('share.copied');
   };
 }
