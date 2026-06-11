@@ -294,11 +294,11 @@ async function renderLeaderboard(reset = true) {
   let profiles = {};
   if (newIds.length) {
     const { data: profs } = await supabase
-      .from('profiles').select('id, email, display_name').in('id', newIds);
+      .from('profile_displays').select('id, display_name').in('id', newIds);
     for (const p of profs || []) profiles[p.id] = p;
   }
   for (const r of rows || []) {
-    r.ownerName = profiles[r.user_id]?.display_name || profiles[r.user_id]?.email || '—';
+    r.ownerName = profiles[r.user_id]?.display_name || '—';
   }
 
   state.lbRows.push(...(rows || []));
