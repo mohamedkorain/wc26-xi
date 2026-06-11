@@ -138,6 +138,8 @@ const DICT = {
     'login.sending':  'Sending…',
     'login.sent':     'Sent! Check {email} for a sign-in link.',
     'login.guesting': 'Creating guest session…',
+    'login.google':   'Sign in with Google',
+    'login.or':       'OR',
   },
   ar: {
     'brand.mark':     'هاللو امريكا',
@@ -268,6 +270,8 @@ const DICT = {
     'login.sending':  'جاري الإرسال…',
     'login.sent':     'اتبعت! شوف إيميل {email} علشان تلاقي الرابط.',
     'login.guesting': 'بنفتح جلسة ضيف…',
+    'login.google':   'دخول بـ Google',
+    'login.or':       'أو',
   },
 };
 
