@@ -531,13 +531,20 @@ const FIXTURE_NATION_ALIAS = {
   'Turkey':                'Türkiye',
   'United States':         'USA',
 };
+// /team.html is the FORWARD-LOOKING view (next gameweek's squad + fixtures).
+// So for each player we deliberately skip fixtures inside the in-progress
+// gameweek and surface their MD2+ fixture instead. The cutoff is the
+// transfer-window close (= MD2 first kickoff). If the player's nation has
+// no fixture beyond that (eliminated early), fall back to their nearest
+// upcoming match so the row isn't blank.
 function nextGameFor(nation) {
   const fxNation = FIXTURE_NATION_ALIAS[nation] || nation;
-  const now = new Date();
-  const upcoming = state.fixtures.find(f =>
-    (f.home === fxNation || f.away === fxNation) &&
-    new Date(f.date) > now
-  );
+  const txClose = state.league?.transfers_open_until
+    ? new Date(state.league.transfers_open_until)
+    : new Date();
+  const isNation = f => f.home === fxNation || f.away === fxNation;
+  const upcoming = state.fixtures.find(f => isNation(f) && new Date(f.date) >= txClose)
+    || state.fixtures.find(f => isNation(f) && new Date(f.date) > new Date());
   if (!upcoming) return null;
   const opponent = upcoming.home === fxNation ? upcoming.away : upcoming.home;
   return { label: `vs ${opponent}`, live: false };
