@@ -161,6 +161,26 @@
   </div>
 </section>
 
+<!-- Player Pool — hidden but kept in the DOM so audience.js (which still
+     queries #poolList/#poolStats/etc.) doesn't throw on null elements.
+     The Top Players widget + transfer modal replace its UX. -->
+<section class="strip" style="display:none;">
+  <div class="strip-inner">
+    <div class="pool-head">
+      <h2 class="strip-title" data-i18n="pool.title">Player Pool</h2>
+      <div class="pool-stats" id="poolStats"></div>
+    </div>
+    <div class="pool-filters">
+      <input id="filterSearch" />
+      <select id="filterCat"></select>
+      <select id="filterNation"></select>
+      <select id="filterRole"><option value=""></option></select>
+      <label class="pool-toggle"><input type="checkbox" id="filterArab" /></label>
+    </div>
+    <div class="pool-list" id="poolList"></div>
+    <div class="pool-more" id="poolMore"></div>
+  </div>
+</section>
 
 <footer class="footer">
   <div data-i18n="footer.line1">HALLO AMRIKA · A Saba7o Korah Production</div>
