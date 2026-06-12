@@ -1036,24 +1036,37 @@ input { font-family: inherit; }
   margin: 0 8px;
 }
 .hdr-tab {
-  padding: 7px 14px;
-  border-radius: 8px;
+  padding: 10px 22px;
+  border-radius: 10px;
   color: var(--text-dim);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   text-decoration: none;
-  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.3px;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
   white-space: nowrap;
+  border: 1px solid transparent;
 }
-.hdr-tab:hover { color: var(--text); background: var(--bg-2); }
+.hdr-tab:hover { color: var(--text); background: var(--bg-2); transform: translateY(-1px); }
 .hdr-tab.active {
-  background: linear-gradient(135deg, rgba(106,76,255,0.18), rgba(0,212,255,0.12));
+  background: linear-gradient(135deg, rgba(106,76,255,0.28), rgba(0,212,255,0.18));
   color: var(--text);
-  border: 1px solid rgba(106,76,255,0.35);
+  border: 1px solid rgba(106,76,255,0.55);
+  box-shadow: 0 0 14px rgba(106,76,255,0.25);
 }
 @media (max-width: 640px) {
-  .hdr-tabs { gap: 2px; margin: 0 4px; }
-  .hdr-tab { padding: 6px 9px; font-size: 11px; }
+  .hdr-tabs { gap: 4px; margin: 0 6px; }
+  .hdr-tab { padding: 8px 14px; font-size: 13px; }
+}
+
+/* "This is your team for the next round" header on /team.html */
+.team-next-round {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 4px 0 16px;
+  letter-spacing: 0.3px;
 }
 
 /* ──────── Transfer bar (above pitch on /team.html) ──────── */
