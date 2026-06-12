@@ -37,6 +37,7 @@ async function boot() {
   renderMySquad();
   // Leaderboard live (Phase 3 scoring deployed 2026-06-12)
   renderLeaderboard();
+  renderTopPlayers();
 
   // If the visitor arrived via a share link (?squad=<entryId>), pop that
   // squad's viewer modal right away — no scrolling, no hunting.
@@ -405,6 +406,67 @@ async function renderLeaderboard(reset = true) {
   }
   const btn = document.getElementById('lbLoadMore');
   if (btn) btn.onclick = () => renderLeaderboard(false);
+}
+
+// Top players widget on the homepage. Aggregates per-player stats from the
+// scores.breakdown JSONB across all entries (one match per player counted via
+// a (player, match_date) Set dedup, since many entries picked the same player).
+async function renderTopPlayers() {
+  const board = document.getElementById('topPlayersBoard');
+  if (!board) return;
+  const { data: rows } = await supabase
+    .from('scores')
+    .select('match_date, breakdown')
+    .order('match_date', { ascending: false })
+    .limit(20000);
+  if (!rows || rows.length === 0) return;
+
+  const seen = new Set();
+  const agg = {};
+  for (const r of rows) {
+    const md = r.match_date;
+    for (const [pname, st] of Object.entries(r.breakdown || {})) {
+      const key = `${pname}::${md}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!agg[pname]) agg[pname] = { goals: 0, assists: 0, cs: 0, mvp: 0, red: 0, points: 0, matches: 0 };
+      const s = st || {};
+      const pts = (s.win||0) + (s.full90||0) + (s.goals||0) + (s.assists||0) + (s.cleanSheet||0) + (s.mvp||0) - (s.red ? 1 : 0);
+      agg[pname].goals    += s.goals    || 0;
+      agg[pname].assists  += s.assists  || 0;
+      agg[pname].cs       += s.cleanSheet || 0;
+      agg[pname].mvp      += s.mvp || 0;
+      agg[pname].red      += s.red ? 1 : 0;
+      agg[pname].points   += pts;
+      agg[pname].matches  += 1;
+    }
+  }
+
+  const top = Object.entries(agg)
+    .map(([name, st]) => ({ name, ...st }))
+    .sort((a, b) => b.points - a.points || b.goals - a.goals)
+    .slice(0, 20);
+  if (top.length === 0) return;
+
+  const flipName = (raw) => {
+    const parts = raw.split(' ');
+    if (parts.length < 2) return raw;
+    return `${parts.slice(1).join(' ')} ${parts[0]}`;
+  };
+  board.innerHTML = top.map((p, i) => `
+    <div class="pl-row">
+      <span class="pl-rank">${i + 1}</span>
+      <span class="pl-name"><b>${escapeHtml(flipName(p.name))}</b><br/><span class="pl-nation">${p.matches} ${p.matches === 1 ? 'match' : 'matches'}</span></span>
+      <span class="pl-icons">
+        ${p.goals   ? `<span title="Goals">⚽ ${p.goals}</span>`    : ''}
+        ${p.assists ? `<span title="Assists">🎁 ${p.assists}</span>` : ''}
+        ${p.cs      ? `<span title="Clean sheets">🧤 ${p.cs}</span>` : ''}
+        ${p.mvp     ? `<span title="MVP">⭐ ${p.mvp}</span>`         : ''}
+        ${p.red     ? `<span title="Red cards" style="color:var(--danger);">🟥 ${p.red}</span>` : ''}
+      </span>
+      <span class="pl-total">${p.points}</span>
+    </div>
+  `).join('');
 }
 
 async function openSquadModal(entryId) {
