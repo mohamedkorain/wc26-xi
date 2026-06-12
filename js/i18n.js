@@ -109,7 +109,7 @@ const DICT = {
     'pos.wild': 'WILD',
     'pos.arab': 'ARAB',
     'rule.win':       "Team win (played 1'+)",
-    'rule.90':        "Bonus if full 90'",
+    'rule.90':        "Bonus if played 90' AND team wins",
     'rule.goal':      'Goal scored',
     'rule.assist':    'Assist',
     'rule.cs':        "Clean sheet (GK/CB/FB/CM, 45'+)",

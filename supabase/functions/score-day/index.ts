@@ -138,13 +138,20 @@ async function processMatch(fixture: any, rosterByNation: Record<string, any[]>)
   while (true) {
     const { data: batch } = await supa
       .from('entries')
-      .select('id, user_id, league_id, xi_json, xi_json_gw1')
+      .select('id, user_id, league_id, xi_json, xi_json_gw1, submitted_at')
       .or(orFilter)
       .range(offset, offset + PAGE - 1);
     if (!batch || batch.length === 0) break;
 
+    const matchKickoff = new Date(fixture.fixture.date);
     const scoresToUpsert: any[] = [];
     for (const entry of batch) {
+      // Late-signup gate: an entry submitted AFTER this match kicked off
+      // didn't exist as a squad when the match happened — they should not
+      // earn retroactive points. This is the only safeguard for users who
+      // join during the transfer window for MD1 matches.
+      if (entry.submitted_at && new Date(entry.submitted_at) > matchKickoff) continue;
+
       // GW1 matches: prefer the snapshot if present (= user transferred).
       // Otherwise use xi_json (unchanged for non-transferred users).
       const effectiveXi = useGw1Snapshot
