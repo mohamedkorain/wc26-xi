@@ -28,10 +28,14 @@ const PITCH_COORDS = [
 const state = {
   user: null,
   entry: null,
+  league: null,
   fixtures: [],
   scores: [],
   nations: {},
+  players: [],   // flat list, loaded lazily on first transfer-modal open
 };
+
+const MAX_TRANSFERS = 2;
 
 (async () => {
   const u = await currentUser();
@@ -42,13 +46,17 @@ const state = {
     return;
   }
 
-  const [entryRes, fixturesRes, teamsRes] = await Promise.all([
+  const [entryRes, leagueRes, fixturesRes, teamsRes] = await Promise.all([
     supabase.from('entries')
-      .select('id, team_name, formation, submitted_at, xi_json')
+      .select('id, team_name, formation, submitted_at, xi_json, transfers_used')
       .eq('league_id', HALO_LEAGUE_ID).eq('user_id', u.id).maybeSingle(),
+    supabase.from('leagues')
+      .select('id, name, locked_at, transfers_open_until')
+      .eq('id', HALO_LEAGUE_ID).maybeSingle(),
     fetch('data/fixtures.json').then(r => r.json()),
     fetch('data/teams.json').then(r => r.json()),
   ]);
+  state.league = leagueRes.data;
 
   if (!entryRes.data) {
     document.getElementById('teamHero').innerHTML = `
@@ -73,7 +81,187 @@ const state = {
   state.scores = scoreRows || [];
 
   renderEntry();
+  renderTransferBar();
 })();
+
+function renderTransferBar() {
+  const bar = document.getElementById('transferBar');
+  if (!bar || !state.league) return;
+  const openUntil = state.league.transfers_open_until ? new Date(state.league.transfers_open_until) : null;
+  const isOpen = openUntil && new Date() < openUntil;
+  if (!isOpen) { bar.style.display = 'none'; return; }
+  const used = state.entry.transfers_used || 0;
+  const left = Math.max(0, MAX_TRANSFERS - used);
+  const closesAt = openUntil.toLocaleString(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-GB', {
+    weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+  });
+  bar.style.display = '';
+  bar.innerHTML = `
+    <div class="tx-left">
+      <div class="tx-counter"><span class="tx-num">${left}</span><span class="tx-num-label">${t('tx.left')}</span></div>
+      <div class="tx-closes">${escapeHtml(closesAt)}</div>
+    </div>
+    <button class="tx-btn" id="openTxBtn" ${left === 0 ? 'disabled' : ''}>${t('tx.btn')}</button>
+  `;
+  const btn = document.getElementById('openTxBtn');
+  if (btn) btn.onclick = openTransferModal;
+}
+
+async function openTransferModal() {
+  // Lazy-load the players pool on first open
+  if (state.players.length === 0) {
+    const data = await (await fetch('data/players.json')).json();
+    for (const nation of data.nations) {
+      for (const p of nation.players) {
+        state.players.push({
+          ...p,
+          nation: nation.name,
+          nation_code: nation.code,
+          arab: nation.arab === true,
+          category: nation.category,
+        });
+      }
+    }
+  }
+
+  const xi = state.entry.xi_json || [];
+  const isAr = document.documentElement.lang === 'ar';
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:560px;">
+      <button class="modal-x" id="txX">×</button>
+      <h2 class="modal-title">${t('tx.title')}</h2>
+
+      <div class="tx-step" id="txStep1">
+        <div class="tx-step-label">${t('tx.outpick')}</div>
+        <div class="tx-out-list">
+          ${xi.map(p => `
+            <button class="tx-row" data-slot="${p.slot}" data-wild="${p.wild ? 1 : 0}">
+              <span class="tx-row-pos">${p.wild ? 'WILD' : p.role}</span>
+              <span class="tx-row-name">${escapeHtml(displayLast(p))}</span>
+              <span class="tx-row-nat">${escapeHtml(p.nation)}</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="tx-step" id="txStep2" style="display:none;">
+        <div class="tx-step-label" id="txStep2Label">${t('tx.inpick')}</div>
+        <input type="search" id="txSearch" placeholder="${t('tx.search')}" class="tx-search" />
+        <div class="tx-in-list" id="txInList"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('txX').onclick = () => modal.remove();
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+
+  let chosenOut = null;
+  modal.querySelectorAll('#txStep1 .tx-row').forEach(btn => {
+    btn.onclick = () => {
+      chosenOut = xi.find(p => String(p.slot) === btn.dataset.slot && (btn.dataset.wild === '1') === !!p.wild);
+      modal.querySelectorAll('#txStep1 .tx-row').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      renderInList(chosenOut, modal, xi);
+      document.getElementById('txStep2').style.display = '';
+    };
+  });
+
+  document.getElementById('txSearch').addEventListener('input', () => {
+    renderInList(chosenOut, modal, xi);
+  });
+}
+
+function renderInList(chosenOut, modal, xi) {
+  if (!chosenOut) return;
+  const list = document.getElementById('txInList');
+  const q = (document.getElementById('txSearch').value || '').toLowerCase().trim();
+
+  // Eligible role(s)
+  const wildSlot = !!chosenOut.wild;
+  const requiredRoles = wildSlot ? null : new Set([chosenOut.role, ...(chosenOut.roles || [])]);
+  const currentIds = new Set(xi.map(p => p.no + '|' + p.nation + '|' + p.name));
+
+  // Will removing chosenOut leave us with 0 Arabs? If so, the IN must be Arab.
+  const arabsAfterOut = xi.filter(p => p !== chosenOut && p.arab).length;
+  const mustBeArab = arabsAfterOut === 0;
+
+  const filtered = state.players.filter(p => {
+    if (currentIds.has(p.no + '|' + p.nation + '|' + p.name)) return false;
+    if (mustBeArab && !p.arab) return false;
+    if (requiredRoles) {
+      const playerRoles = new Set(p.roles || [p.role].filter(Boolean));
+      const anyMatch = [...requiredRoles].some(r => playerRoles.has(r));
+      if (!anyMatch) return false;
+    }
+    if (q && !(p.name?.toLowerCase().includes(q) || (p.club || '').toLowerCase().includes(q))) return false;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="tx-empty">${mustBeArab ? t('tx.arabwarn') : '—'}</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.slice(0, 100).map(p => `
+    <button class="tx-row in" data-id="${escapeHtml(p.no + '|' + p.nation + '|' + p.name)}">
+      <span class="tx-row-pos">${(p.role || (p.roles && p.roles[0]) || '')}</span>
+      <span class="tx-row-name">${escapeHtml(displayLast(p))}</span>
+      <span class="tx-row-nat">${escapeHtml(p.nation)}</span>
+      <span class="tx-row-club">${escapeHtml(p.club || '')}</span>
+    </button>
+  `).join('');
+
+  list.querySelectorAll('.tx-row.in').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const chosenIn = filtered.find(p => p.no + '|' + p.nation + '|' + p.name === id);
+      if (chosenIn) confirmTransfer(chosenOut, chosenIn, modal);
+    };
+  });
+}
+
+async function confirmTransfer(out, inn, modal) {
+  const ok = window.confirm(
+    `${t('tx.confirm')}:\n\n  ${displayLast(out)} (${out.nation})\n  →  ${displayLast(inn)} (${inn.nation})\n\n${MAX_TRANSFERS - 1 - (state.entry.transfers_used || 0)} transfers will remain.`
+  );
+  if (!ok) return;
+
+  // Build new xi_json by replacing the out slot with the in player.
+  const newXi = (state.entry.xi_json || []).map(p => {
+    if (p === out) {
+      return {
+        ...p,                              // keep slot/wild/tag/role/bucket
+        no: inn.no,
+        name: inn.name,
+        shirt_name: inn.shirt_name,
+        first: inn.first,
+        last: inn.last,
+        club: inn.club,
+        nation: inn.nation,
+        nation_code: inn.nation_code,
+        category: inn.category,
+        arab: inn.arab,
+      };
+    }
+    return p;
+  });
+
+  const newUsed = (state.entry.transfers_used || 0) + 1;
+  const { error } = await supabase
+    .from('entries')
+    .update({ xi_json: newXi, transfers_used: newUsed })
+    .eq('id', state.entry.id);
+  if (error) {
+    alert('Transfer failed: ' + error.message);
+    return;
+  }
+
+  // Reload to reflect the new squad + counter
+  alert(t('tx.success'));
+  location.reload();
+}
 
 function renderEntry() {
   const total = state.scores.reduce((sum, s) => sum + (s.points || 0), 0);
