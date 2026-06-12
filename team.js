@@ -48,7 +48,7 @@ const MAX_TRANSFERS = 2;
 
   const [entryRes, leagueRes, fixturesRes, teamsRes] = await Promise.all([
     supabase.from('entries')
-      .select('id, team_name, formation, submitted_at, xi_json, transfers_used')
+      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, transfers_used')
       .eq('league_id', HALO_LEAGUE_ID).eq('user_id', u.id).maybeSingle(),
     supabase.from('leagues')
       .select('id, name, locked_at, transfers_open_until')
@@ -325,10 +325,17 @@ async function commitBothTransfers(swaps, modal) {
       category: inn.category, arab: inn.arab,
     };
   });
-  const newUsed = (state.entry.transfers_used || 0) + 2;
+  // Snapshot the GW1 lineup (the squad scoring the in-progress matchday)
+  // BEFORE we overwrite xi_json with the next-GW lineup. This keeps GW1
+  // scoring fair — transferred-in players don't retroactively earn points
+  // for matches they were never on the squad for.
+  const update = { xi_json: newXi, transfers_used: (state.entry.transfers_used || 0) + 2 };
+  if (!state.entry.xi_json_gw1) {
+    update.xi_json_gw1 = state.entry.xi_json;
+  }
   const { error } = await supabase
     .from('entries')
-    .update({ xi_json: newXi, transfers_used: newUsed })
+    .update(update)
     .eq('id', state.entry.id);
   if (error) { alert('Transfer failed: ' + error.message); return; }
   alert(t('tx.success'));

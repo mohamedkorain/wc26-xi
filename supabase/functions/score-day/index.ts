@@ -114,22 +114,43 @@ async function processMatch(fixture: any, rosterByNation: Record<string, any[]>)
   // For each entry whose XI includes this nation's players, compute scores.
   // PRE-FILTER via JSONB containment: only fetch entries that actually have a
   // player from one of the two playing nations. Cuts 61k → ~23k for a typical match.
-  // Then stream-process in pages of 1000 so we never hold all rows in memory.
-  const homeFilter = `xi_json.cs.[{"nation":"${homeNation}"}]`;
-  const awayFilter = `xi_json.cs.[{"nation":"${awayNation}"}]`;
+  //
+  // GW-SNAPSHOT: matches before the MD2 first kickoff (2026-06-18) must score
+  // against xi_json_gw1 if it's populated (= the user transferred for GW2 and
+  // their pre-transfer GW1 lineup is preserved there). Later matches use
+  // the current xi_json. This keeps transferred-in players from
+  // retroactively earning GW1 points.
+  const MD2_FIRST_KICKOFF = '2026-06-18';
+  const useGw1Snapshot = dateStr < MD2_FIRST_KICKOFF;
+  // For GW1 matches we also match against xi_json_gw1, so a user who
+  // transferred OUT a playing nation still gets that player scored.
+  const filters = [
+    `xi_json.cs.[{"nation":"${homeNation}"}]`,
+    `xi_json.cs.[{"nation":"${awayNation}"}]`,
+  ];
+  if (useGw1Snapshot) {
+    filters.push(`xi_json_gw1.cs.[{"nation":"${homeNation}"}]`);
+    filters.push(`xi_json_gw1.cs.[{"nation":"${awayNation}"}]`);
+  }
+  const orFilter = filters.join(',');
   const PAGE = 1000;
   let offset = 0;
   while (true) {
     const { data: batch } = await supa
       .from('entries')
-      .select('id, user_id, league_id, xi_json')
-      .or(`${homeFilter},${awayFilter}`)
+      .select('id, user_id, league_id, xi_json, xi_json_gw1')
+      .or(orFilter)
       .range(offset, offset + PAGE - 1);
     if (!batch || batch.length === 0) break;
 
     const scoresToUpsert: any[] = [];
     for (const entry of batch) {
-      const starters = (entry.xi_json || []).filter((x: any) => !x.wild);
+      // GW1 matches: prefer the snapshot if present (= user transferred).
+      // Otherwise use xi_json (unchanged for non-transferred users).
+      const effectiveXi = useGw1Snapshot
+        ? (entry.xi_json_gw1 || entry.xi_json || [])
+        : (entry.xi_json || []);
+      const starters = effectiveXi.filter((x: any) => !x.wild);
       let totalPts = 0;
       const breakdownByPlayer: Record<string, any> = {};
       for (const slot of starters) {

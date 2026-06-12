@@ -175,6 +175,12 @@ async function renderMySquad() {
     .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle();
   if (!entry) { document.getElementById('mySquadStrip').style.display = 'none'; return; }
 
+  // Homepage shows the GW1 lineup (the squad that's currently being scored).
+  // If the user has transferred for GW2, xi_json_gw1 holds the original GW1
+  // picks; otherwise fall back to xi_json (which IS the GW1 squad until
+  // they transfer).
+  const gw1Squad = entry.xi_json_gw1 || entry.xi_json;
+
   // Pull both total points + per-match breakdowns so we can show per-player
   // points on each pitch slot.
   const [lbRow, scoreRows] = await Promise.all([
@@ -201,7 +207,7 @@ async function renderMySquad() {
   document.getElementById('mySquadMeta').innerHTML =
     `${escapeHtml(entry.team_name)} · <b style="color:var(--accent);">${pts} pts</b>`;
 
-  const xi = entry.xi_json || [];
+  const xi = gw1Squad || [];
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
