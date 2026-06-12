@@ -1180,15 +1180,18 @@ input { font-family: inherit; }
 .pl-board { display: grid; grid-template-columns: 1fr; gap: 4px; }
 .pl-row {
   display: grid;
-  grid-template-columns: 36px 1fr auto auto;
+  grid-template-columns: 30px 24px 1fr auto auto;
   gap: 10px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 8px 12px;
   background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: 8px;
   font-size: 13px;
 }
+.pl-row .pl-flag img { display: block; border-radius: 2px; }
+.pl-row .pl-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pl-row .pl-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pl-row.clickable:hover { background: rgba(106,76,255,0.08); border-color: rgba(106,76,255,0.4); }
 .pl-row .pl-rank { font-weight: 800; color: var(--text-dim); }
 .pl-row .pl-name b { font-weight: 700; }

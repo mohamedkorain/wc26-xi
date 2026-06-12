@@ -134,15 +134,18 @@ async function loadGlobalPlayerPts() {
 }
 
 async function openTransferModal() {
-  // Lazy-load the players pool on first open
+  // Lazy-load the players pool on first open. players.json's nation objects
+  // don't carry the ISO-2 code (that lives in teams.json), so look up via
+  // state.nations to keep the flag column populated.
   if (state.players.length === 0) {
     const data = await (await fetch('data/players.json')).json();
     for (const nation of data.nations) {
+      const code = state.nations[nation.name]?.code || nation.code || '';
       for (const p of nation.players) {
         state.players.push({
           ...p,
           nation: nation.name,
-          nation_code: nation.code,
+          nation_code: code,
           arab: nation.arab === true,
           category: nation.category,
         });

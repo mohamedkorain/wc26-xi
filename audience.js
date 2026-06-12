@@ -73,6 +73,8 @@ async function boot() {
     renderPoolStats();
     renderPool();
     wireFilters();
+    // Top Players widget can now show flag + nation + club (needed players)
+    renderTopPlayers();
   });
   // Re-render dynamic strings on language change (only those that are ready)
   window.addEventListener('langchange', () => {
@@ -518,20 +520,32 @@ async function renderTopPlayers() {
     if (parts.length < 2) return raw;
     return `${parts.slice(1).join(' ')} ${parts[0]}`;
   };
-  board.innerHTML = top.map((p, i) => `
+  // Build a quick name → {nation, code, club} lookup from the player pool
+  // so we can attach a flag + nation badge to each row.
+  const meta = {};
+  for (const pl of state.players) meta[pl.name] = pl;
+  board.innerHTML = top.map((p, i) => {
+    const m = meta[p.name];
+    const flag = m ? flagImg(m.nation_code, { width: 20, cls: 'flag-img', fallback: '' }) : '';
+    return `
     <div class="pl-row">
       <span class="pl-rank">${i + 1}</span>
-      <span class="pl-name"><b>${escapeHtml(flipName(p.name))}</b><br/><span class="pl-nation">${p.matches} ${p.matches === 1 ? 'match' : 'matches'}</span></span>
+      <span class="pl-flag">${flag}</span>
+      <span class="pl-name">
+        <b>${escapeHtml(flipName(p.name))}</b>
+        <span class="pl-nation">${escapeHtml(m?.nation || '')}${m?.club ? ' · ' + escapeHtml(m.club) : ''}</span>
+      </span>
       <span class="pl-icons">
-        ${p.goals   ? `<span title="Goals">⚽ ${p.goals}</span>`    : ''}
-        ${p.assists ? `<span title="Assists">🎁 ${p.assists}</span>` : ''}
-        ${p.cs      ? `<span title="Clean sheets">🧤 ${p.cs}</span>` : ''}
-        ${p.mvp     ? `<span title="MVP">⭐ ${p.mvp}</span>`         : ''}
-        ${p.red     ? `<span title="Red cards" style="color:var(--danger);">🟥 ${p.red}</span>` : ''}
+        ${p.goals   ? `<span title="Goals">⚽${p.goals}</span>`    : ''}
+        ${p.assists ? `<span title="Assists">🎁${p.assists}</span>` : ''}
+        ${p.cs      ? `<span title="Clean sheets">🧤${p.cs}</span>` : ''}
+        ${p.mvp     ? `<span title="MVP">⭐${p.mvp}</span>`         : ''}
+        ${p.red     ? `<span title="Red cards" style="color:var(--danger);">🟥${p.red}</span>` : ''}
       </span>
       <span class="pl-total">${p.points}</span>
     </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 async function openSquadModal(entryId) {
