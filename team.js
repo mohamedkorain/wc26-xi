@@ -399,31 +399,16 @@ function renderEntry() {
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
+  // /team.html is the next-GW view, so every slot shows the player's
+  // upcoming match — never past points. Past performance is shown only
+  // on the homepage (which renders the GW1 lineup with its points).
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     const name = displayLast(item) || '?';
-    const stats = playerStats[item.name];
-    const hasPlayed = stats && stats.points !== undefined;
-    let foot = '';
-    let tooltipAttr = '';
-    if (hasPlayed) {
-      const pts = stats.points;
-      const cls = pts > 0 ? 'pos' : pts < 0 ? 'neg' : '';
-      const icons = describeStat(stats.st);
-      // Just the points number on-pitch; full icon breakdown lives in a hover
-      // tooltip (native browser title) + the Match Breakdown card below.
-      foot = `<div class="ps-pts ${cls}">${pts >= 0 ? '+' : ''}${pts}</div>`;
-      const txt = describeStatText(stats.st);
-      const isAr = document.documentElement.lang === 'ar';
-      const ptsLabel = isAr ? 'نقاط' : 'pts';
-      const tip = `${pts >= 0 ? '+' : ''}${pts} ${ptsLabel}${txt ? '  ·  ' + txt : ''}`;
-      tooltipAttr = ` title="${escapeHtml(tip)}"`;
-    } else {
-      const next = nextGameFor(item.nation);
-      foot = next ? `<div class="next-game ${next.live ? 'live' : ''}">${next.label}</div>` : '';
-    }
+    const next = nextGameFor(item.nation);
+    const foot = next ? `<div class="next-game ${next.live ? 'live' : ''}">${next.label}</div>` : '';
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
-    return `<div class="pitch-slot filled"${tooltipAttr} style="left:${coord.x}%;top:${coord.y}%;direction:ltr;">
+    return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;direction:ltr;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
       <div class="ps-name" style="font-size:${sz}px;">${escapeHtml(name)}</div>
       <div class="ps-tag">${coord.tag}</div>
@@ -453,75 +438,11 @@ function renderEntry() {
     </div>
   `;
 
-  // Per-match breakdown
-  if (state.scores.length === 0) {
-    document.getElementById('teamBreakdown').innerHTML = `
-      <h3>${t('team.bd.title')}</h3>
-      <div style="font-size:13px;color:var(--text-dim);text-align:center;padding:8px 0;">
-        ${t('team.bd.empty')}
-      </div>
-    `;
-    return;
-  }
-
-  // Build a list of per-player contributions across all scored matches.
-  // For each one, look up the actual fixture (date + nation) so we can
-  // show "vs OPP · MD1" instead of just the date.
-  const rowsByMatch = {};
-  for (const s of state.scores) {
-    for (const [playerName, st] of Object.entries(s.breakdown || {})) {
-      if (!st || Object.keys(st).length === 0) continue;
-      const xiPick = (state.entry.xi_json || []).find(x => x.name === playerName);
-      const ourNation = xiPick?.nation || '';
-      const fxNation = FIXTURE_NATION_ALIAS[ourNation] || ourNation;
-      const fixture = state.fixtures.find(f =>
-        f.date.slice(0, 10) === s.match_date && (f.home === fxNation || f.away === fxNation)
-      );
-      const opponent = fixture ? (fixture.home === fxNation ? fixture.away : fixture.home) : '?';
-      const matchKey = fixture ? fixture.id : `unk-${s.match_date}-${ourNation}`;
-      const roundLabel = fixture ? roundShort(fixture.round) : '';
-      const pts = (st.win||0) + (st.full90||0) + (st.goals||0) + (st.assists||0) + (st.cleanSheet||0) + (st.mvp||0) - (st.red ? 1 : 0);
-      if (!rowsByMatch[matchKey]) {
-        rowsByMatch[matchKey] = {
-          date: s.match_date,
-          opponent,
-          round: roundLabel,
-          score: fixture ? `${fixture.home_goals ?? '?'}-${fixture.away_goals ?? '?'}` : '',
-          home: fixture?.home,
-          players: [],
-        };
-      }
-      rowsByMatch[matchKey].players.push({ name: playerName, st, pts });
-    }
-  }
-
-  const rowsHtml = Object.values(rowsByMatch)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map(m => {
-      const playerLines = m.players.map(p => {
-        const cls = p.pts > 0 ? 'pos' : p.pts < 0 ? 'neg' : '';
-        return `<div class="tb-player">
-          <span>${escapeHtml(displayPlayerNameShort(p.name))} <span class="tb-icons">${describeStat(p.st)}</span></span>
-          <span class="tb-pts ${cls}">${p.pts >= 0 ? '+' : ''}${p.pts}</span>
-        </div>`;
-      }).join('');
-      const matchPts = m.players.reduce((s, p) => s + p.pts, 0);
-      const matchCls = matchPts > 0 ? 'pos' : matchPts < 0 ? 'neg' : '';
-      return `
-        <div class="tb-match">
-          <div class="tb-match-head">
-            <span><b>vs ${escapeHtml(m.opponent)}</b>${m.round ? ` · <span style="color:var(--text-dim);">${escapeHtml(m.round)}</span>` : ''}${m.score ? ` · <span style="color:var(--text-dim);">${escapeHtml(m.score)}</span>` : ''}</span>
-            <span class="tb-pts ${matchCls}">${matchPts >= 0 ? '+' : ''}${matchPts}</span>
-          </div>
-          ${playerLines}
-        </div>
-      `;
-    }).join('');
-
-  document.getElementById('teamBreakdown').innerHTML = `
-    <h3>${t('team.bd.title')}</h3>
-    ${rowsHtml}
-  `;
+  // Per-match breakdown lives on the homepage (which renders the GW1
+  // lineup). On /team.html — the next-GW view — there's no past data
+  // to show. Clear the element so it doesn't render anything stale.
+  const bd = document.getElementById('teamBreakdown');
+  if (bd) bd.innerHTML = '';
 }
 
 const FIXTURE_NATION_ALIAS = {
