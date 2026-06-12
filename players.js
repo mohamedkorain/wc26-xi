@@ -32,7 +32,7 @@ async function render() {
     .from('scores')
     .select('match_date, breakdown')
     .order('match_date', { ascending: false })
-    .limit(5000);
+    .limit(20000);
 
   if (error) {
     document.getElementById('playersBoard').innerHTML =
@@ -101,12 +101,15 @@ async function render() {
 }
 
 async function showPlayerDetailModal(playerName) {
-  // Re-query scores to find every match this player contributed to
+  // Re-query scores to find every match this player contributed to.
+  // Order DESC so the most recent matches come first (the limit then doesn't
+  // skip them on a popular player like Hwang Inbeom whose data lives on the
+  // newest match dates).
   const { data: rows } = await supabase
     .from('scores')
     .select('match_date, breakdown')
-    .order('match_date', { ascending: true })
-    .limit(5000);
+    .order('match_date', { ascending: false })
+    .limit(20000);
 
   const seen = new Set();
   const perMatch = [];

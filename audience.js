@@ -302,15 +302,15 @@ function renderHeroStatus() {
   }
   const now = new Date();
   const lock = new Date(state.league.locked_at);
+  const banner = document.getElementById('lockBanner');
   if (now >= lock) {
     document.getElementById('ctaBuild').style.display = 'none';
     if (state.myUserId) {
-      // Signed in — they already have a squad. No lock messaging needed.
-      // Just point them at their team.
+      // Signed in — they already have a squad. No lock messaging anywhere.
       el.innerHTML = '';
+      if (banner) banner.style.display = 'none';
     } else {
       el.textContent = '🔒 ' + (t('spin.locked')?.replace('🔒 ','') || 'Submissions locked');
-      const banner = document.getElementById('lockBanner');
       if (banner) {
         banner.textContent = t('lock.banner');
         banner.style.display = 'block';
@@ -318,6 +318,8 @@ function renderHeroStatus() {
     }
     return;
   }
+  // Pre-lock: banner should be hidden regardless of sign-in
+  if (banner) banner.style.display = 'none';
   const diffMs = lock - now;
   const totalMins = Math.floor(diffMs / (1000 * 60));
   const days = Math.floor(totalMins / (60 * 24));
