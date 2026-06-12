@@ -31,6 +31,7 @@ async function boot() {
   state.teams = teams.teams;
   state.league = league.data;
   state.myUserId = user?.id || null;
+  state.userEmail = user?.email || null;
 
   // Render above-the-fold stuff IMMEDIATELY
   renderHeroStatus();
@@ -375,15 +376,32 @@ function renderHeroStatus() {
     return;
   }
 
-  // Past initial lock but still in transfer window — late-joiners can still
-  // build via the randomizer. CTA stays visible for them.
+  // Past initial lock but still in transfer window — beta-gated to admin
+  // emails only. Everyone else sees the locked state until the transfer
+  // feature is fully validated.
   if (now >= lock && inTransferWindow) {
-    if (banner) banner.style.display = 'none';
-    ctaBuild.style.display = '';
-    const isAr = document.documentElement.lang === 'ar';
-    el.textContent = isAr
-      ? `الميركاتو مفتوح · يقفل ${txOpen.toLocaleString('ar-EG')}`
-      : `Transfer window open · closes ${txOpen.toLocaleString()}`;
+    const ADMIN_ALLOWLIST = ['muhammedkorain@gmail.com', 'mohamed.korain94@gmail.com'];
+    const isAdmin = state.userEmail && ADMIN_ALLOWLIST.includes(state.userEmail.toLowerCase());
+    if (isAdmin) {
+      if (banner) banner.style.display = 'none';
+      ctaBuild.style.display = '';
+      const isAr = document.documentElement.lang === 'ar';
+      el.textContent = isAr
+        ? `الميركاتو مفتوح · يقفل ${txOpen.toLocaleString('ar-EG')}`
+        : `Transfer window open · closes ${txOpen.toLocaleString()}`;
+    } else {
+      ctaBuild.style.display = 'none';
+      if (state.myUserId) {
+        el.innerHTML = '';
+        if (banner) banner.style.display = 'none';
+      } else {
+        el.textContent = '🔒 ' + (t('spin.locked')?.replace('🔒 ','') || 'Submissions locked');
+        if (banner) {
+          banner.textContent = t('lock.banner');
+          banner.style.display = 'block';
+        }
+      }
+    }
     return;
   }
   // Pre-lock: banner should be hidden regardless of sign-in
@@ -481,12 +499,25 @@ async function renderLeaderboard(reset = true) {
 async function renderTopPlayers() {
   const board = document.getElementById('topPlayersBoard');
   if (!board) return;
-  const { data: rows } = await supabase
-    .from('scores')
-    .select('match_date, breakdown')
-    .order('match_date', { ascending: false })
-    .limit(20000);
-  if (!rows || rows.length === 0) return;
+  // PostgREST caps individual requests, so paginate through scores in
+  // 1000-row pages. Without this, a single match-day's 20k+ rows can
+  // saturate the limit and shut out earlier dates entirely (the 06-11
+  // MEX-RSA breakdowns were getting hidden behind 06-12's volume).
+  const PAGE = 1000;
+  const rows = [];
+  let offset = 0;
+  while (offset < 60000) {                // safety ceiling
+    const { data: batch } = await supabase
+      .from('scores')
+      .select('match_date, breakdown')
+      .order('match_date', { ascending: false })
+      .range(offset, offset + PAGE - 1);
+    if (!batch || batch.length === 0) break;
+    rows.push(...batch);
+    if (batch.length < PAGE) break;
+    offset += PAGE;
+  }
+  if (rows.length === 0) return;
 
   const seen = new Set();
   const agg = {};
@@ -533,7 +564,7 @@ async function renderTopPlayers() {
       <span class="pl-flag">${flag}</span>
       <span class="pl-name">
         <b>${escapeHtml(flipName(p.name))}</b>
-        <span class="pl-nation">${escapeHtml(m?.nation || '')}${m?.club ? ' · ' + escapeHtml(m.club) : ''}</span>
+        <span class="pl-nation">${escapeHtml(m?.nation || '')}</span>
       </span>
       <span class="pl-icons">
         ${p.goals   ? `<span title="Goals">⚽${p.goals}</span>`    : ''}

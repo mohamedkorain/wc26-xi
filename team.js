@@ -87,6 +87,13 @@ const MAX_TRANSFERS = 2;
 function renderTransferBar() {
   const bar = document.getElementById('transferBar');
   if (!bar || !state.league) return;
+  // BETA gate: transfers UI only visible to the admin while the flow is
+  // being validated. Backend RLS enforces the same restriction.
+  const TRANSFER_ALLOWLIST = ['muhammedkorain@gmail.com', 'mohamed.korain94@gmail.com'];
+  if (!state.user || !TRANSFER_ALLOWLIST.includes((state.user.email || '').toLowerCase())) {
+    bar.style.display = 'none';
+    return;
+  }
   const openUntil = state.league.transfers_open_until ? new Date(state.league.transfers_open_until) : null;
   const isOpen = openUntil && new Date() < openUntil;
   if (!isOpen) { bar.style.display = 'none'; return; }
@@ -113,14 +120,25 @@ let globalPlayerPts = null;
 
 async function loadGlobalPlayerPts() {
   if (globalPlayerPts) return globalPlayerPts;
-  const { data: rows } = await supabase
-    .from('scores')
-    .select('match_date, breakdown')
-    .order('match_date', { ascending: false })
-    .limit(20000);
+  // Paginate (some single match-days exceed 20k score rows; a flat LIMIT
+  // would hide entire earlier dates from the aggregation).
+  const PAGE = 1000;
+  const rows = [];
+  let offset = 0;
+  while (offset < 60000) {
+    const { data: batch } = await supabase
+      .from('scores')
+      .select('match_date, breakdown')
+      .order('match_date', { ascending: false })
+      .range(offset, offset + PAGE - 1);
+    if (!batch || batch.length === 0) break;
+    rows.push(...batch);
+    if (batch.length < PAGE) break;
+    offset += PAGE;
+  }
   const seen = new Set();
   const totals = {};
-  for (const r of rows || []) {
+  for (const r of rows) {
     for (const [pname, st] of Object.entries(r.breakdown || {})) {
       const key = `${pname}::${r.match_date}`;
       if (seen.has(key)) continue;
