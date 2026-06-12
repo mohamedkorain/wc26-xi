@@ -1,20 +1,18 @@
--- Pre-aggregated per-player tournament totals.
--- Avoids 37+ paginated requests from the browser; a single SELECT from this
--- view is < 50ms and returns the top scorers ready to render.
+-- Materialized version of the per-player tournament leaderboard.
+-- Was a regular view → re-aggregated ~37k score rows on every homepage load,
+-- which is what spiked DB CPU. Now it's cached; refreshed by score-day after
+-- each scoring run via the refresh_player_leaderboard() RPC below.
 
-create or replace view public.player_leaderboard as
+drop view if exists public.player_leaderboard;
+drop materialized view if exists public.player_leaderboard;
+
+create materialized view public.player_leaderboard as
 with unnested as (
-  -- Expand scores.breakdown jsonb (keyed by player name) into rows.
-  select
-    s.match_date,
-    pn.player_name,
-    pn.stats
+  select s.match_date, pn.player_name, pn.stats
   from public.scores s
   cross join lateral jsonb_each(s.breakdown) as pn(player_name, stats)
 ),
 deduped as (
-  -- Each player's stats for a given match are identical across every entry
-  -- that picked them — keep one row per (player, match).
   select distinct on (player_name, match_date)
     player_name, match_date, stats
   from unnested
@@ -40,4 +38,26 @@ from deduped
 group by player_name
 order by total_points desc, goals desc, assists desc;
 
+-- Required by REFRESH ... CONCURRENTLY
+create unique index if not exists player_leaderboard_pname_idx
+  on public.player_leaderboard(player_name);
+
 grant select on public.player_leaderboard to anon, authenticated;
+
+-- RPC the Edge Function calls after scoring to keep the cache fresh.
+-- SECURITY DEFINER so the anon role can't refresh — only service_role.
+create or replace function public.refresh_player_leaderboard()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  refresh materialized view concurrently public.player_leaderboard;
+end;
+$$;
+
+revoke all on function public.refresh_player_leaderboard() from public, anon, authenticated;
+
+-- Initial populate
+refresh materialized view public.player_leaderboard;

@@ -292,7 +292,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ date: dateStr, processed: results.length, results }), {
+    // Refresh the cached per-player leaderboard so the homepage Top Players
+    // widget reflects this run without users having to wait for the next
+    // scheduled refresh. The RPC is SECURITY DEFINER and locked down to
+    // service-role callers.
+    let refreshed = false;
+    try {
+      await supa.rpc('refresh_player_leaderboard');
+      refreshed = true;
+    } catch (e) {
+      // Non-fatal — the next scoring run will refresh.
+    }
+
+    return new Response(JSON.stringify({ date: dateStr, processed: results.length, results, refreshed }), {
       headers: { 'content-type': 'application/json' },
     });
   } catch (err) {
