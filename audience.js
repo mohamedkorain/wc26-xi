@@ -499,52 +499,23 @@ async function renderLeaderboard(reset = true) {
 async function renderTopPlayers() {
   const board = document.getElementById('topPlayersBoard');
   if (!board) return;
-  // PostgREST caps individual requests, so paginate through scores in
-  // 1000-row pages. Without this, a single match-day's 20k+ rows can
-  // saturate the limit and shut out earlier dates entirely (the 06-11
-  // MEX-RSA breakdowns were getting hidden behind 06-12's volume).
-  const PAGE = 1000;
-  const rows = [];
-  let offset = 0;
-  while (offset < 60000) {                // safety ceiling
-    const { data: batch } = await supabase
-      .from('scores')
-      .select('match_date, breakdown')
-      .order('match_date', { ascending: false })
-      .range(offset, offset + PAGE - 1);
-    if (!batch || batch.length === 0) break;
-    rows.push(...batch);
-    if (batch.length < PAGE) break;
-    offset += PAGE;
-  }
-  if (rows.length === 0) return;
-
-  const seen = new Set();
-  const agg = {};
-  for (const r of rows) {
-    const md = r.match_date;
-    for (const [pname, st] of Object.entries(r.breakdown || {})) {
-      const key = `${pname}::${md}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (!agg[pname]) agg[pname] = { goals: 0, assists: 0, cs: 0, mvp: 0, red: 0, points: 0, matches: 0 };
-      const s = st || {};
-      const pts = (s.win||0) + (s.full90||0) + (s.goals||0) + (s.assists||0) + (s.cleanSheet||0) + (s.mvp||0) - (s.red ? 1 : 0);
-      agg[pname].goals    += s.goals    || 0;
-      agg[pname].assists  += s.assists  || 0;
-      agg[pname].cs       += s.cleanSheet || 0;
-      agg[pname].mvp      += s.mvp || 0;
-      agg[pname].red      += s.red ? 1 : 0;
-      agg[pname].points   += pts;
-      agg[pname].matches  += 1;
-    }
-  }
-
-  const top = Object.entries(agg)
-    .map(([name, st]) => ({ name, ...st }))
-    .sort((a, b) => b.points - a.points || b.goals - a.goals)
-    .slice(0, 20);
-  if (top.length === 0) return;
+  // Server-side aggregated view (one fast query vs 37 paginated requests).
+  // See supabase/player_leaderboard_view.sql.
+  const { data: rows, error } = await supabase
+    .from('player_leaderboard')
+    .select('player_name, matches, goals, assists, clean_sheets, mvps, reds, total_points')
+    .limit(20);
+  if (error || !rows || rows.length === 0) return;
+  const top = rows.map(r => ({
+    name: r.player_name,
+    matches: r.matches,
+    goals: r.goals,
+    assists: r.assists,
+    cs: r.clean_sheets,
+    mvp: r.mvps,
+    red: r.reds,
+    points: r.total_points,
+  }));
 
   const flipName = (raw) => {
     const parts = raw.split(' ');

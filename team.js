@@ -120,37 +120,21 @@ let globalPlayerPts = null;
 
 async function loadGlobalPlayerPts() {
   if (globalPlayerPts) return globalPlayerPts;
-  // Paginate (some single match-days exceed 20k score rows; a flat LIMIT
-  // would hide entire earlier dates from the aggregation).
-  const PAGE = 1000;
-  const rows = [];
-  let offset = 0;
-  while (offset < 60000) {
-    const { data: batch } = await supabase
-      .from('scores')
-      .select('match_date, breakdown')
-      .order('match_date', { ascending: false })
-      .range(offset, offset + PAGE - 1);
-    if (!batch || batch.length === 0) break;
-    rows.push(...batch);
-    if (batch.length < PAGE) break;
-    offset += PAGE;
-  }
-  const seen = new Set();
+  // Server-side aggregated view — one query instead of paginating 37k+ rows.
+  const { data: rows } = await supabase
+    .from('player_leaderboard')
+    .select('player_name, total_points')
+    .limit(2000);   // covers every WC26 player who has scored
   const totals = {};
-  for (const r of rows) {
-    for (const [pname, st] of Object.entries(r.breakdown || {})) {
-      const key = `${pname}::${r.match_date}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const pts = (st.win||0) + (st.full90||0) + (st.goals||0) + (st.assists||0) + (st.cleanSheet||0) + (st.mvp||0) - (st.red ? 1 : 0);
-      totals[pname] = (totals[pname] || 0) + pts;
-    }
-  }
+  for (const r of rows || []) totals[r.player_name] = r.total_points;
   globalPlayerPts = totals;
   return totals;
 }
 
+// Bundled 2-transfer flow:
+//  Step 1 — pick 1st OUT, then 1st IN  (single tap each)
+//  Step 2 — pick 2nd OUT, then 2nd IN
+//  Step 3 — confirm both. One UPDATE; transfers_used jumps from 0 to 2.
 async function openTransferModal() {
   // Lazy-load the players pool on first open. players.json's nation objects
   // don't carry the ISO-2 code (that lives in teams.json), so look up via
@@ -176,21 +160,26 @@ async function openTransferModal() {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.innerHTML = `
-    <div class="modal-card" style="max-width:600px;">
+    <div class="modal-card" style="max-width:620px;">
       <button class="modal-x" id="txX">×</button>
       <h2 class="modal-title">${t('tx.title')}</h2>
+      <p class="modal-sub" id="txProgress">Swap 1 of 2</p>
 
-      <div class="tx-step" id="txStep1">
+      <div class="tx-step" id="txOutPanel">
         <div class="tx-step-label">${t('tx.outpick')}</div>
-        <div class="tx-out-list">
-          ${xi.map(p => txRowHtml(p, true)).join('')}
-        </div>
+        <div class="tx-out-list" id="txOutList"></div>
       </div>
 
-      <div class="tx-step" id="txStep2" style="display:none;">
-        <div class="tx-step-label" id="txStep2Label">${t('tx.inpick')}</div>
+      <div class="tx-step" id="txInPanel" style="display:none;">
+        <div class="tx-step-label" id="txInLabel">${t('tx.inpick')}</div>
         <input type="search" id="txSearch" placeholder="${t('tx.search')}" class="tx-search" />
         <div class="tx-in-list" id="txInList"></div>
+      </div>
+
+      <div class="tx-summary" id="txSummary" style="display:none;">
+        <div class="tx-step-label">${t('tx.confirm')}</div>
+        <div id="txSwapsView"></div>
+        <button class="tx-btn" id="txConfirmBtn" style="width:100%;margin-top:12px;">${t('tx.confirm')}</button>
       </div>
     </div>
   `;
@@ -198,20 +187,152 @@ async function openTransferModal() {
   document.getElementById('txX').onclick = () => modal.remove();
   modal.onclick = e => { if (e.target === modal) modal.remove(); };
 
-  let chosenOut = null;
-  modal.querySelectorAll('#txStep1 .tx-row').forEach(btn => {
-    btn.onclick = () => {
-      chosenOut = xi.find(p => String(p.slot) === btn.dataset.slot && (btn.dataset.wild === '1') === !!p.wild);
-      modal.querySelectorAll('#txStep1 .tx-row').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      renderInList(chosenOut, modal, xi);
-      document.getElementById('txStep2').style.display = '';
+  // State of the bundled flow
+  const swaps = [];               // [{out, in}, {out, in}]
+  let step = 0;                   // 0 = picking 1st out; 1 = picking 1st in; 2 = picking 2nd out; etc.
+
+  function renderOutList() {
+    // Skip players already chosen as OUT in this session
+    const alreadyOut = new Set(swaps.map(s => s.out));
+    const html = xi
+      .filter(p => !alreadyOut.has(p))
+      .map(p => txRowHtml(p, true)).join('');
+    document.getElementById('txOutList').innerHTML = html;
+    document.querySelectorAll('#txOutList .tx-row').forEach(btn => {
+      btn.onclick = () => {
+        const pick = xi.find(p => String(p.slot) === btn.dataset.slot && (btn.dataset.wild === '1') === !!p.wild);
+        if (!pick) return;
+        swaps.push({ out: pick, in: null });
+        showInPanel();
+      };
+    });
+  }
+
+  function showOutPanel() {
+    document.getElementById('txProgress').textContent = `Swap ${swaps.length + 1} of 2`;
+    document.getElementById('txOutPanel').style.display = '';
+    document.getElementById('txInPanel').style.display = 'none';
+    document.getElementById('txSummary').style.display = 'none';
+    renderOutList();
+  }
+
+  function showInPanel() {
+    const current = swaps[swaps.length - 1];
+    document.getElementById('txProgress').textContent = `Swap ${swaps.length} of 2 — replacing ${displayLast(current.out)}`;
+    document.getElementById('txOutPanel').style.display = 'none';
+    document.getElementById('txInPanel').style.display = '';
+    document.getElementById('txSearch').value = '';
+    document.getElementById('txInLabel').textContent = `${t('tx.inpick')}: ${displayLast(current.out)} (${current.out.nation})`;
+    renderInCandidates();
+  }
+
+  function renderInCandidates() {
+    const current = swaps[swaps.length - 1];
+    const out = current.out;
+    const list = document.getElementById('txInList');
+    const q = (document.getElementById('txSearch').value || '').toLowerCase().trim();
+
+    const wildSlot = !!out.wild;
+    const requiredRoles = wildSlot ? null : new Set([out.role, ...(out.roles || [])]);
+
+    // Players already in the squad + players being transferred OUT this session
+    // are excluded (you can't pick a player you're swapping out as your IN).
+    const inUseIds = new Set();
+    for (const p of xi) inUseIds.add(p.no + '|' + p.nation + '|' + p.name);
+    // …but the ones you're swapping OUT freed up
+    for (const s of swaps) {
+      if (s.in) inUseIds.add(s.in.no + '|' + s.in.nation + '|' + s.in.name);
+    }
+
+    // Arab constraint: simulate the post-transfer squad and require ≥1 Arab.
+    const futureSquad = xi.map(p => {
+      const s = swaps.find(sw => sw.out === p);
+      return s?.in || p;
+    });
+    const arabsAfter = futureSquad.filter(p => p !== out && p.arab).length;
+    const mustBeArab = arabsAfter === 0;
+
+    let filtered = state.players.filter(p => {
+      const id = p.no + '|' + p.nation + '|' + p.name;
+      if (inUseIds.has(id)) return false;
+      if (mustBeArab && !p.arab) return false;
+      if (requiredRoles) {
+        const roles = new Set(p.roles || [p.role].filter(Boolean));
+        if (![...requiredRoles].some(r => roles.has(r))) return false;
+      }
+      if (q && !(p.name?.toLowerCase().includes(q) || (p.club || '').toLowerCase().includes(q))) return false;
+      return true;
+    });
+    filtered.sort((a, b) => (globalPlayerPts?.[b.name] || 0) - (globalPlayerPts?.[a.name] || 0));
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="tx-empty">${mustBeArab ? t('tx.arabwarn') : '—'}</div>`;
+      return;
+    }
+    list.innerHTML = filtered.slice(0, 100).map(p => txRowHtml(p, false)).join('');
+    list.querySelectorAll('.tx-row.in').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id;
+        const pick = filtered.find(p => (p.no + '|' + p.nation + '|' + p.name) === id);
+        if (!pick) return;
+        swaps[swaps.length - 1].in = pick;
+        if (swaps.length < 2) {
+          showOutPanel();          // pick 2nd swap
+        } else {
+          showSummary();
+        }
+      };
+    });
+  }
+
+  function showSummary() {
+    document.getElementById('txProgress').textContent = `2 of 2 picked`;
+    document.getElementById('txOutPanel').style.display = 'none';
+    document.getElementById('txInPanel').style.display = 'none';
+    document.getElementById('txSummary').style.display = '';
+    document.getElementById('txSwapsView').innerHTML = swaps.map((s, i) => `
+      <div class="tx-swap-pair">
+        <div class="tx-swap-side">
+          <span class="tx-row-pos">${s.out.wild ? 'WILD' : s.out.role}</span>
+          ${flagImg(s.out.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}
+          <b>${escapeHtml(displayLast(s.out))}</b>
+        </div>
+        <span class="tx-swap-arrow">→</span>
+        <div class="tx-swap-side">
+          ${flagImg(s.in.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}
+          <b>${escapeHtml(displayLast(s.in))}</b>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('txConfirmBtn').onclick = () => commitBothTransfers(swaps, modal);
+  }
+
+  document.getElementById('txSearch').addEventListener('input', renderInCandidates);
+  showOutPanel();
+}
+
+async function commitBothTransfers(swaps, modal) {
+  // Build the new xi_json by applying both swaps at once.
+  const newXi = (state.entry.xi_json || []).map(p => {
+    const s = swaps.find(sw => sw.out === p);
+    if (!s) return p;
+    const inn = s.in;
+    return {
+      ...p,
+      no: inn.no, name: inn.name, shirt_name: inn.shirt_name,
+      first: inn.first, last: inn.last, club: inn.club,
+      nation: inn.nation, nation_code: inn.nation_code,
+      category: inn.category, arab: inn.arab,
     };
   });
-
-  document.getElementById('txSearch').addEventListener('input', () => {
-    renderInList(chosenOut, modal, xi);
-  });
+  const newUsed = (state.entry.transfers_used || 0) + 2;
+  const { error } = await supabase
+    .from('entries')
+    .update({ xi_json: newXi, transfers_used: newUsed })
+    .eq('id', state.entry.id);
+  if (error) { alert('Transfer failed: ' + error.message); return; }
+  alert(t('tx.success'));
+  location.reload();
 }
 
 // Render one row of the transfer modal — used for BOTH the OUT list (current
@@ -236,90 +357,8 @@ function txRowHtml(p, isOut) {
   `;
 }
 
-function renderInList(chosenOut, modal, xi) {
-  if (!chosenOut) return;
-  const list = document.getElementById('txInList');
-  const q = (document.getElementById('txSearch').value || '').toLowerCase().trim();
-
-  // Eligible role(s)
-  const wildSlot = !!chosenOut.wild;
-  const requiredRoles = wildSlot ? null : new Set([chosenOut.role, ...(chosenOut.roles || [])]);
-  const currentIds = new Set(xi.map(p => p.no + '|' + p.nation + '|' + p.name));
-
-  // Will removing chosenOut leave us with 0 Arabs? If so, the IN must be Arab.
-  const arabsAfterOut = xi.filter(p => p !== chosenOut && p.arab).length;
-  const mustBeArab = arabsAfterOut === 0;
-
-  const filtered = state.players.filter(p => {
-    if (currentIds.has(p.no + '|' + p.nation + '|' + p.name)) return false;
-    if (mustBeArab && !p.arab) return false;
-    if (requiredRoles) {
-      const playerRoles = new Set(p.roles || [p.role].filter(Boolean));
-      const anyMatch = [...requiredRoles].some(r => playerRoles.has(r));
-      if (!anyMatch) return false;
-    }
-    if (q && !(p.name?.toLowerCase().includes(q) || (p.club || '').toLowerCase().includes(q))) return false;
-    return true;
-  });
-
-  if (filtered.length === 0) {
-    list.innerHTML = `<div class="tx-empty">${mustBeArab ? t('tx.arabwarn') : '—'}</div>`;
-    return;
-  }
-
-  // Sort candidates by points DESC so the hottest names surface first
-  filtered.sort((a, b) => (globalPlayerPts?.[b.name] || 0) - (globalPlayerPts?.[a.name] || 0));
-  list.innerHTML = filtered.slice(0, 100).map(p => txRowHtml(p, false)).join('');
-
-  list.querySelectorAll('.tx-row.in').forEach(btn => {
-    btn.onclick = () => {
-      const id = btn.dataset.id;
-      const chosenIn = filtered.find(p => p.no + '|' + p.nation + '|' + p.name === id);
-      if (chosenIn) confirmTransfer(chosenOut, chosenIn, modal);
-    };
-  });
-}
-
-async function confirmTransfer(out, inn, modal) {
-  const ok = window.confirm(
-    `${t('tx.confirm')}:\n\n  ${displayLast(out)} (${out.nation})\n  →  ${displayLast(inn)} (${inn.nation})\n\n${MAX_TRANSFERS - 1 - (state.entry.transfers_used || 0)} transfers will remain.`
-  );
-  if (!ok) return;
-
-  // Build new xi_json by replacing the out slot with the in player.
-  const newXi = (state.entry.xi_json || []).map(p => {
-    if (p === out) {
-      return {
-        ...p,                              // keep slot/wild/tag/role/bucket
-        no: inn.no,
-        name: inn.name,
-        shirt_name: inn.shirt_name,
-        first: inn.first,
-        last: inn.last,
-        club: inn.club,
-        nation: inn.nation,
-        nation_code: inn.nation_code,
-        category: inn.category,
-        arab: inn.arab,
-      };
-    }
-    return p;
-  });
-
-  const newUsed = (state.entry.transfers_used || 0) + 1;
-  const { error } = await supabase
-    .from('entries')
-    .update({ xi_json: newXi, transfers_used: newUsed })
-    .eq('id', state.entry.id);
-  if (error) {
-    alert('Transfer failed: ' + error.message);
-    return;
-  }
-
-  // Reload to reflect the new squad + counter
-  alert(t('tx.success'));
-  location.reload();
-}
+// (Old single-transfer helpers replaced by commitBothTransfers + the bundled
+//  flow inside openTransferModal.)
 
 function renderEntry() {
   const total = state.scores.reduce((sum, s) => sum + (s.points || 0), 0);

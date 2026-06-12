@@ -1116,6 +1116,19 @@ input { font-family: inherit; }
   .tx-row-next { display: none; }
 }
 
+/* Bundled-transfer summary view */
+.tx-summary { margin-top: 16px; }
+.tx-swap-pair {
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 10px;
+  padding: 10px 12px; margin-bottom: 8px;
+  background: var(--bg-2); border: 1px solid rgba(106,76,255,0.35);
+  border-radius: 8px; font-size: 13px;
+}
+.tx-swap-side { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tx-swap-side img { border-radius: 2px; }
+.tx-swap-arrow { color: var(--accent); font-weight: 800; font-size: 18px; }
+
 /* ──────── My Team page ──────── */
 .team-meta {
   display: flex;
