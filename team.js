@@ -248,10 +248,22 @@ async function openTransferModal() {
     const arabsAfter = futureSquad.filter(p => p !== out && p.arab).length;
     const mustBeArab = arabsAfter === 0;
 
+    // Max 3 picks from any single nation across the whole 12-player squad.
+    // Count what the squad will look like AFTER all applied swaps but BEFORE
+    // we add the candidate currently being chosen (the `out` slot is empty
+    // for the purposes of this check).
+    const NATION_CAP = 3;
+    const nationCount = {};
+    for (const p of futureSquad) {
+      if (p === out) continue;
+      nationCount[p.nation] = (nationCount[p.nation] || 0) + 1;
+    }
+
     let filtered = state.players.filter(p => {
       const id = p.no + '|' + p.nation + '|' + p.name;
       if (inUseIds.has(id)) return false;
       if (mustBeArab && !p.arab) return false;
+      if ((nationCount[p.nation] || 0) >= NATION_CAP) return false;
       if (requiredRoles) {
         const roles = new Set(p.roles || [p.role].filter(Boolean));
         if (![...requiredRoles].some(r => roles.has(r))) return false;
