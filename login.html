@@ -54,15 +54,15 @@ import { signInWithEmail, currentUser } from './js/auth.js';
 import { supabase } from './js/supabase-client.js';
 import { t } from './js/i18n.js';
 
-// If past the league deadline AND not signed in: hide the form, show banner,
-// and don't let new sign-ins fire (spares Resend emails on dead clicks).
+// Post-lock UX: still allow sign-in (existing users need to view their squad
+// & rank). Just show the banner above the form so visitors know submissions
+// are closed.
 const LOCK_AT = new Date('2026-06-11T19:00:00Z');
 (async () => {
   const u = await currentUser();
-  if (u) { location.href = 'build.html'; return; }
+  if (u) { location.href = 'team.html'; return; }
   if (new Date() >= LOCK_AT) {
     document.getElementById('lockBanner').style.display = 'block';
-    document.getElementById('loginSection').style.display = 'none';
   }
 })();
 

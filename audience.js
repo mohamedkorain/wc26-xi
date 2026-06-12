@@ -313,11 +313,8 @@ function renderHeroStatus() {
       banner.textContent = t('lock.banner');
       banner.style.display = 'block';
     }
-    // For signed-out visitors, replace "Sign in" with locked indicator (spares Resend emails)
-    if (!state.myUserId) {
-      const slot = document.getElementById('authSlot');
-      if (slot) slot.innerHTML = `<span class="hdr-btn" style="opacity:.6;cursor:not-allowed;">${t('lock.signin')}</span>`;
-    }
+    // Keep sign-in available post-lock: existing users still need to view
+    // their squad + rank. The banner above already tells everyone subs are closed.
     return;
   }
   const diffMs = lock - now;
@@ -408,22 +405,84 @@ async function renderLeaderboard(reset = true) {
 }
 
 async function openSquadModal(entryId) {
-  const { data: entry } = await supabase
-    .from('entries').select('*').eq('id', entryId).maybeSingle();
+  const [entryRes, scoresRes, fixturesRes] = await Promise.all([
+    supabase.from('entries').select('*').eq('id', entryId).maybeSingle(),
+    supabase.from('scores').select('match_date, points, breakdown').eq('entry_id', entryId),
+    state._fixturesCache || fetch('data/fixtures.json').then(r => r.json()).then(d => { state._fixturesCache = Promise.resolve(d); return d; }),
+  ]);
+  const entry = entryRes.data;
   if (!entry) return;
+  const fixturesData = fixturesRes;
+  const scoreRows = scoresRes.data || [];
+
+  // Aggregate player points across all this entry's scored matches
+  const playerStats = {};   // playerName → {points, matches: [{date, breakdown, pts}]}
+  for (const row of scoreRows) {
+    for (const [pname, st] of Object.entries(row.breakdown || {})) {
+      if (!playerStats[pname]) playerStats[pname] = { points: 0, lines: [] };
+      const pts = (st.win||0) + (st.full90||0) + (st.goals||0) + (st.assists||0) + (st.cleanSheet||0) + (st.mvp||0) - (st.red ? 1 : 0);
+      playerStats[pname].points += pts;
+      if (Object.keys(st).length > 0) {
+        playerStats[pname].lines.push({ date: row.match_date, pts, st });
+      }
+    }
+  }
+
+  const totalPts = scoreRows.reduce((s, r) => s + (r.points || 0), 0);
   const xi = entry.xi_json || [];
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
+
+  function describeStat(s) {
+    const parts = [];
+    if (s.goals) parts.push(`⚽${s.goals}`);
+    if (s.assists) parts.push(`🎁${s.assists}`);
+    if (s.cleanSheet) parts.push('🧤');
+    if (s.win) parts.push('✅');
+    if (s.full90) parts.push('⏱️');
+    if (s.mvp) parts.push('⭐');
+    if (s.red) parts.push('🟥');
+    return parts.join(' ');
+  }
+
+  function nextMatchFor(nation) {
+    const now = new Date();
+    const upcoming = (fixturesData.fixtures || []).find(f =>
+      (f.home === nation || f.away === nation) && new Date(f.date) > now
+    );
+    if (!upcoming) return null;
+    const opponent = upcoming.home === nation ? upcoming.away : upcoming.home;
+    const d = new Date(upcoming.date);
+    const isAr = document.documentElement.lang === 'ar';
+    const day = d.toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { weekday: 'short' });
+    const time = d.toLocaleTimeString(isAr ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+    const oppShort = opponent.length > 14 ? opponent.slice(0, 12) + '…' : opponent;
+    return `vs ${escapeHtml(oppShort)} · ${day} ${time}`;
+  }
 
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     const name = displayLast(item) || '?';
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
     const extra = name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : '';
+    const stats = playerStats[item.name];
+    const hasPlayed = stats && stats.lines.length > 0;
+    let foot = '';
+    if (hasPlayed) {
+      const pts = stats.points;
+      const cls = pts > 0 ? 'pos' : pts < 0 ? 'neg' : '';
+      const icons = stats.lines.map(l => describeStat(l.st)).filter(Boolean).join(' ');
+      foot = `<div class="ps-pts ${cls}">${pts >= 0 ? '+' : ''}${pts}</div>` +
+             (icons ? `<div class="ps-icons">${icons}</div>` : '');
+    } else {
+      const next = nextMatchFor(item.nation);
+      if (next) foot = `<div class="ps-next">${next}</div>`;
+    }
     return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
-      <div class="ps-name" style="font-size:${sz}px;${extra}">${escapeHtml(name)}</div>
+      <div class="ps-name" style="font-size:${sz}px;${extra};direction:ltr;">${escapeHtml(name)}</div>
       <div class="ps-tag">${coord.tag}</div>
+      ${foot}
     </div>`;
   }).join('');
 
@@ -442,7 +501,7 @@ async function openSquadModal(entryId) {
     <div class="modal-card" style="max-width:560px;">
       <button class="modal-x" id="squadModalX">×</button>
       <h2 class="modal-title">${escapeHtml(entry.team_name)}</h2>
-      <p class="modal-sub">${entry.formation} · ${new Date(entry.submitted_at).toLocaleDateString()}</p>
+      <p class="modal-sub">${entry.formation} · ${new Date(entry.submitted_at).toLocaleDateString()} · <b style="color:var(--accent);">${totalPts} pts</b></p>
       <div class="pitch-wrap">
         <div class="pitch442" style="aspect-ratio:1/1.25;width:100%;max-width:460px;margin:0 auto;">
           <div class="pl-box pl-box-top"></div>

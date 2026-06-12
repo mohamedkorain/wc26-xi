@@ -1104,7 +1104,7 @@ input { font-family: inherit; }
 .pl-board { display: grid; grid-template-columns: 1fr; gap: 4px; }
 .pl-row {
   display: grid;
-  grid-template-columns: 36px 1fr auto auto auto;
+  grid-template-columns: 36px 1fr auto auto;
   gap: 10px;
   align-items: center;
   padding: 10px 12px;
@@ -1113,10 +1113,12 @@ input { font-family: inherit; }
   border-radius: 8px;
   font-size: 13px;
 }
+.pl-row.clickable:hover { background: rgba(106,76,255,0.08); border-color: rgba(106,76,255,0.4); }
 .pl-row .pl-rank { font-weight: 800; color: var(--text-dim); }
 .pl-row .pl-name b { font-weight: 700; }
 .pl-row .pl-nation { color: var(--text-dim); font-size: 11px; }
-.pl-row .pl-stat { font-size: 11px; color: var(--text-dim); min-width: 26px; text-align: center; }
+.pl-row .pl-icons { display: flex; gap: 8px; font-size: 12px; color: var(--text-dim); align-items: center; }
+.pl-row .pl-icons span { white-space: nowrap; }
 .pl-row .pl-total {
   font-weight: 900;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
@@ -1126,6 +1128,9 @@ input { font-family: inherit; }
   font-size: 16px;
   min-width: 28px;
   text-align: right;
+}
+@media (max-width: 540px) {
+  .pl-row .pl-icons { font-size: 10px; gap: 5px; }
 }
 
 /* ──────── Next-game indicator under player names ──────── */
@@ -1139,3 +1144,19 @@ input { font-family: inherit; }
 }
 .next-game .ng-vs { opacity: 0.7; margin: 0 3px; }
 .next-game.live { color: var(--accent-2); font-weight: 700; }
+
+/* ──────── Per-player score/next-match on pitch slot ──────── */
+.pitch-slot .ps-pts {
+  font-size: 12px; font-weight: 900; margin-top: 1px; line-height: 1;
+}
+.pitch-slot .ps-pts.pos { color: var(--accent); }
+.pitch-slot .ps-pts.neg { color: var(--danger); }
+.pitch-slot .ps-icons {
+  font-size: 9px; color: var(--text-dim); margin-top: 1px;
+  white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis;
+}
+.pitch-slot .ps-next {
+  font-size: 9px; color: var(--text-dim); margin-top: 2px;
+  font-style: italic; white-space: nowrap; max-width: 110px;
+  overflow: hidden; text-overflow: ellipsis;
+}
