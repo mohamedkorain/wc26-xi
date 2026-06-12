@@ -76,12 +76,10 @@ const state = {
 
 function renderEntry() {
   const total = state.scores.reduce((sum, s) => sum + (s.points || 0), 0);
-  const submitted = new Date(state.entry.submitted_at).toLocaleDateString();
 
   document.getElementById('teamMeta').innerHTML = `
     <div>
       <div class="tm-name">${escapeHtml(state.entry.team_name)}</div>
-      <div style="font-size:11px;color:var(--text-dim);">${state.entry.formation} · ${submitted}</div>
     </div>
     <div style="text-align:right;">
       <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">${t('team.totalpts')}</div>
@@ -167,21 +165,23 @@ function renderEntry() {
   `;
 }
 
+const FIXTURE_NATION_ALIAS = {
+  'DR Congo':              'Congo DR',
+  'Cape Verde':            'Cape Verde Islands',
+  'Bosnia and Herzegovina':'Bosnia & Herzegovina',
+  'Turkey':                'Türkiye',
+  'United States':         'USA',
+};
 function nextGameFor(nation) {
+  const fxNation = FIXTURE_NATION_ALIAS[nation] || nation;
   const now = new Date();
   const upcoming = state.fixtures.find(f =>
-    (f.home === nation || f.away === nation) &&
+    (f.home === fxNation || f.away === fxNation) &&
     new Date(f.date) > now
   );
   if (!upcoming) return null;
-  const opponent = upcoming.home === nation ? upcoming.away : upcoming.home;
-  const oppCode = state.nations[opponent]?.code || '';
-  const d = new Date(upcoming.date);
-  const isAr = document.documentElement.lang === 'ar';
-  const day = d.toLocaleDateString(isAr ? 'ar-EG' : 'en-GB', { weekday: 'short' });
-  const time = d.toLocaleTimeString(isAr ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
-  const flag = flagEmoji(oppCode);
-  return { label: `${t('next.label')} ${flag} ${day} ${time}`, live: false };
+  const opponent = upcoming.home === fxNation ? upcoming.away : upcoming.home;
+  return { label: `vs ${opponent}`, live: false };
 }
 
 function flagImg(code, width) {
