@@ -30,7 +30,7 @@ create policy "entries insert self open" on public.entries
           or (
             l.transfers_open_until is not null
             and now() < l.transfers_open_until
-            and lower((select email from auth.users where id = auth.uid())) = any (array[
+            and lower(coalesce(auth.jwt()->>'email', '')) = any (array[
               'muhammedkorain@gmail.com',
               'mohamed.korain94@gmail.com'
             ])
@@ -51,7 +51,7 @@ create policy "entries update self open" on public.entries
           or (
             l.transfers_open_until is not null
             and now() < l.transfers_open_until
-            and lower((select email from auth.users where id = auth.uid())) = any (array[
+            and lower(coalesce(auth.jwt()->>'email', '')) = any (array[
               'muhammedkorain@gmail.com',
               'mohamed.korain94@gmail.com'
             ])
