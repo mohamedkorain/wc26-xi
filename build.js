@@ -71,7 +71,11 @@ async function boot() {
     document.body.innerHTML = `<pre style="padding:30px;color:#ff6b6b;">HALLO AMRIKA league not set up — admin must run supabase/seed_halo.sql.</pre>`;
     return;
   }
-  state.locked = new Date() >= new Date(state.league.locked_at);
+  // Builder stays usable not only pre-lock, but also during the transfer
+  // window — new joiners can still draft a fresh squad via the randomizer.
+  const now = new Date();
+  const txOpen = state.league.transfers_open_until ? new Date(state.league.transfers_open_until) : null;
+  state.locked = now >= new Date(state.league.locked_at) && !(txOpen && now < txOpen);
 
   await loadExistingEntry();
 

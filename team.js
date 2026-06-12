@@ -107,6 +107,32 @@ function renderTransferBar() {
   if (btn) btn.onclick = openTransferModal;
 }
 
+// Global per-player tournament points, populated on first transfer-modal open.
+// Map: "PLAYER NAME" → total points.
+let globalPlayerPts = null;
+
+async function loadGlobalPlayerPts() {
+  if (globalPlayerPts) return globalPlayerPts;
+  const { data: rows } = await supabase
+    .from('scores')
+    .select('match_date, breakdown')
+    .order('match_date', { ascending: false })
+    .limit(20000);
+  const seen = new Set();
+  const totals = {};
+  for (const r of rows || []) {
+    for (const [pname, st] of Object.entries(r.breakdown || {})) {
+      const key = `${pname}::${r.match_date}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const pts = (st.win||0) + (st.full90||0) + (st.goals||0) + (st.assists||0) + (st.cleanSheet||0) + (st.mvp||0) - (st.red ? 1 : 0);
+      totals[pname] = (totals[pname] || 0) + pts;
+    }
+  }
+  globalPlayerPts = totals;
+  return totals;
+}
+
 async function openTransferModal() {
   // Lazy-load the players pool on first open
   if (state.players.length === 0) {
@@ -123,26 +149,20 @@ async function openTransferModal() {
       }
     }
   }
+  await loadGlobalPlayerPts();
 
   const xi = state.entry.xi_json || [];
-  const isAr = document.documentElement.lang === 'ar';
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.innerHTML = `
-    <div class="modal-card" style="max-width:560px;">
+    <div class="modal-card" style="max-width:600px;">
       <button class="modal-x" id="txX">×</button>
       <h2 class="modal-title">${t('tx.title')}</h2>
 
       <div class="tx-step" id="txStep1">
         <div class="tx-step-label">${t('tx.outpick')}</div>
         <div class="tx-out-list">
-          ${xi.map(p => `
-            <button class="tx-row" data-slot="${p.slot}" data-wild="${p.wild ? 1 : 0}">
-              <span class="tx-row-pos">${p.wild ? 'WILD' : p.role}</span>
-              <span class="tx-row-name">${escapeHtml(displayLast(p))}</span>
-              <span class="tx-row-nat">${escapeHtml(p.nation)}</span>
-            </button>
-          `).join('')}
+          ${xi.map(p => txRowHtml(p, true)).join('')}
         </div>
       </div>
 
@@ -171,6 +191,28 @@ async function openTransferModal() {
   document.getElementById('txSearch').addEventListener('input', () => {
     renderInList(chosenOut, modal, xi);
   });
+}
+
+// Render one row of the transfer modal — used for BOTH the OUT list (current
+// squad) and the IN list (candidates). Shows: flag · pos · name (club) ·
+// nation small · pts · next match.
+function txRowHtml(p, isOut) {
+  const pos = p.wild ? 'WILD' : (p.role || (p.roles && p.roles[0]) || '');
+  const pts = globalPlayerPts?.[p.name] || 0;
+  const next = nextGameFor(p.nation);
+  const flag = flagImg(p.nation_code, { width: 20, cls: 'flag-img', fallback: '' });
+  return `
+    <button class="tx-row${isOut ? '' : ' in'}" ${isOut ? `data-slot="${p.slot}" data-wild="${p.wild ? 1 : 0}"` : `data-id="${escapeHtml(p.no + '|' + p.nation + '|' + p.name)}"`}>
+      <span class="tx-row-pos">${pos}</span>
+      <span class="tx-row-flag">${flag}</span>
+      <span class="tx-row-name">
+        <b>${escapeHtml(displayLast(p))}</b>
+        <span class="tx-row-meta">${escapeHtml(p.nation)}${p.club ? ' · ' + escapeHtml(p.club) : ''}</span>
+      </span>
+      <span class="tx-row-pts">${pts > 0 ? '+' + pts : pts}</span>
+      <span class="tx-row-next">${next ? escapeHtml(next.label) : ''}</span>
+    </button>
+  `;
 }
 
 function renderInList(chosenOut, modal, xi) {
@@ -204,14 +246,9 @@ function renderInList(chosenOut, modal, xi) {
     return;
   }
 
-  list.innerHTML = filtered.slice(0, 100).map(p => `
-    <button class="tx-row in" data-id="${escapeHtml(p.no + '|' + p.nation + '|' + p.name)}">
-      <span class="tx-row-pos">${(p.role || (p.roles && p.roles[0]) || '')}</span>
-      <span class="tx-row-name">${escapeHtml(displayLast(p))}</span>
-      <span class="tx-row-nat">${escapeHtml(p.nation)}</span>
-      <span class="tx-row-club">${escapeHtml(p.club || '')}</span>
-    </button>
-  `).join('');
+  // Sort candidates by points DESC so the hottest names surface first
+  filtered.sort((a, b) => (globalPlayerPts?.[b.name] || 0) - (globalPlayerPts?.[a.name] || 0));
+  list.innerHTML = filtered.slice(0, 100).map(p => txRowHtml(p, false)).join('');
 
   list.querySelectorAll('.tx-row.in').forEach(btn => {
     btn.onclick = () => {

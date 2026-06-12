@@ -352,11 +352,15 @@ function renderHeroStatus() {
   }
   const now = new Date();
   const lock = new Date(state.league.locked_at);
+  const txOpen = state.league.transfers_open_until ? new Date(state.league.transfers_open_until) : null;
   const banner = document.getElementById('lockBanner');
-  if (now >= lock) {
-    document.getElementById('ctaBuild').style.display = 'none';
+  const ctaBuild = document.getElementById('ctaBuild');
+  const inTransferWindow = txOpen && now < txOpen;
+
+  if (now >= lock && !inTransferWindow) {
+    // Hard-locked (transfer window has also closed)
+    ctaBuild.style.display = 'none';
     if (state.myUserId) {
-      // Signed in — they already have a squad. No lock messaging anywhere.
       el.innerHTML = '';
       if (banner) banner.style.display = 'none';
     } else {
@@ -366,6 +370,18 @@ function renderHeroStatus() {
         banner.style.display = 'block';
       }
     }
+    return;
+  }
+
+  // Past initial lock but still in transfer window — late-joiners can still
+  // build via the randomizer. CTA stays visible for them.
+  if (now >= lock && inTransferWindow) {
+    if (banner) banner.style.display = 'none';
+    ctaBuild.style.display = '';
+    const isAr = document.documentElement.lang === 'ar';
+    el.textContent = isAr
+      ? `الميركاتو مفتوح · يقفل ${txOpen.toLocaleString('ar-EG')}`
+      : `Transfer window open · closes ${txOpen.toLocaleString()}`;
     return;
   }
   // Pre-lock: banner should be hidden regardless of sign-in

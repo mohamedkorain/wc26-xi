@@ -60,7 +60,13 @@ import { t } from './js/i18n.js';
 const LOCK_AT = new Date('2026-06-11T19:00:00Z');
 (async () => {
   const u = await currentUser();
-  if (u) { location.href = 'team.html'; return; }
+  if (u) {
+    // Existing entry → team page; new user → randomizer (build).
+    const { data: ent } = await supabase
+      .from('entries').select('id').eq('user_id', u.id).maybeSingle();
+    location.href = ent ? 'team.html' : 'build.html';
+    return;
+  }
   if (new Date() >= LOCK_AT) {
     document.getElementById('lockBanner').style.display = 'block';
   }
