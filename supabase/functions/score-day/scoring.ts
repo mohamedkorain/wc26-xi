@@ -53,8 +53,10 @@ export function scorePlayer(
     breakdown.win = 1; pts += 1;
   }
 
-  // 2. 90' bonus (+1) — only if team won and player played full match
-  if (teamWon && ev.minutes >= 90) {
+  // 2. 90' bonus (+1) — independent of team result. Any player who finished
+  // the full match (90'+) earns this bonus. Matches the public scoring table:
+  //   "⏱️ Bonus if full 90' · +1"
+  if (ev.minutes >= 90) {
     breakdown.full90 = 1; pts += 1;
   }
 

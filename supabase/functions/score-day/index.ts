@@ -109,7 +109,7 @@ async function processMatch(fixture: any, rosterByNation: Record<string, any[]>)
   ]);
 
   // Build per-player event objects from API-Football's response
-  const playerEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation);
+  const playerEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation, homeGoals, awayGoals);
 
   // For each entry whose XI includes this nation's players, compute scores.
   // PRE-FILTER via JSONB containment: only fetch entries that actually have a
@@ -164,21 +164,25 @@ async function processMatch(fixture: any, rosterByNation: Record<string, any[]>)
   }
 }
 
-function buildPlayerEvents(playersResponse: any[], eventsResponse: any[], homeNation: string, awayNation: string): PlayerEvent[] {
-  // playersResponse: [{ team: {name}, players: [{ player, statistics:[{games:{minutes,position,rating,number,substitute}, goals:{total,assists,...}, cards:{yellow,red} }] }] }]
-  // eventsResponse: not strictly needed for goals (in stats) — but used for accuracy
+function buildPlayerEvents(playersResponse: any[], eventsResponse: any[], homeNation: string, awayNation: string, homeGoals: number, awayGoals: number): PlayerEvent[] {
+  // MVP is ONE player per match: highest rating on the winning team.
+  // If the match is a draw, MVP goes to the highest-rated player overall.
+  const winnerSide: 'home' | 'away' | 'draw' =
+    homeGoals > awayGoals ? 'home' : awayGoals > homeGoals ? 'away' : 'draw';
+  let mvpId = -1;
+  let mvpRating = 0;
+  for (const teamBlock of playersResponse || []) {
+    const side: 'home' | 'away' = canonNation(teamBlock.team.name) === homeNation ? 'home' : 'away';
+    if (winnerSide !== 'draw' && side !== winnerSide) continue;   // skip the loser
+    for (const p of teamBlock.players || []) {
+      const r = parseFloat(p.statistics?.[0]?.games?.rating || '0') || 0;
+      if (r > mvpRating) { mvpRating = r; mvpId = p.player.id; }
+    }
+  }
+
   const evs: PlayerEvent[] = [];
   for (const teamBlock of playersResponse || []) {
-    const teamName = canonNation(teamBlock.team.name);
-    const side: 'home' | 'away' = teamName === homeNation ? 'home' : 'away';
-    let maxRating = 0;
-    let mvpId = -1;
-    // First pass: find MVP candidate (winning team's highest rating)
-    for (const p of teamBlock.players || []) {
-      const st = p.statistics?.[0]; if (!st) continue;
-      const rating = parseFloat(st.games?.rating || '0') || 0;
-      if (rating > maxRating) { maxRating = rating; mvpId = p.player.id; }
-    }
+    const side: 'home' | 'away' = canonNation(teamBlock.team.name) === homeNation ? 'home' : 'away';
     for (const p of teamBlock.players || []) {
       const st = p.statistics?.[0]; if (!st) continue;
       evs.push({
