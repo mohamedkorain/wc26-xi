@@ -17,6 +17,18 @@
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=60, s-maxage=60" }
       ]
+    },
+    {
+      "source": "/(audience|build|team|players|i18n).js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=60, s-maxage=60" }
+      ]
+    },
+    {
+      "source": "/styles.css",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=60, s-maxage=60" }
+      ]
     }
   ]
 }
