@@ -109,59 +109,80 @@ async function processMatch(fixture: any, rosterByNation: Record<string, any[]>)
   ]);
 
   // Build per-player event objects from API-Football's response
-  const playerEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation);
+  const playerEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation, homeGoals, awayGoals);
 
   // For each entry whose XI includes this nation's players, compute scores.
-  const { data: entries } = await supa
-    .from('entries')
-    .select('id, user_id, league_id, xi_json');
-  if (!entries) return;
+  // PRE-FILTER via JSONB containment: only fetch entries that actually have a
+  // player from one of the two playing nations. Cuts 61k → ~23k for a typical match.
+  // Then stream-process in pages of 1000 so we never hold all rows in memory.
+  const homeFilter = `xi_json.cs.[{"nation":"${homeNation}"}]`;
+  const awayFilter = `xi_json.cs.[{"nation":"${awayNation}"}]`;
+  const PAGE = 1000;
+  let offset = 0;
+  while (true) {
+    const { data: batch } = await supa
+      .from('entries')
+      .select('id, user_id, league_id, xi_json')
+      .or(`${homeFilter},${awayFilter}`)
+      .range(offset, offset + PAGE - 1);
+    if (!batch || batch.length === 0) break;
 
-  for (const entry of entries) {
-    const starters = (entry.xi_json || []).filter((x: any) => !x.wild);
-    let totalPts = 0;
-    const breakdownByPlayer: Record<string, any> = {};
-
-    for (const slot of starters) {
-      if (slot.nation !== homeNation && slot.nation !== awayNation) continue;
-      const ev = matchPlayerToEvent(slot, playerEvents);
-      if (!ev) continue;
-      const { points, breakdown } = scorePlayer(
-        ev,
-        slot.roles || [slot.role],
-        homeNation,
-        homeGoals,
-        awayGoals,
-      );
-      totalPts += points;
-      breakdownByPlayer[slot.name] = breakdown;
+    const scoresToUpsert: any[] = [];
+    for (const entry of batch) {
+      const starters = (entry.xi_json || []).filter((x: any) => !x.wild);
+      let totalPts = 0;
+      const breakdownByPlayer: Record<string, any> = {};
+      for (const slot of starters) {
+        if (slot.nation !== homeNation && slot.nation !== awayNation) continue;
+        const ev = matchPlayerToEvent(slot, playerEvents);
+        if (!ev) continue;
+        const { points, breakdown } = scorePlayer(
+          ev,
+          slot.roles || [slot.role],
+          homeNation,
+          homeGoals,
+          awayGoals,
+        );
+        totalPts += points;
+        breakdownByPlayer[slot.name] = breakdown;
+      }
+      if (totalPts === 0) continue;
+      scoresToUpsert.push({
+        entry_id: entry.id,
+        match_date: dateStr,
+        points: totalPts,
+        breakdown: breakdownByPlayer,
+      });
     }
 
-    if (totalPts === 0) continue;
-    await supa.from('scores').upsert({
-      entry_id: entry.id,
-      match_date: dateStr,
-      points: totalPts,
-      breakdown: breakdownByPlayer,
-    }, { onConflict: 'entry_id,match_date' });
+    if (scoresToUpsert.length > 0) {
+      await supa.from('scores').upsert(scoresToUpsert, { onConflict: 'entry_id,match_date' });
+    }
+
+    if (batch.length < PAGE) break;
+    offset += PAGE;
   }
 }
 
-function buildPlayerEvents(playersResponse: any[], eventsResponse: any[], homeNation: string, awayNation: string): PlayerEvent[] {
-  // playersResponse: [{ team: {name}, players: [{ player, statistics:[{games:{minutes,position,rating,number,substitute}, goals:{total,assists,...}, cards:{yellow,red} }] }] }]
-  // eventsResponse: not strictly needed for goals (in stats) — but used for accuracy
+function buildPlayerEvents(playersResponse: any[], eventsResponse: any[], homeNation: string, awayNation: string, homeGoals: number, awayGoals: number): PlayerEvent[] {
+  // MVP is ONE player per match: highest rating on the winning team.
+  // If the match is a draw, MVP goes to the highest-rated player overall.
+  const winnerSide: 'home' | 'away' | 'draw' =
+    homeGoals > awayGoals ? 'home' : awayGoals > homeGoals ? 'away' : 'draw';
+  let mvpId = -1;
+  let mvpRating = 0;
+  for (const teamBlock of playersResponse || []) {
+    const side: 'home' | 'away' = canonNation(teamBlock.team.name) === homeNation ? 'home' : 'away';
+    if (winnerSide !== 'draw' && side !== winnerSide) continue;   // skip the loser
+    for (const p of teamBlock.players || []) {
+      const r = parseFloat(p.statistics?.[0]?.games?.rating || '0') || 0;
+      if (r > mvpRating) { mvpRating = r; mvpId = p.player.id; }
+    }
+  }
+
   const evs: PlayerEvent[] = [];
   for (const teamBlock of playersResponse || []) {
-    const teamName = canonNation(teamBlock.team.name);
-    const side: 'home' | 'away' = teamName === homeNation ? 'home' : 'away';
-    let maxRating = 0;
-    let mvpId = -1;
-    // First pass: find MVP candidate (winning team's highest rating)
-    for (const p of teamBlock.players || []) {
-      const st = p.statistics?.[0]; if (!st) continue;
-      const rating = parseFloat(st.games?.rating || '0') || 0;
-      if (rating > maxRating) { maxRating = rating; mvpId = p.player.id; }
-    }
+    const side: 'home' | 'away' = canonNation(teamBlock.team.name) === homeNation ? 'home' : 'away';
     for (const p of teamBlock.players || []) {
       const st = p.statistics?.[0]; if (!st) continue;
       evs.push({
@@ -181,13 +202,23 @@ function buildPlayerEvents(playersResponse: any[], eventsResponse: any[], homeNa
 }
 
 function matchPlayerToEvent(slot: any, allEvents: PlayerEvent[]): PlayerEvent | null {
-  // Match by team side + name normalization
+  // Our roster format: "LASTNAME Firstname" → family name is the FIRST token.
+  // API-Football format: "Firstname Lastname" → family name is the LAST token.
+  // Match by checking if our family name appears anywhere in the API name.
   const target = normaliseName(slot.name);
-  const targetLast = target.split(' ').pop() || '';
+  const targetTokens = target.split(' ');
+  const ourFamily = targetTokens[0] || '';                  // family (we store LAST first)
+  const targetSet = new Set(targetTokens);
   for (const ev of allEvents) {
     const evNorm = normaliseName(ev.player_name);
     if (evNorm === target) return ev;
-    if (evNorm.split(' ').pop() === targetLast) return ev;
+    const evTokens = evNorm.split(' ');
+    // If our family name (e.g. "rangel") appears as any token in API's name
+    // (e.g. "raul rangel") → match.
+    if (ourFamily && evTokens.includes(ourFamily)) return ev;
+    // Reverse: if API's surname (last token) matches any of our tokens.
+    const apiSurname = evTokens[evTokens.length - 1];
+    if (apiSurname && targetSet.has(apiSurname)) return ev;
   }
   return null;
 }

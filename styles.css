@@ -1027,3 +1027,152 @@ input { font-family: inherit; }
 .cand-name { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cand-club { font-size: 11px; color: var(--text-dim); }
 .cand-club span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ──────── 3-tab header navigation (Phase 3) ──────── */
+.hdr-tabs {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin: 0 8px;
+}
+.hdr-tab {
+  padding: 7px 14px;
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.hdr-tab:hover { color: var(--text); background: var(--bg-2); }
+.hdr-tab.active {
+  background: linear-gradient(135deg, rgba(106,76,255,0.18), rgba(0,212,255,0.12));
+  color: var(--text);
+  border: 1px solid rgba(106,76,255,0.35);
+}
+@media (max-width: 640px) {
+  .hdr-tabs { gap: 2px; margin: 0 4px; }
+  .hdr-tab { padding: 6px 9px; font-size: 11px; }
+}
+
+/* ──────── My Team page ──────── */
+.team-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.team-meta .tm-name { font-weight: 800; font-size: 18px; }
+.team-meta .tm-pts {
+  font-weight: 900;
+  font-size: 22px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.team-pitch { margin: 12px 0; }
+.team-breakdown {
+  margin-top: 18px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+.team-breakdown h3 { margin: 0 0 12px; font-size: 14px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+.tb-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.tb-row:last-child { border-bottom: none; }
+.tb-date { color: var(--text-dim); font-size: 11px; }
+.tb-pts { font-weight: 700; }
+.tb-pts.pos { color: var(--accent); }
+.tb-pts.neg { color: var(--danger); }
+
+/* Match-grouped breakdown */
+.tb-match {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.tb-match:last-child { border-bottom: none; }
+.tb-match-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; margin-bottom: 6px;
+}
+.tb-player {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; padding: 3px 12px; color: var(--text);
+}
+.tb-player .tb-icons { color: var(--text-dim); margin-left: 6px; font-size: 11px; }
+
+/* ──────── Player Leaderboard widget ──────── */
+.pl-board { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.pl-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.pl-row.clickable:hover { background: rgba(106,76,255,0.08); border-color: rgba(106,76,255,0.4); }
+.pl-row .pl-rank { font-weight: 800; color: var(--text-dim); }
+.pl-row .pl-name b { font-weight: 700; }
+.pl-row .pl-nation { color: var(--text-dim); font-size: 11px; }
+.pl-row .pl-icons { display: flex; gap: 8px; font-size: 12px; color: var(--text-dim); align-items: center; }
+.pl-row .pl-icons span { white-space: nowrap; }
+.pl-row .pl-total {
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 16px;
+  min-width: 28px;
+  text-align: right;
+}
+@media (max-width: 540px) {
+  .pl-row .pl-icons { font-size: 10px; gap: 5px; }
+}
+
+/* ──────── Next-game indicator under player names ──────── */
+.next-game {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+.next-game .ng-vs { opacity: 0.7; margin: 0 3px; }
+.next-game.live { color: var(--accent-2); font-weight: 700; }
+
+/* ──────── Per-player score/next-match on pitch slot ──────── */
+.pitch-slot .ps-pts {
+  font-size: 12px; font-weight: 900; margin-top: 1px; line-height: 1;
+}
+.pitch-slot .ps-pts.pos { color: var(--accent); }
+.pitch-slot .ps-pts.neg { color: var(--danger); }
+.pitch-slot .ps-icons {
+  font-size: 9px; color: var(--text-dim); margin-top: 1px;
+  white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis;
+}
+.pitch-slot .ps-next {
+  font-size: 9px; color: var(--text-dim); margin-top: 2px;
+  font-style: italic; white-space: nowrap; max-width: 110px;
+  overflow: hidden; text-overflow: ellipsis;
+}

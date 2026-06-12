@@ -33,6 +33,10 @@
   <a href="index.html" class="brand">
     <span class="brand-mark" data-i18n="brand.mark">HALLO AMRIKA</span>
   </a>
+  <nav class="hdr-tabs">
+    <a href="index.html" class="hdr-tab active" data-i18n="tab.home">Home</a>
+    <a href="team.html"  class="hdr-tab"        data-i18n="tab.team">My Team</a>
+  </nav>
   <div class="hdr-right">
     <button class="hdr-btn" id="langToggle" title="عربي / English">عربي</button>
     <span id="authSlot" class="auth-slot-inline"></span>
@@ -77,10 +81,30 @@
   <div class="strip-inner">
     <div class="pool-head">
       <h2 class="strip-title" style="margin:0;" data-i18n="lb.title">Leaderboard</h2>
-      <div class="pool-stats" id="lbStats" style="visibility:hidden;">·</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button id="jumpToMeBtn" class="hdr-btn" style="display:none;font-size:11px;padding:6px 10px;" data-i18n="lb.jumpme">🎯 Jump to my rank</button>
+        <div class="pool-stats" id="lbStats">0 entries</div>
+      </div>
     </div>
-    <div class="lb-locked-card" data-i18n="lb.lockedmsg">
-      🔒 Standings unlock when the tournament kicks off. Build your squad and your rank will appear once scoring begins.
+    <div id="myRankCard" class="my-rank-card" style="display:none;"></div>
+
+    <div class="lb-head">
+      <div>#</div><div data-i18n="lb.team">TEAM NAME</div><div data-i18n="lb.owner">OWNER</div><div style="text-align:right;" data-i18n="lb.pts">PTS</div>
+    </div>
+    <div class="lb-table" id="lbTable">
+      <div class="lb-empty" data-i18n="lb.empty">No scoring data yet. Standings update after each match.</div>
+    </div>
+  </div>
+</section>
+
+<section class="strip strip-alt" id="topPlayersStrip">
+  <div class="strip-inner" style="max-width:860px;">
+    <div class="pool-head">
+      <h2 class="strip-title" style="margin:0;" data-i18n="players.title">Top Players</h2>
+      <div class="pool-stats" data-i18n="players.sub">Highest-scoring players across the tournament</div>
+    </div>
+    <div id="topPlayersBoard" class="pl-board">
+      <div class="lb-empty" data-i18n="players.empty">Player scores appear once matches are played and scored.</div>
     </div>
   </div>
 </section>

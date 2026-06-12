@@ -17,3 +17,9 @@ Halo Amrika — Game Pitch.pdf
 # secrets (we currently use Supabase publishable key in client code — safe)
 .env
 .env.local
+
+# Local backups (golden masters of the DB, too big for git)
+backups/
+
+# Supabase CLI internal state
+supabase/.temp/

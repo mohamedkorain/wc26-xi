@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Team · HALLO AMRIKA</title>
+<meta name="description" content="Your fantasy XI for the 2026 FIFA World Cup — pitch view, per-match scoring breakdown." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <a href="index.html" class="brand">
+    <span class="brand-mark" data-i18n="brand.mark">HALLO AMRIKA</span>
+  </a>
+  <nav class="hdr-tabs">
+    <a href="index.html" class="hdr-tab" data-i18n="tab.home">Home</a>
+    <a href="team.html"  class="hdr-tab active" data-i18n="tab.team">My Team</a>
+  </nav>
+  <div class="hdr-right">
+    <button class="hdr-btn" id="langToggle" title="عربي / English">عربي</button>
+    <span id="authSlot" class="auth-slot-inline"></span>
+  </div>
+</header>
+
+<section class="strip" id="teamHero">
+  <div class="strip-inner" style="max-width:860px;">
+    <div id="teamMeta" class="team-meta"></div>
+    <div id="teamPitch" class="team-pitch"></div>
+    <div id="teamBreakdown" class="team-breakdown"></div>
+  </div>
+</section>
+
+<section class="strip strip-alt" id="signinPrompt" style="display:none;">
+  <div class="strip-inner" style="max-width:520px;text-align:center;">
+    <h2 class="strip-title" data-i18n="team.signin.title">Sign in to see your team</h2>
+    <p class="strip-note" data-i18n="team.signin.sub">Your XI, your per-match scoring breakdown, and your next fixtures all live here.</p>
+    <a href="login.html" class="hero-cta" data-i18n="cta.signin">Sign in →</a>
+  </div>
+</section>
+
+<footer class="footer">
+  <div data-i18n="footer.line1">HALLO AMRIKA · A Saba7o Korah Production</div>
+  <div class="footer-sub" data-i18n="footer.line2">Hosted by Nsoo7y, Marei &amp; Orfy</div>
+</footer>
+
+<script type="module" src="js/i18n.js"></script>
+<script type="module" src="team.js"></script>
+</body>
+</html>
