@@ -112,19 +112,23 @@ function renderEntry() {
     const name = displayLast(item) || '?';
     const stats = playerStats[item.name];
     const hasPlayed = stats && stats.points !== undefined;
-    let foot;
+    let foot = '';
+    let tooltipAttr = '';
     if (hasPlayed) {
       const pts = stats.points;
       const cls = pts > 0 ? 'pos' : pts < 0 ? 'neg' : '';
       const icons = describeStat(stats.st);
-      foot = `<div class="ps-pts ${cls}">${pts >= 0 ? '+' : ''}${pts}</div>` +
-             (icons && icons !== '—' ? `<div class="ps-icons">${icons}</div>` : '');
+      // Just the points number on-pitch; full icon breakdown lives in a hover
+      // tooltip (native browser title) + the Match Breakdown card below.
+      foot = `<div class="ps-pts ${cls}">${pts >= 0 ? '+' : ''}${pts}</div>`;
+      const tip = `${pts >= 0 ? '+' : ''}${pts} pts${icons && icons !== '—' ? '  ·  ' + icons : ''}`;
+      tooltipAttr = ` title="${escapeHtml(tip)}"`;
     } else {
       const next = nextGameFor(item.nation);
       foot = next ? `<div class="next-game ${next.live ? 'live' : ''}">${next.label}</div>` : '';
     }
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
-    return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;direction:ltr;">
+    return `<div class="pitch-slot filled"${tooltipAttr} style="left:${coord.x}%;top:${coord.y}%;direction:ltr;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
       <div class="ps-name" style="font-size:${sz}px;">${escapeHtml(name)}</div>
       <div class="ps-tag">${coord.tag}</div>

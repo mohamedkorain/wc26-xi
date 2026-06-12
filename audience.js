@@ -38,6 +38,7 @@ async function boot() {
   // Leaderboard live (Phase 3 scoring deployed 2026-06-12)
   renderLeaderboard();
   renderTopPlayers();
+  if (state.myUserId) renderMyRankCard();
 
   // If the visitor arrived via a share link (?squad=<entryId>), pop that
   // squad's viewer modal right away — no scrolling, no hunting.
@@ -171,8 +172,16 @@ async function renderMySquad() {
     .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle();
   if (!entry) { document.getElementById('mySquadStrip').style.display = 'none'; return; }
 
+  // Pull total points alongside the team-name line on the strip header.
+  const { data: lbRow } = await supabase
+    .from('leaderboard_totals')
+    .select('total_points')
+    .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle();
+  const pts = lbRow?.total_points ?? 0;
+
   document.getElementById('mySquadStrip').style.display = '';
-  document.getElementById('mySquadMeta').innerHTML = escapeHtml(entry.team_name);
+  document.getElementById('mySquadMeta').innerHTML =
+    `${escapeHtml(entry.team_name)} · <b style="color:var(--accent);">${pts} pts</b>`;
 
   const xi = entry.xi_json || [];
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
