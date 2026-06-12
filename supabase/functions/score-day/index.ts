@@ -230,23 +230,41 @@ function buildPlayerEvents(playersResponse: any[], eventsResponse: any[], homeNa
 }
 
 function matchPlayerToEvent(slot: any, allEvents: PlayerEvent[]): PlayerEvent | null {
-  // Our roster format: "LASTNAME Firstname" → family name is the FIRST token.
-  // API-Football format: "Firstname Lastname" → family name is the LAST token.
-  // Match by checking if our family name appears anywhere in the API name.
+  // Our roster format: "LASTNAME Firstname(s)" (family first).
+  // API-Football format: "Firstname(s) Lastname" (family last).
+  //
+  // Surname alone is NOT enough — multiple players from one nation can share
+  // a family name (HWANG In-beom + HWANG Hee-chan + HWANG Hyun-soo were all
+  // in Korea's MD1 squad). Without a first-name check, the first HWANG in
+  // the events array would steal every Hwang's stats. So:
+  //   - require the family name to appear in the API name
+  //   - AND require at least one OTHER token (a first/middle name) to also
+  //     appear, so we discriminate between teammates with the same surname.
+  //   - fall back to single-surname match ONLY if no event in this match
+  //     shares this surname (rare; still safer than mis-matching).
   const target = normaliseName(slot.name);
   const targetTokens = target.split(' ');
-  const ourFamily = targetTokens[0] || '';                  // family (we store LAST first)
-  const targetSet = new Set(targetTokens);
+  const ourFamily = targetTokens[0] || '';
+  const ourGivens = targetTokens.slice(1);
+
+  // First pass: exact normalized full-name match.
   for (const ev of allEvents) {
-    const evNorm = normaliseName(ev.player_name);
-    if (evNorm === target) return ev;
-    const evTokens = evNorm.split(' ');
-    // If our family name (e.g. "rangel") appears as any token in API's name
-    // (e.g. "raul rangel") → match.
-    if (ourFamily && evTokens.includes(ourFamily)) return ev;
-    // Reverse: if API's surname (last token) matches any of our tokens.
-    const apiSurname = evTokens[evTokens.length - 1];
-    if (apiSurname && targetSet.has(apiSurname)) return ev;
+    if (normaliseName(ev.player_name) === target) return ev;
+  }
+  // Second pass: family AND at least one given-name token match.
+  for (const ev of allEvents) {
+    const evTokens = normaliseName(ev.player_name).split(' ');
+    if (!ourFamily || !evTokens.includes(ourFamily)) continue;
+    if (ourGivens.some(g => evTokens.includes(g))) return ev;
+    // Hyphenated names: "Heechan" vs API "Hee-chan" → token "hee-chan"
+    if (ourGivens.some(g => evTokens.some(et => et.startsWith(g) || g.startsWith(et)))) return ev;
+  }
+  // Third pass: lonely surname (only if no teammate shares it in this match).
+  const familyCount = allEvents.reduce((n, ev) => n + (normaliseName(ev.player_name).split(' ').includes(ourFamily) ? 1 : 0), 0);
+  if (familyCount === 1) {
+    for (const ev of allEvents) {
+      if (normaliseName(ev.player_name).split(' ').includes(ourFamily)) return ev;
+    }
   }
   return null;
 }

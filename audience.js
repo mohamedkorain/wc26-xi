@@ -181,12 +181,13 @@ async function renderMySquad() {
   // they transfer).
   const gw1Squad = entry.xi_json_gw1 || entry.xi_json;
 
-  // Pull both total points + per-match breakdowns so we can show per-player
-  // points on each pitch slot.
-  const [lbRow, scoreRows] = await Promise.all([
+  // Pull total points + per-match breakdowns + fixtures (for the "vs OPP"
+  // / "0 (played, no points)" indicators on each pitch slot).
+  const [lbRow, scoreRows, fixturesData] = await Promise.all([
     supabase.from('leaderboard_totals').select('total_points')
       .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle().then(r => r.data),
     supabase.from('scores').select('match_date, breakdown').eq('entry_id', entry.id).then(r => r.data || []),
+    state._fixturesCache || fetch('data/fixtures.json').then(r => r.json()).then(d => { state._fixturesCache = Promise.resolve(d); return d; }),
   ]);
   const pts = lbRow?.total_points ?? 0;
 
@@ -211,9 +212,22 @@ async function renderMySquad() {
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
-  // Pitch HTML — same +pts foot as /team.html; tooltip with localized breakdown.
+  // Find the GW1 fixture for each nation (so we can show "vs OPP" for
+  // unplayed nations and "0" for nations that played but didn't earn).
+  const NATION_ALIAS_HS = {
+    'DR Congo':'Congo DR', 'Cape Verde':'Cape Verde Islands',
+    'Bosnia and Herzegovina':'Bosnia & Herzegovina', 'Turkey':'Türkiye', 'United States':'USA',
+  };
+  function firstFixtureFor(nation) {
+    const fx = NATION_ALIAS_HS[nation] || nation;
+    return (fixturesData?.fixtures || []).find(f => f.home === fx || f.away === fx);
+  }
+
+  // Pitch HTML — show +pts if scored, "0" if their nation played but they
+  // earned nothing, otherwise "vs OPP" for the upcoming match.
   const isAr = document.documentElement.lang === 'ar';
   const ptsLabel = isAr ? 'نقاط' : 'pts';
+  const now = new Date();
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     const name = displayLast(item) || '?';
@@ -227,6 +241,18 @@ async function renderMySquad() {
       foot = `<div class="ps-pts ${cls}">${ps.points >= 0 ? '+' : ''}${ps.points}</div>`;
       const txt = describeStatTextLocal(ps.st);
       tooltipAttr = ` title="${escapeHtml((ps.points >= 0 ? '+' : '') + ps.points + ' ' + ptsLabel + (txt ? '  ·  ' + txt : ''))}"`;
+    } else {
+      const fixture = firstFixtureFor(item.nation);
+      if (fixture) {
+        const past = new Date(fixture.date) <= now;
+        if (past) {
+          // Nation played but this player earned nothing
+          foot = `<div class="ps-pts" style="color:var(--text-dim);">0</div>`;
+        } else {
+          const opp = fixture.home === (NATION_ALIAS_HS[item.nation] || item.nation) ? fixture.away : fixture.home;
+          foot = `<div class="ps-next">vs ${escapeHtml(opp)}</div>`;
+        }
+      }
     }
     return `<div class="pitch-slot filled"${tooltipAttr} style="left:${coord.x}%;top:${coord.y}%;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
