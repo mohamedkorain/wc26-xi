@@ -234,25 +234,23 @@ async function renderMySquad() {
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
     const extra = name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : '';
     const ps = playerStats[item.name];
+    const fixture = firstFixtureFor(item.nation);
+    const opp = fixture ? (fixture.home === (NATION_ALIAS_HS[item.nation] || item.nation) ? fixture.away : fixture.home) : '';
+    const vsLine = opp ? `<div class="ps-next">vs ${escapeHtml(opp)}</div>` : '';
     let foot = '';
     let tooltipAttr = '';
     if (ps) {
       const cls = ps.points > 0 ? 'pos' : ps.points < 0 ? 'neg' : '';
-      foot = `<div class="ps-pts ${cls}">${ps.points >= 0 ? '+' : ''}${ps.points}</div>`;
+      foot = `<div class="ps-pts ${cls}">${ps.points >= 0 ? '+' : ''}${ps.points}</div>${vsLine}`;
       const txt = describeStatTextLocal(ps.st);
       tooltipAttr = ` title="${escapeHtml((ps.points >= 0 ? '+' : '') + ps.points + ' ' + ptsLabel + (txt ? '  ·  ' + txt : ''))}"`;
-    } else {
-      const fixture = firstFixtureFor(item.nation);
-      if (fixture) {
-        const past = new Date(fixture.date) <= now;
-        if (past) {
-          // Nation played but this player earned nothing
-          foot = `<div class="ps-pts" style="color:var(--text-dim);">0</div>`;
-        } else {
-          const opp = fixture.home === (NATION_ALIAS_HS[item.nation] || item.nation) ? fixture.away : fixture.home;
-          foot = `<div class="ps-next">vs ${escapeHtml(opp)}</div>`;
-        }
-      }
+    } else if (fixture) {
+      const past = new Date(fixture.date) <= now;
+      // Nation played but the player earned 0 → show "0" + the current-MD
+      // opponent line. Nation hasn't played yet → just the opponent line.
+      foot = past
+        ? `<div class="ps-pts" style="color:var(--text-dim);">0</div>${vsLine}`
+        : vsLine;
     }
     return `<div class="pitch-slot filled"${tooltipAttr} style="left:${coord.x}%;top:${coord.y}%;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
