@@ -35,8 +35,8 @@ async function boot() {
   // Render above-the-fold stuff IMMEDIATELY
   renderHeroStatus();
   renderMySquad();
-  // Leaderboard hidden pre-tournament; see index.html lb-locked-card
-  // renderLeaderboard();
+  // Leaderboard live (Phase 3 scoring deployed 2026-06-12)
+  renderLeaderboard();
 
   // If the visitor arrived via a share link (?squad=<entryId>), pop that
   // squad's viewer modal right away — no scrolling, no hunting.
