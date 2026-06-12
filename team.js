@@ -121,7 +121,10 @@ function renderEntry() {
       // Just the points number on-pitch; full icon breakdown lives in a hover
       // tooltip (native browser title) + the Match Breakdown card below.
       foot = `<div class="ps-pts ${cls}">${pts >= 0 ? '+' : ''}${pts}</div>`;
-      const tip = `${pts >= 0 ? '+' : ''}${pts} pts${icons && icons !== '—' ? '  ·  ' + icons : ''}`;
+      const txt = describeStatText(stats.st);
+      const isAr = document.documentElement.lang === 'ar';
+      const ptsLabel = isAr ? 'نقاط' : 'pts';
+      const tip = `${pts >= 0 ? '+' : ''}${pts} ${ptsLabel}${txt ? '  ·  ' + txt : ''}`;
       tooltipAttr = ` title="${escapeHtml(tip)}"`;
     } else {
       const next = nextGameFor(item.nation);
@@ -273,6 +276,8 @@ function roundShort(round) {
 }
 
 function describeStat(s) {
+  // Used in the match-breakdown card. Keeps the emoji-shortform here
+  // because the rows are tight; the on-pitch tooltip uses describeStatText().
   const parts = [];
   if (s.goals) parts.push(`⚽${s.goals}`);
   if (s.assists) parts.push(`🎁${s.assists}`);
@@ -282,6 +287,20 @@ function describeStat(s) {
   if (s.mvp) parts.push('⭐');
   if (s.red) parts.push('🟥');
   return parts.join(' ') || '—';
+}
+
+// Verbose, localized version used in pitch-slot hover tooltips:
+//   "Win, 90', Goal x2"  /  "فوز، ٩٠ دقيقة، جول×٢"
+function describeStatText(s) {
+  const parts = [];
+  if (s.win)        parts.push(t('pts.win'));
+  if (s.full90)     parts.push(t('pts.full90'));
+  if (s.goals)      parts.push(`${t('pts.goal')}${s.goals > 1 ? '×' + s.goals : ''}`);
+  if (s.assists)    parts.push(`${t('pts.assist')}${s.assists > 1 ? '×' + s.assists : ''}`);
+  if (s.cleanSheet) parts.push(t('pts.cleansheet'));
+  if (s.mvp)        parts.push(t('pts.mvp'));
+  if (s.red)        parts.push(t('pts.red'));
+  return parts.join(document.documentElement.lang === 'ar' ? '، ' : ', ');
 }
 
 function escapeHtml(s) {

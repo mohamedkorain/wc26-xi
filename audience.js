@@ -172,12 +172,27 @@ async function renderMySquad() {
     .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle();
   if (!entry) { document.getElementById('mySquadStrip').style.display = 'none'; return; }
 
-  // Pull total points alongside the team-name line on the strip header.
-  const { data: lbRow } = await supabase
-    .from('leaderboard_totals')
-    .select('total_points')
-    .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle();
+  // Pull both total points + per-match breakdowns so we can show per-player
+  // points on each pitch slot.
+  const [lbRow, scoreRows] = await Promise.all([
+    supabase.from('leaderboard_totals').select('total_points')
+      .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle().then(r => r.data),
+    supabase.from('scores').select('match_date, breakdown').eq('entry_id', entry.id).then(r => r.data || []),
+  ]);
   const pts = lbRow?.total_points ?? 0;
+
+  // Aggregate per-player stats across all matches scored.
+  const playerStats = {};
+  for (const row of scoreRows) {
+    for (const [pname, st] of Object.entries(row.breakdown || {})) {
+      if (!st || Object.keys(st).length === 0) continue;
+      if (!playerStats[pname]) playerStats[pname] = { points: 0, st: {} };
+      const p = (st.win||0) + (st.full90||0) + (st.goals||0) + (st.assists||0) + (st.cleanSheet||0) + (st.mvp||0) - (st.red ? 1 : 0);
+      playerStats[pname].points += p;
+      for (const k of ['goals','assists','cleanSheet','win','full90','mvp']) playerStats[pname].st[k] = (playerStats[pname].st[k] || 0) + (st[k] || 0);
+      if (st.red) playerStats[pname].st.red = true;
+    }
+  }
 
   document.getElementById('mySquadStrip').style.display = '';
   document.getElementById('mySquadMeta').innerHTML =
@@ -187,16 +202,28 @@ async function renderMySquad() {
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
-  // Pitch HTML
+  // Pitch HTML — same +pts foot as /team.html; tooltip with localized breakdown.
+  const isAr = document.documentElement.lang === 'ar';
+  const ptsLabel = isAr ? 'نقاط' : 'pts';
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     const name = displayLast(item) || '?';
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
     const extra = name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : '';
-    return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;">
+    const ps = playerStats[item.name];
+    let foot = '';
+    let tooltipAttr = '';
+    if (ps) {
+      const cls = ps.points > 0 ? 'pos' : ps.points < 0 ? 'neg' : '';
+      foot = `<div class="ps-pts ${cls}">${ps.points >= 0 ? '+' : ''}${ps.points}</div>`;
+      const txt = describeStatTextLocal(ps.st);
+      tooltipAttr = ` title="${escapeHtml((ps.points >= 0 ? '+' : '') + ps.points + ' ' + ptsLabel + (txt ? '  ·  ' + txt : ''))}"`;
+    }
+    return `<div class="pitch-slot filled"${tooltipAttr} style="left:${coord.x}%;top:${coord.y}%;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
       <div class="ps-name" style="font-size:${sz}px;${extra}">${escapeHtml(name)}</div>
       <div class="ps-tag">${coord.tag}</div>
+      ${foot}
     </div>`;
   }).join('');
 
@@ -243,6 +270,19 @@ async function renderMySquad() {
 
 function displayLast(item) {
   return item.shirt_name || item.last || item.name || '';
+}
+
+// Localized hover-tooltip text: "Win, 90', Goal x2" / "فوز، ٩٠ دقيقة، جول×٢"
+function describeStatTextLocal(s) {
+  const parts = [];
+  if (s.win)        parts.push(t('pts.win'));
+  if (s.full90)     parts.push(t('pts.full90'));
+  if (s.goals)      parts.push(`${t('pts.goal')}${s.goals > 1 ? '×' + s.goals : ''}`);
+  if (s.assists)    parts.push(`${t('pts.assist')}${s.assists > 1 ? '×' + s.assists : ''}`);
+  if (s.cleanSheet) parts.push(t('pts.cleansheet'));
+  if (s.mvp)        parts.push(t('pts.mvp'));
+  if (s.red)        parts.push(t('pts.red'));
+  return parts.join(document.documentElement.lang === 'ar' ? '، ' : ', ');
 }
 
 // Kept for callers that still want the emoji fallback
