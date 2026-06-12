@@ -410,7 +410,12 @@ function renderHeroStatus() {
   // emails only. Everyone else sees the locked state until the transfer
   // feature is fully validated.
   if (now >= lock && inTransferWindow) {
-    const ADMIN_ALLOWLIST = ['muhammedkorain@gmail.com', 'mohamed.korain94@gmail.com'];
+    const ADMIN_ALLOWLIST = [
+      'muhammedkorain@gmail.com',
+      'mohamed.korain94@gmail.com',
+      'mo.irobo@gmail.com',
+      'khairallax@icloud.com',
+    ];
     const isAdmin = state.userEmail && ADMIN_ALLOWLIST.includes(state.userEmail.toLowerCase());
     if (isAdmin) {
       if (banner) banner.style.display = 'none';

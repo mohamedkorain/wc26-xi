@@ -92,7 +92,12 @@ function renderTransferBar() {
   if (!bar || !state.league) return;
   // BETA gate: transfers UI only visible to the admin while the flow is
   // being validated. Backend RLS enforces the same restriction.
-  const TRANSFER_ALLOWLIST = ['muhammedkorain@gmail.com', 'mohamed.korain94@gmail.com'];
+  const TRANSFER_ALLOWLIST = [
+    'muhammedkorain@gmail.com',
+    'mohamed.korain94@gmail.com',
+    'mo.irobo@gmail.com',
+    'khairallax@icloud.com',
+  ];
   if (!state.user || !TRANSFER_ALLOWLIST.includes((state.user.email || '').toLowerCase())) {
     bar.style.display = 'none';
     return;

@@ -32,7 +32,9 @@ create policy "entries insert self open" on public.entries
             and now() < l.transfers_open_until
             and lower(coalesce(auth.jwt()->>'email', '')) = any (array[
               'muhammedkorain@gmail.com',
-              'mohamed.korain94@gmail.com'
+              'mohamed.korain94@gmail.com',
+              'mo.irobo@gmail.com',
+              'khairallax@icloud.com'
             ])
           )
         )
@@ -53,7 +55,9 @@ create policy "entries update self open" on public.entries
             and now() < l.transfers_open_until
             and lower(coalesce(auth.jwt()->>'email', '')) = any (array[
               'muhammedkorain@gmail.com',
-              'mohamed.korain94@gmail.com'
+              'mohamed.korain94@gmail.com',
+              'mo.irobo@gmail.com',
+              'khairallax@icloud.com'
             ])
           )
         )
