@@ -110,7 +110,8 @@ export function normaliseName(s: string): string {
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')   // strip accents
     .toLowerCase()
-    .replace(/[^a-z\s'-]/g, ' ')
+    .replace(/-/g, '')         // collapse hyphens: "in-beom" ↔ "inbeom"
+    .replace(/[^a-z\s']/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
