@@ -16,13 +16,16 @@ document.getElementById('langToggle').onclick = () => {
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 
+// Slot order MUST match xi_json's convention (the same one audience.js uses):
+//   0 GK · 1 LCB · 2 RCB · 3 LB · 4 RB · 5 LCM · 6 RCM
+//   7 LW · 8 RW · 9 LST · 10 RST
 const PITCH_COORDS = [
-  { x: 50,  y: 88, tag: 'GK'  },
-  { x: 20,  y: 70, tag: 'FB'  }, { x: 80,  y: 70, tag: 'FB' },
-  { x: 38,  y: 70, tag: 'CB'  }, { x: 62,  y: 70, tag: 'CB' },
-  { x: 30,  y: 45, tag: 'CM'  }, { x: 70,  y: 45, tag: 'CM' },
-  { x: 10,  y: 35, tag: 'WIN' }, { x: 90,  y: 35, tag: 'WIN' },
-  { x: 35,  y: 18, tag: 'ST'  }, { x: 65,  y: 18, tag: 'ST'  },
+  { x: 50, y: 90, tag: 'GK'  },
+  { x: 37, y: 72, tag: 'CB'  }, { x: 63, y: 72, tag: 'CB' },
+  { x: 13, y: 72, tag: 'FB'  }, { x: 87, y: 72, tag: 'FB' },
+  { x: 38, y: 48, tag: 'CM'  }, { x: 62, y: 48, tag: 'CM' },
+  { x: 13, y: 48, tag: 'WIN' }, { x: 87, y: 48, tag: 'WIN' },
+  { x: 36, y: 18, tag: 'ST'  }, { x: 64, y: 18, tag: 'ST' },
 ];
 
 const state = {
