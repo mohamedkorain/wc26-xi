@@ -617,6 +617,8 @@ async function openSquadModal(entryId) {
     return `vs ${escapeHtml(opponent)}`;
   }
 
+  const isAr = document.documentElement.lang === 'ar';
+  const ptsLabel = isAr ? 'نقاط' : 'pts';
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     const name = displayLast(item) || '?';
@@ -625,17 +627,26 @@ async function openSquadModal(entryId) {
     const stats = playerStats[item.name];
     const hasPlayed = stats && stats.lines.length > 0;
     let foot = '';
+    let tooltipAttr = '';
     if (hasPlayed) {
       const pts = stats.points;
       const cls = pts > 0 ? 'pos' : pts < 0 ? 'neg' : '';
-      const icons = stats.lines.map(l => describeStat(l.st)).filter(Boolean).join(' ');
-      foot = `<div class="ps-pts ${cls}">${pts >= 0 ? '+' : ''}${pts}</div>` +
-             (icons ? `<div class="ps-icons">${icons}</div>` : '');
+      foot = `<div class="ps-pts ${cls}">${pts >= 0 ? '+' : ''}${pts}</div>`;
+      // Aggregate stats across this player's lines for a single localized
+      // tooltip ("Win, 90', Goal" / "فوز، ٩٠ دقيقة، جول")
+      const agg = {};
+      for (const l of stats.lines) {
+        for (const k of ['goals','assists','cleanSheet','win','full90','mvp']) agg[k] = (agg[k]||0) + (l.st[k]||0);
+        if (l.st.red) agg.red = true;
+      }
+      const txt = describeStatTextLocal(agg);
+      const tip = `${pts >= 0 ? '+' : ''}${pts} ${ptsLabel}${txt ? '  ·  ' + txt : ''}`;
+      tooltipAttr = ` title="${escapeHtml(tip)}"`;
     } else {
       const next = nextMatchFor(item.nation);
       if (next) foot = `<div class="ps-next">${next}</div>`;
     }
-    return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;">
+    return `<div class="pitch-slot filled"${tooltipAttr} style="left:${coord.x}%;top:${coord.y}%;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
       <div class="ps-name" style="font-size:${sz}px;${extra};direction:ltr;">${escapeHtml(name)}</div>
       <div class="ps-tag">${coord.tag}</div>

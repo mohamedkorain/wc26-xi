@@ -442,10 +442,63 @@ function renderEntry() {
   `;
 
   // Per-match breakdown lives on the homepage (which renders the GW1
-  // lineup). On /team.html — the next-GW view — there's no past data
-  // to show. Clear the element so it doesn't render anything stale.
+  // lineup). On /team.html the breakdown box is repurposed for the
+  // TRANSFER HISTORY — a diff of xi_json_gw1 (the squad as it was at
+  // GW1 lock) against the current xi_json (post-transfer).
   const bd = document.getElementById('teamBreakdown');
-  if (bd) bd.innerHTML = '';
+  if (bd) bd.innerHTML = renderTransferHistoryHtml();
+}
+
+function renderTransferHistoryHtml() {
+  const oldXi = state.entry.xi_json_gw1;
+  const newXi = state.entry.xi_json || [];
+  if (!oldXi) {
+    return `
+      <h3>${t('tx.hist.title')}</h3>
+      <div style="text-align:center;color:var(--text-dim);font-size:13px;padding:8px 0;">
+        ${t('tx.hist.empty')}
+      </div>
+    `;
+  }
+  // Match by slot+wild — the slot index stays stable across a swap.
+  const swaps = [];
+  for (let i = 0; i < newXi.length; i++) {
+    const a = oldXi[i], b = newXi[i];
+    if (!a || !b) continue;
+    if (a.name !== b.name || a.nation !== b.nation) {
+      swaps.push({ out: a, in: b });
+    }
+  }
+  if (swaps.length === 0) {
+    return `
+      <h3>${t('tx.hist.title')}</h3>
+      <div style="text-align:center;color:var(--text-dim);font-size:13px;padding:8px 0;">
+        ${t('tx.hist.empty')}
+      </div>
+    `;
+  }
+  const groupHeader = `<div class="tx-hist-md">${t('tx.hist.md', { from: 'MD1', to: 'MD2' })}</div>`;
+  const rows = swaps.map(s => `
+    <div class="tx-swap-pair">
+      <div class="tx-swap-side">
+        <span class="tx-row-pos">${s.out.wild ? 'WILD' : s.out.role}</span>
+        ${flagImg(s.out.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}
+        <b>${escapeHtml(displayLast(s.out))}</b>
+        <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(s.out.nation)}</span>
+      </div>
+      <span class="tx-swap-arrow">→</span>
+      <div class="tx-swap-side">
+        ${flagImg(s.in.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}
+        <b>${escapeHtml(displayLast(s.in))}</b>
+        <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(s.in.nation)}</span>
+      </div>
+    </div>
+  `).join('');
+  return `
+    <h3>${t('tx.hist.title')}</h3>
+    ${groupHeader}
+    ${rows}
+  `;
 }
 
 const FIXTURE_NATION_ALIAS = {

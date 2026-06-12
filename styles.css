@@ -1142,6 +1142,17 @@ input { font-family: inherit; }
 .tx-swap-side img { border-radius: 2px; }
 .tx-swap-arrow { color: var(--accent); font-weight: 800; font-size: 18px; }
 
+.tx-hist-md {
+  display: inline-block;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--accent-2);
+  background: rgba(255,213,92,0.12);
+  border: 1px solid rgba(255,213,92,0.35);
+  padding: 4px 10px; border-radius: 6px;
+  margin-bottom: 10px;
+}
+
 /* ──────── My Team page ──────── */
 .team-meta {
   display: flex;
