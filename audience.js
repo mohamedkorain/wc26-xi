@@ -406,37 +406,14 @@ function renderHeroStatus() {
     return;
   }
 
-  // Past initial lock but still in transfer window — beta-gated to admin
-  // emails only. Everyone else sees the locked state until the transfer
-  // feature is fully validated.
+  // Past initial lock but still in transfer window — open to everyone now.
   if (now >= lock && inTransferWindow) {
-    const ADMIN_ALLOWLIST = [
-      'muhammedkorain@gmail.com',
-      'mohamed.korain94@gmail.com',
-      'mo.irobo@gmail.com',
-      'khairallax@icloud.com',
-    ];
-    const isAdmin = state.userEmail && ADMIN_ALLOWLIST.includes(state.userEmail.toLowerCase());
-    if (isAdmin) {
-      if (banner) banner.style.display = 'none';
-      ctaBuild.style.display = '';
-      const isAr = document.documentElement.lang === 'ar';
-      el.textContent = isAr
-        ? `الميركاتو مفتوح · يقفل ${txOpen.toLocaleString('ar-EG')}`
-        : `Transfer window open · closes ${txOpen.toLocaleString()}`;
-    } else {
-      ctaBuild.style.display = 'none';
-      if (state.myUserId) {
-        el.innerHTML = '';
-        if (banner) banner.style.display = 'none';
-      } else {
-        el.textContent = '🔒 ' + (t('spin.locked')?.replace('🔒 ','') || 'Submissions locked');
-        if (banner) {
-          banner.textContent = t('lock.banner');
-          banner.style.display = 'block';
-        }
-      }
-    }
+    if (banner) banner.style.display = 'none';
+    ctaBuild.style.display = '';
+    const isAr = document.documentElement.lang === 'ar';
+    el.textContent = isAr
+      ? `الميركاتو مفتوح · يقفل ${txOpen.toLocaleString('ar-EG')}`
+      : `Transfer window open · closes ${txOpen.toLocaleString()}`;
     return;
   }
   // Pre-lock: banner should be hidden regardless of sign-in

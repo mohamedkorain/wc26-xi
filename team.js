@@ -90,18 +90,6 @@ const MAX_TRANSFERS = 2;
 function renderTransferBar() {
   const bar = document.getElementById('transferBar');
   if (!bar || !state.league) return;
-  // BETA gate: transfers UI only visible to the admin while the flow is
-  // being validated. Backend RLS enforces the same restriction.
-  const TRANSFER_ALLOWLIST = [
-    'muhammedkorain@gmail.com',
-    'mohamed.korain94@gmail.com',
-    'mo.irobo@gmail.com',
-    'khairallax@icloud.com',
-  ];
-  if (!state.user || !TRANSFER_ALLOWLIST.includes((state.user.email || '').toLowerCase())) {
-    bar.style.display = 'none';
-    return;
-  }
   const openUntil = state.league.transfers_open_until ? new Date(state.league.transfers_open_until) : null;
   const isOpen = openUntil && new Date() < openUntil;
   if (!isOpen) { bar.style.display = 'none'; return; }
