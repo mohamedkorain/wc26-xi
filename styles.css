@@ -1100,6 +1100,22 @@ input { font-family: inherit; }
 .tb-pts.pos { color: var(--accent); }
 .tb-pts.neg { color: var(--danger); }
 
+/* Match-grouped breakdown */
+.tb-match {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.tb-match:last-child { border-bottom: none; }
+.tb-match-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; margin-bottom: 6px;
+}
+.tb-player {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; padding: 3px 12px; color: var(--text);
+}
+.tb-player .tb-icons { color: var(--text-dim); margin-left: 6px; font-size: 11px; }
+
 /* ──────── Player Leaderboard widget ──────── */
 .pl-board { display: grid; grid-template-columns: 1fr; gap: 4px; }
 .pl-row {

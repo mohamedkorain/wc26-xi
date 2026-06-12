@@ -3,6 +3,7 @@
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
 import { setLang, t } from './js/i18n.js';
+import { flagImg } from './js/flags.js';
 
 mountAuthWidget(document.getElementById('authSlot'));
 
@@ -87,6 +88,20 @@ function renderEntry() {
     </div>
   `;
 
+  // Aggregate per-player stats from this entry's scores so each pitch slot
+  // can show its total points + the icon breakdown of how those were earned.
+  const playerStats = {};
+  for (const row of state.scores) {
+    for (const [pname, st] of Object.entries(row.breakdown || {})) {
+      if (!st || Object.keys(st).length === 0) continue;
+      if (!playerStats[pname]) playerStats[pname] = { points: 0, st: {} };
+      const pts = (st.win||0) + (st.full90||0) + (st.goals||0) + (st.assists||0) + (st.cleanSheet||0) + (st.mvp||0) - (st.red ? 1 : 0);
+      playerStats[pname].points += pts;
+      for (const k of ['goals','assists','cleanSheet','win','full90','mvp']) playerStats[pname].st[k] = (playerStats[pname].st[k] || 0) + (st[k] || 0);
+      if (st.red) playerStats[pname].st.red = true;
+    }
+  }
+
   // Pitch
   const xi = state.entry.xi_json || [];
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
@@ -95,20 +110,32 @@ function renderEntry() {
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     const name = displayLast(item) || '?';
-    const next = nextGameFor(item.nation);
+    const stats = playerStats[item.name];
+    const hasPlayed = stats && stats.points !== undefined;
+    let foot;
+    if (hasPlayed) {
+      const pts = stats.points;
+      const cls = pts > 0 ? 'pos' : pts < 0 ? 'neg' : '';
+      const icons = describeStat(stats.st);
+      foot = `<div class="ps-pts ${cls}">${pts >= 0 ? '+' : ''}${pts}</div>` +
+             (icons && icons !== '—' ? `<div class="ps-icons">${icons}</div>` : '');
+    } else {
+      const next = nextGameFor(item.nation);
+      foot = next ? `<div class="next-game ${next.live ? 'live' : ''}">${next.label}</div>` : '';
+    }
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
     return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;direction:ltr;">
-      <div class="ps-flag">${flagImg(item.nation_code, 40)}</div>
+      <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
       <div class="ps-name" style="font-size:${sz}px;">${escapeHtml(name)}</div>
       <div class="ps-tag">${coord.tag}</div>
-      ${next ? `<div class="next-game ${next.live ? 'live' : ''}">${next.label}</div>` : ''}
+      ${foot}
     </div>`;
   }).join('');
 
   const benchHtml = wild ? `
     <div class="bench-label">${t('squad.bench') || 'Wildcard'}</div>
     <div class="bench-slot filled">
-      <span>${flagImg(wild.nation_code, 20)} <b>${escapeHtml(displayLast(wild))}</b>
+      <span>${flagImg(wild.nation_code, { width: 20, cls: 'flag-img', fallback: '' })} <b>${escapeHtml(displayLast(wild))}</b>
         <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(wild.club || '')}</span>
       </span>
     </div>
@@ -138,26 +165,59 @@ function renderEntry() {
     return;
   }
 
-  const rowsHtml = state.scores.map(s => {
-    const cls = s.points > 0 ? 'pos' : s.points < 0 ? 'neg' : '';
-    const dateLabel = new Date(s.match_date + 'T00:00:00Z').toLocaleDateString(
-      document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-GB',
-      { day: '2-digit', month: 'short' }
-    );
-    const contributors = Object.entries(s.breakdown || {})
-      .filter(([_, st]) => st && Object.keys(st).length > 0)
-      .map(([player, st]) => `${escapeHtml(displayPlayerNameShort(player))} (${describeStat(st)})`)
-      .join(', ');
-    return `
-      <div class="tb-row">
-        <div>
-          <div>${dateLabel}</div>
-          <div class="tb-date">${contributors || '—'}</div>
+  // Build a list of per-player contributions across all scored matches.
+  // For each one, look up the actual fixture (date + nation) so we can
+  // show "vs OPP · MD1" instead of just the date.
+  const rowsByMatch = {};
+  for (const s of state.scores) {
+    for (const [playerName, st] of Object.entries(s.breakdown || {})) {
+      if (!st || Object.keys(st).length === 0) continue;
+      const xiPick = (state.entry.xi_json || []).find(x => x.name === playerName);
+      const ourNation = xiPick?.nation || '';
+      const fxNation = FIXTURE_NATION_ALIAS[ourNation] || ourNation;
+      const fixture = state.fixtures.find(f =>
+        f.date.slice(0, 10) === s.match_date && (f.home === fxNation || f.away === fxNation)
+      );
+      const opponent = fixture ? (fixture.home === fxNation ? fixture.away : fixture.home) : '?';
+      const matchKey = fixture ? fixture.id : `unk-${s.match_date}-${ourNation}`;
+      const roundLabel = fixture ? roundShort(fixture.round) : '';
+      const pts = (st.win||0) + (st.full90||0) + (st.goals||0) + (st.assists||0) + (st.cleanSheet||0) + (st.mvp||0) - (st.red ? 1 : 0);
+      if (!rowsByMatch[matchKey]) {
+        rowsByMatch[matchKey] = {
+          date: s.match_date,
+          opponent,
+          round: roundLabel,
+          score: fixture ? `${fixture.home_goals ?? '?'}-${fixture.away_goals ?? '?'}` : '',
+          home: fixture?.home,
+          players: [],
+        };
+      }
+      rowsByMatch[matchKey].players.push({ name: playerName, st, pts });
+    }
+  }
+
+  const rowsHtml = Object.values(rowsByMatch)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(m => {
+      const playerLines = m.players.map(p => {
+        const cls = p.pts > 0 ? 'pos' : p.pts < 0 ? 'neg' : '';
+        return `<div class="tb-player">
+          <span>${escapeHtml(displayPlayerNameShort(p.name))} <span class="tb-icons">${describeStat(p.st)}</span></span>
+          <span class="tb-pts ${cls}">${p.pts >= 0 ? '+' : ''}${p.pts}</span>
+        </div>`;
+      }).join('');
+      const matchPts = m.players.reduce((s, p) => s + p.pts, 0);
+      const matchCls = matchPts > 0 ? 'pos' : matchPts < 0 ? 'neg' : '';
+      return `
+        <div class="tb-match">
+          <div class="tb-match-head">
+            <span><b>vs ${escapeHtml(m.opponent)}</b>${m.round ? ` · <span style="color:var(--text-dim);">${escapeHtml(m.round)}</span>` : ''}${m.score ? ` · <span style="color:var(--text-dim);">${escapeHtml(m.score)}</span>` : ''}</span>
+            <span class="tb-pts ${matchCls}">${matchPts >= 0 ? '+' : ''}${matchPts}</span>
+          </div>
+          ${playerLines}
         </div>
-        <div class="tb-pts ${cls}">${s.points >= 0 ? '+' : ''}${s.points}</div>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('');
 
   document.getElementById('teamBreakdown').innerHTML = `
     <h3>${t('team.bd.title')}</h3>
@@ -184,22 +244,6 @@ function nextGameFor(nation) {
   return { label: `vs ${opponent}`, live: false };
 }
 
-function flagImg(code, width) {
-  const c = (code || '').toLowerCase();
-  if (!c) return '';
-  return `<img src="https://flagcdn.com/w${width || 40}/${c}.png" alt="" class="flag-img-mid" style="height:auto;width:${width || 40}px;border-radius:3px;" />`;
-}
-
-function flagEmoji(code) {
-  if (!code) return '';
-  const c = code.toUpperCase();
-  // ISO-2 → regional indicator emoji
-  if (c.length === 2) {
-    return String.fromCodePoint(...[...c].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65));
-  }
-  return '';
-}
-
 function displayLast(item) {
   // build.js stores .shirt_name typically; fall back to last word of name
   if (item.shirt_name) return item.shirt_name;
@@ -208,6 +252,20 @@ function displayLast(item) {
 
 function displayPlayerNameShort(raw) {
   return (raw || '').split(' ')[0] || raw;
+}
+
+function roundShort(round) {
+  if (!round) return '';
+  const isAr = document.documentElement.lang === 'ar';
+  if (round.includes('Group Stage - 1')) return isAr ? 'الجولة ١' : 'MD1';
+  if (round.includes('Group Stage - 2')) return isAr ? 'الجولة ٢' : 'MD2';
+  if (round.includes('Group Stage - 3')) return isAr ? 'الجولة ٣' : 'MD3';
+  if (round.includes('Round of 32'))     return isAr ? 'دور الـ٣٢' : 'R32';
+  if (round.includes('Round of 16'))     return isAr ? 'دور الـ١٦' : 'R16';
+  if (round.includes('Quarter'))         return isAr ? 'ربع نهائي' : 'QF';
+  if (round.includes('Semi'))            return isAr ? 'نصف نهائي' : 'SF';
+  if (round.toLowerCase() === 'final')   return isAr ? 'النهائي'   : 'Final';
+  return round;
 }
 
 function describeStat(s) {
