@@ -218,9 +218,18 @@ async function renderMySquad() {
     'DR Congo':'Congo DR', 'Cape Verde':'Cape Verde Islands',
     'Bosnia and Herzegovina':'Bosnia & Herzegovina', 'Turkey':'Türkiye', 'United States':'USA',
   };
+  // For new users (signed up after MD1 kicked off), MD1 fixtures aren't
+  // applicable — the score-day gate skips matches that started before
+  // their entry existed. Find the first fixture that started AFTER they
+  // submitted: pre-lock submitters get their MD1 fixture; late joiners
+  // get MD2.
+  const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : null;
   function firstFixtureFor(nation) {
     const fx = NATION_ALIAS_HS[nation] || nation;
-    return (fixturesData?.fixtures || []).find(f => f.home === fx || f.away === fx);
+    return (fixturesData?.fixtures || []).find(f =>
+      (f.home === fx || f.away === fx)
+      && (!submittedAt || new Date(f.date) > submittedAt)
+    );
   }
 
   // Pitch HTML — show +pts if scored, "0" if their nation played but they
