@@ -109,7 +109,8 @@ async function processMatch(fixture: any, rosterByNation: Record<string, any[]>)
   ]);
 
   // Build per-player event objects from API-Football's response
-  const playerEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation, homeGoals, awayGoals);
+  const rawEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation, homeGoals, awayGoals);
+  const playerEvents = enrichEvents(rawEvents);   // pre-normalize once
 
   // For each entry whose XI includes this nation's players, compute scores.
   // PRE-FILTER via JSONB containment: only fetch entries that actually have a
@@ -229,42 +230,45 @@ function buildPlayerEvents(playersResponse: any[], eventsResponse: any[], homeNa
   return evs;
 }
 
-function matchPlayerToEvent(slot: any, allEvents: PlayerEvent[]): PlayerEvent | null {
+// One enriched event per API player — normalize NAME tokens ONCE here so
+// the per-pick matcher runs in O(events) instead of re-normalizing inside
+// every inner loop. 23k entries × 11 picks × thousands of token ops was
+// blowing the function's CPU budget.
+type EnrichedEvent = PlayerEvent & { _tokens: string[]; _tokenSet: Set<string>; _normalized: string };
+function enrichEvents(evs: PlayerEvent[]): EnrichedEvent[] {
+  return evs.map(ev => {
+    const n = normaliseName(ev.player_name);
+    const toks = n.split(' ');
+    return { ...ev, _tokens: toks, _tokenSet: new Set(toks), _normalized: n };
+  });
+}
+
+function matchPlayerToEvent(slot: any, enriched: EnrichedEvent[]): PlayerEvent | null {
   // Our roster format: "LASTNAME Firstname(s)" (family first).
-  // API-Football format: "Firstname(s) Lastname" (family last).
-  //
-  // Surname alone is NOT enough — multiple players from one nation can share
-  // a family name (HWANG In-beom + HWANG Hee-chan + HWANG Hyun-soo were all
-  // in Korea's MD1 squad). Without a first-name check, the first HWANG in
-  // the events array would steal every Hwang's stats. So:
-  //   - require the family name to appear in the API name
-  //   - AND require at least one OTHER token (a first/middle name) to also
-  //     appear, so we discriminate between teammates with the same surname.
-  //   - fall back to single-surname match ONLY if no event in this match
-  //     shares this surname (rare; still safer than mis-matching).
+  // API format: "Firstname(s) Lastname".
+  // Surname alone is NOT enough — Korea has multiple HWANGs. Require
+  // family + at least one given name. Fall back to lone surname only when
+  // no teammate shares it.
   const target = normaliseName(slot.name);
   const targetTokens = target.split(' ');
   const ourFamily = targetTokens[0] || '';
   const ourGivens = targetTokens.slice(1);
 
-  // First pass: exact normalized full-name match.
-  for (const ev of allEvents) {
-    if (normaliseName(ev.player_name) === target) return ev;
+  // Pass 1: exact normalized full-name match.
+  for (const ev of enriched) {
+    if (ev._normalized === target) return ev;
   }
-  // Second pass: family AND at least one given-name token match.
-  for (const ev of allEvents) {
-    const evTokens = normaliseName(ev.player_name).split(' ');
-    if (!ourFamily || !evTokens.includes(ourFamily)) continue;
-    if (ourGivens.some(g => evTokens.includes(g))) return ev;
-    // Hyphenated names: "Heechan" vs API "Hee-chan" → token "hee-chan"
-    if (ourGivens.some(g => evTokens.some(et => et.startsWith(g) || g.startsWith(et)))) return ev;
+  // Pass 2: family AND ≥1 given-name match. Handle hyphenated forms.
+  for (const ev of enriched) {
+    if (!ourFamily || !ev._tokenSet.has(ourFamily)) continue;
+    if (ourGivens.some(g => ev._tokenSet.has(g))) return ev;
+    if (ourGivens.some(g => ev._tokens.some(et => et.startsWith(g) || g.startsWith(et)))) return ev;
   }
-  // Third pass: lonely surname (only if no teammate shares it in this match).
-  const familyCount = allEvents.reduce((n, ev) => n + (normaliseName(ev.player_name).split(' ').includes(ourFamily) ? 1 : 0), 0);
+  // Pass 3: lone surname (only when no one else in the match shares it).
+  let familyCount = 0;
+  for (const ev of enriched) if (ev._tokenSet.has(ourFamily)) familyCount++;
   if (familyCount === 1) {
-    for (const ev of allEvents) {
-      if (normaliseName(ev.player_name).split(' ').includes(ourFamily)) return ev;
-    }
+    for (const ev of enriched) if (ev._tokenSet.has(ourFamily)) return ev;
   }
   return null;
 }
