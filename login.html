@@ -54,10 +54,6 @@ import { signInWithEmail, currentUser } from './js/auth.js';
 import { supabase } from './js/supabase-client.js';
 import { t } from './js/i18n.js';
 
-// Post-lock UX: still allow sign-in (existing users need to view their squad
-// & rank). Just show the banner above the form so visitors know submissions
-// are closed.
-const LOCK_AT = new Date('2026-06-11T19:00:00Z');
 (async () => {
   const u = await currentUser();
   if (u) {
@@ -65,10 +61,6 @@ const LOCK_AT = new Date('2026-06-11T19:00:00Z');
     const { data: ent } = await supabase
       .from('entries').select('id').eq('user_id', u.id).maybeSingle();
     location.href = ent ? 'team.html' : 'build.html';
-    return;
-  }
-  if (new Date() >= LOCK_AT) {
-    document.getElementById('lockBanner').style.display = 'block';
   }
 })();
 
