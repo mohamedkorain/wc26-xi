@@ -1225,6 +1225,17 @@ input { font-family: inherit; }
 .tb-player .tb-icons { color: var(--text-dim); margin-left: 6px; font-size: 11px; }
 
 /* ──────── Player Leaderboard widget ──────── */
+.tp-search {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+.tp-search::placeholder { color: var(--text-dim); }
 .pl-board { display: grid; grid-template-columns: 1fr; gap: 4px; }
 .pl-row {
   display: grid;

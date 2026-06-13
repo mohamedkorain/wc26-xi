@@ -536,40 +536,64 @@ async function renderLeaderboard(reset = true) {
 // Top players widget on the homepage. Aggregates per-player stats from the
 // scores.breakdown JSONB across all entries (one match per player counted via
 // a (player, match_date) Set dedup, since many entries picked the same player).
+const TP_PAGE = 20;
+const tpState = { all: [], visible: TP_PAGE, query: '' };
+
 async function renderTopPlayers() {
   const board = document.getElementById('topPlayersBoard');
   if (!board) return;
   // Server-side aggregated view (one fast query vs 37 paginated requests).
-  // See supabase/player_leaderboard_view.sql.
-  const { data: rows, error } = await supabase
-    .from('player_leaderboard')
-    .select('player_name, matches, goals, assists, clean_sheets, mvps, reds, total_points')
-    .order('total_points', { ascending: false })
-    .order('goals', { ascending: false })
-    .order('assists', { ascending: false })
-    .limit(20);
-  if (error || !rows || rows.length === 0) return;
-  const top = rows.map(r => ({
-    name: r.player_name,
-    matches: r.matches,
-    goals: r.goals,
-    assists: r.assists,
-    cs: r.clean_sheets,
-    mvp: r.mvps,
-    red: r.reds,
-    points: r.total_points,
-  }));
+  // Pull the whole leaderboard once (typically a few hundred players) so the
+  // search filter + Load More work without further round-trips.
+  if (tpState.all.length === 0) {
+    const { data: rows, error } = await supabase
+      .from('player_leaderboard')
+      .select('player_name, matches, goals, assists, clean_sheets, mvps, reds, total_points')
+      .order('total_points', { ascending: false })
+      .order('goals', { ascending: false })
+      .order('assists', { ascending: false })
+      .limit(2000);
+    if (error || !rows || rows.length === 0) return;
+    tpState.all = rows.map(r => ({
+      name: r.player_name,
+      matches: r.matches,
+      goals: r.goals,
+      assists: r.assists,
+      cs: r.clean_sheets,
+      mvp: r.mvps,
+      red: r.reds,
+      points: r.total_points,
+    }));
+  }
+  paintTopPlayers();
+}
 
+function paintTopPlayers() {
+  const board = document.getElementById('topPlayersBoard');
+  if (!board) return;
   const flipName = (raw) => {
     const parts = raw.split(' ');
     if (parts.length < 2) return raw;
     return `${parts.slice(1).join(' ')} ${parts[0]}`;
   };
-  // Build a quick name → {nation, code, club} lookup from the player pool
-  // so we can attach a flag + nation badge to each row.
   const meta = {};
   for (const pl of state.players) meta[pl.name] = pl;
-  board.innerHTML = top.map((p, i) => {
+
+  const q = (tpState.query || '').toLowerCase().trim();
+  const filtered = q
+    ? tpState.all.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (meta[p.name]?.nation || '').toLowerCase().includes(q) ||
+        (meta[p.name]?.club || '').toLowerCase().includes(q))
+    : tpState.all;
+  const slice = filtered.slice(0, tpState.visible);
+
+  const isAr = document.documentElement.lang === 'ar';
+  const searchPlaceholder = isAr ? 'دور بإسم اللاعب…' : 'Search by player, nation, or club…';
+  const loadMoreLabel = isAr ? `حمّل المزيد (${filtered.length - tpState.visible})` : `Load more (${filtered.length - tpState.visible})`;
+  const noResults = isAr ? 'مفيش نتائج.' : 'No players match.';
+
+  const rowsHtml = slice.map((p, i) => {
     const m = meta[p.name];
     const flag = m ? flagImg(m.nation_code, { width: 20, cls: 'flag-img', fallback: '' }) : '';
     return `
@@ -591,6 +615,32 @@ async function renderTopPlayers() {
     </div>
     `;
   }).join('');
+
+  board.innerHTML = `
+    <input type="search" id="tpSearch" class="tp-search" placeholder="${escapeHtml(searchPlaceholder)}" value="${escapeHtml(tpState.query)}" />
+    <div class="pl-board" style="margin-top:8px;">
+      ${slice.length ? rowsHtml : `<div class="lb-empty">${noResults}</div>`}
+    </div>
+    ${filtered.length > tpState.visible
+      ? `<div style="text-align:center;margin-top:12px;"><button class="ghost-btn" id="tpLoadMore">${loadMoreLabel}</button></div>`
+      : ''}
+  `;
+
+  const search = document.getElementById('tpSearch');
+  if (search) {
+    search.addEventListener('input', (e) => {
+      tpState.query = e.target.value;
+      tpState.visible = TP_PAGE;   // reset on new search
+      paintTopPlayers();
+      // Refocus the input + place cursor at end after re-render
+      requestAnimationFrame(() => {
+        const s = document.getElementById('tpSearch');
+        if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+      });
+    });
+  }
+  const more = document.getElementById('tpLoadMore');
+  if (more) more.onclick = () => { tpState.visible += TP_PAGE; paintTopPlayers(); };
 }
 
 async function openSquadModal(entryId) {
