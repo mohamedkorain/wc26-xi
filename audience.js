@@ -338,8 +338,8 @@ function flagFromCode(code) {
 // Adjust if FIFA tweaks times — easy 1-line edits below.
 const TOURNAMENT_SCHEDULE = [
   { key: 'gw1',     dateUTC: '2026-06-11T19:00:00Z' }, // Mexico opener, Azteca
-  { key: 'gw2',     dateUTC: '2026-06-14T16:00:00Z' }, // MD2 first match
-  { key: 'gw3',     dateUTC: '2026-06-17T16:00:00Z' }, // MD3 first match
+  { key: 'gw2',     dateUTC: '2026-06-18T16:00:00Z' }, // MD2 first match (Czech vs South Africa, 19:00 Cairo)
+  { key: 'gw3',     dateUTC: '2026-06-24T19:00:00Z' }, // MD3 first match (Switzerland vs Canada, 22:00 Cairo)
   { key: 'r32',     dateUTC: '2026-06-28T16:00:00Z' },
   { key: 'r16',     dateUTC: '2026-07-04T16:00:00Z' },
   { key: 'qf',      dateUTC: '2026-07-09T20:00:00Z' },
