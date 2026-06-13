@@ -277,6 +277,17 @@ function matchPlayerToEvent(slot: any, enriched: EnrichedEvent[]): PlayerEvent |
 
 Deno.serve(async (req) => {
   try {
+    // Require the service_role bearer. Without this check, anyone on the
+    // internet can POST and burn through our API-Football quota / spike DB
+    // CPU. The pg_cron job (and any manual `curl`) already passes this token.
+    const authHeader = req.headers.get('authorization') || '';
+    const expected = `Bearer ${SERVICE_ROLE_KEY}`;
+    if (authHeader !== expected) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401, headers: { 'content-type': 'application/json' },
+      });
+    }
+
     const { date } = await req.json().catch(() => ({}));
     const dateStr = date || new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const fixtures = await apiFetch(`/fixtures?league=${WC26_LEAGUE_ID}&season=${WC26_SEASON}&date=${dateStr}`);
