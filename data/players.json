@@ -9552,9 +9552,10 @@
           "dob": "2006-11-14",
           "pos_raw": "FW",
           "roles": [
-            "WIN"
+            "WIN",
+            "ST"
           ],
-          "roles_source": "reep",
+          "roles_source": "manual_override",
           "reep_position": "Left Winger"
         },
         {
