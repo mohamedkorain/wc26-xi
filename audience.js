@@ -525,6 +525,9 @@ async function renderTopPlayers() {
   const { data: rows, error } = await supabase
     .from('player_leaderboard')
     .select('player_name, matches, goals, assists, clean_sheets, mvps, reds, total_points')
+    .order('total_points', { ascending: false })
+    .order('goals', { ascending: false })
+    .order('assists', { ascending: false })
     .limit(20);
   if (error || !rows || rows.length === 0) return;
   const top = rows.map(r => ({

@@ -120,6 +120,7 @@ async function loadGlobalPlayerPts() {
   const { data: rows } = await supabase
     .from('player_leaderboard')
     .select('player_name, total_points')
+    .order('total_points', { ascending: false })
     .limit(2000);   // covers every WC26 player who has scored
   const totals = {};
   for (const r of rows || []) totals[r.player_name] = r.total_points;
