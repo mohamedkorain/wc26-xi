@@ -690,10 +690,9 @@ async function openSquadModal(entryId) {
     } else {
       const next = nextMatchFor(item.nation);
       if (next) {
-        // Played, no points: show "0" + the opponent line so the user can
-        // see who their pick was up against. Upcoming: just "vs OPP".
+        // Played, no points → just "0". Upcoming → just "vs OPP".
         foot = next.past
-          ? `<div class="ps-pts" style="color:var(--text-dim);">0</div><div class="ps-next">${next.label}</div>`
+          ? `<div class="ps-pts" style="color:var(--text-dim);">0</div>`
           : `<div class="ps-next">${next.label}</div>`;
       }
     }
