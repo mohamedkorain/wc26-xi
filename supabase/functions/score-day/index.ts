@@ -41,18 +41,23 @@ const WC26_SEASON = 2026;
 // Map API-Football team name → our canonical nation name in data/teams.json.
 // API-Football mostly matches; this table is for the diffs.
 const NATION_ALIAS: Record<string, string> = {
-  'Czech Republic':   'Czech Republic',
-  'Czechia':          'Czech Republic',
-  'Korea Republic':   'South Korea',
-  'South Korea':      'South Korea',
-  'United States':    'United States',
-  'USA':              'United States',
-  'Ivory Coast':      'Ivory Coast',
-  "Côte d'Ivoire":    'Ivory Coast',
-  'Cape Verde':       'Cape Verde',
-  'Cabo Verde':       'Cape Verde',
-  'DR Congo':         'DR Congo',
-  'Congo DR':         'DR Congo',
+  'Czech Republic':              'Czech Republic',
+  'Czechia':                     'Czech Republic',
+  'Korea Republic':              'South Korea',
+  'South Korea':                 'South Korea',
+  'United States':               'United States',
+  'USA':                         'United States',
+  'Ivory Coast':                 'Ivory Coast',
+  "Côte d'Ivoire":               'Ivory Coast',
+  'Cape Verde':                  'Cape Verde',
+  'Cape Verde Islands':          'Cape Verde',
+  'Cabo Verde':                  'Cape Verde',
+  'DR Congo':                    'DR Congo',
+  'Congo DR':                    'DR Congo',
+  'Bosnia and Herzegovina':      'Bosnia and Herzegovina',
+  'Bosnia & Herzegovina':        'Bosnia and Herzegovina',
+  'Türkiye':                     'Turkey',
+  'Turkey':                      'Turkey',
 };
 
 const supa = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
