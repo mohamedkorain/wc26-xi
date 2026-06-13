@@ -113,7 +113,7 @@ async function prepareFixture(fixture: any): Promise<any> {
   ]);
   const rawEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation, homeGoals, awayGoals);
   return {
-    homeNation, awayNation, homeGoals, awayGoals, kickoff,
+    matchId, homeNation, awayNation, homeGoals, awayGoals, kickoff,
     events: enrichEvents(rawEvents),
   };
 }
@@ -308,29 +308,40 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Phase 2 — score every entry once across all finished fixtures of this
-    // date. Single UPSERT per entry → no cross-match overwrite.
+    // Phase 2 — score every entry across all FT fixtures of this date.
+    // Short-circuit if every FT fixture is already scored (matches.scored_at
+    // is set). On a re-trigger with nothing new, this avoids re-iterating
+    // ~15k entries for no change.
+    let scored = false;
     if (prepared.length > 0) {
-      await processDate(dateStr, prepared);
+      const ids = prepared.map(m => m.matchId);
+      const { data: existing } = await supa
+        .from('matches')
+        .select('external_id, scored_at')
+        .in('external_id', ids);
+      const scoredAt: Record<string, string | null> = {};
+      for (const m of existing || []) scoredAt[m.external_id] = m.scored_at;
+      const anyUnscored = prepared.some(m => !scoredAt[m.matchId]);
+
+      if (anyUnscored) {
+        await processDate(dateStr, prepared);
+        // Stamp every prepared fixture as scored so future calls can skip
+        await supa.from('matches')
+          .update({ scored_at: new Date().toISOString() })
+          .in('external_id', ids);
+        scored = true;
+      }
     }
 
-    // Refresh derived caches: per-player leaderboard view + per-entry rank
-    // snapshot (used by the homepage leaderboard's ↑/↓ arrows). Both RPCs
-    // are SECURITY DEFINER and locked down to service-role callers.
+    // Refresh derived caches only if we actually scored something —
+    // otherwise this re-running on idle is just wasted DB CPU.
     let refreshed = false;
-    try {
-      await supa.rpc('refresh_player_leaderboard');
-      refreshed = true;
-    } catch (e) {
-      // Non-fatal — the next scoring run will refresh.
-    }
-    try {
-      await supa.rpc('refresh_entry_ranks');
-    } catch (e) {
-      // Non-fatal.
+    if (scored) {
+      try { await supa.rpc('refresh_player_leaderboard'); refreshed = true; } catch (_) {}
+      try { await supa.rpc('refresh_entry_ranks'); } catch (_) {}
     }
 
-    return new Response(JSON.stringify({ date: dateStr, processed: results.length, results, refreshed }), {
+    return new Response(JSON.stringify({ date: dateStr, processed: results.length, results, scored, refreshed }), {
       headers: { 'content-type': 'application/json' },
     });
   } catch (err) {
