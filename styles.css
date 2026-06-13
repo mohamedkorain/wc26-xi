@@ -548,7 +548,18 @@ input { font-family: inherit; }
   0%   { box-shadow: 0 0 0 4px var(--accent-2); transform: scale(1.02); }
   100% { box-shadow: 0 0 0 0 transparent;       transform: scale(1); }
 }
-.lb-rank { font-weight: 800; color: var(--accent); font-size: 16px; }
+.lb-rank { font-weight: 800; color: var(--accent); font-size: 16px; display: flex; align-items: center; gap: 6px; }
+.lb-mv { font-size: 11px; font-weight: 700; }
+.lb-mv.up   { color: #4ade80; }
+.lb-mv.down { color: var(--danger); }
+.lb-mv.same { color: var(--text-dim); opacity: 0.6; }
+.lb-mv.new {
+  background: rgba(255,213,92,0.15);
+  border: 1px solid rgba(255,213,92,0.4);
+  color: var(--accent-2);
+  padding: 1px 6px; border-radius: 4px;
+  font-size: 9px; letter-spacing: 1px;
+}
 .lb-team { font-weight: 700; }
 .lb-team .lb-form { color: var(--text-dim); font-weight: 400; font-size: 11px; margin-left: 6px; }
 .lb-owner { color: var(--text-dim); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

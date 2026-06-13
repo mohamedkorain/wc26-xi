@@ -292,16 +292,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Refresh the cached per-player leaderboard so the homepage Top Players
-    // widget reflects this run without users having to wait for the next
-    // scheduled refresh. The RPC is SECURITY DEFINER and locked down to
-    // service-role callers.
+    // Refresh derived caches: per-player leaderboard view + per-entry rank
+    // snapshot (used by the homepage leaderboard's ↑/↓ arrows). Both RPCs
+    // are SECURITY DEFINER and locked down to service-role callers.
     let refreshed = false;
     try {
       await supa.rpc('refresh_player_leaderboard');
       refreshed = true;
     } catch (e) {
       // Non-fatal — the next scoring run will refresh.
+    }
+    try {
+      await supa.rpc('refresh_entry_ranks');
+    } catch (e) {
+      // Non-fatal.
     }
 
     return new Response(JSON.stringify({ date: dateStr, processed: results.length, results, refreshed }), {

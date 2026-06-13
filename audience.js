@@ -483,24 +483,44 @@ async function renderLeaderboard(reset = true) {
     return;
   }
 
-  // Hydrate owner names for just the new rows
+  // Hydrate owner names + rank snapshots for just the new rows
   const newIds = (rows || []).map(r => r.user_id);
+  const newEntryIds = (rows || []).map(r => r.entry_id);
   let profiles = {};
+  const ranks = {};
   if (newIds.length) {
-    const { data: profs } = await supabase
-      .from('profile_displays').select('id, display_name').in('id', newIds);
+    const [{ data: profs }, { data: rankRows }] = await Promise.all([
+      supabase.from('profile_displays').select('id, display_name').in('id', newIds),
+      supabase.from('entries').select('id, rank_current, rank_previous').in('id', newEntryIds),
+    ]);
     for (const p of profs || []) profiles[p.id] = p;
+    for (const e of rankRows || []) ranks[e.id] = e;
   }
   for (const r of rows || []) {
     r.ownerName = profiles[r.user_id]?.display_name || '—';
+    const rk = ranks[r.entry_id] || {};
+    r.rank_current = rk.rank_current;
+    r.rank_previous = rk.rank_previous;
   }
 
   state.lbRows.push(...(rows || []));
   state.lbLoaded += (rows || []).length;
 
+  // Movement arrow: prev - curr > 0 = moved UP (better rank).
+  // prev null → new entrant. No change → −.
+  function movementHtml(r) {
+    if (r.rank_previous == null || r.rank_current == null) {
+      return `<span class="lb-mv new" title="New">NEW</span>`;
+    }
+    const diff = r.rank_previous - r.rank_current;
+    if (diff > 0) return `<span class="lb-mv up" title="Moved up ${diff}">▲</span>`;
+    if (diff < 0) return `<span class="lb-mv down" title="Moved down ${-diff}">▼</span>`;
+    return `<span class="lb-mv same" title="No change">—</span>`;
+  }
+
   document.getElementById('lbTable').innerHTML = state.lbRows.map((r, i) => `
     <div class="lb-row clickable${r.user_id === state.myUserId ? ' me' : ''}" data-entry="${r.entry_id}">
-      <div class="lb-rank">${i + 1}</div>
+      <div class="lb-rank">${i + 1}${movementHtml(r)}</div>
       <div class="lb-team">${escapeHtml(r.team_name)}</div>
       <div class="lb-owner">${escapeHtml(r.ownerName)}</div>
       <div class="lb-pts">${r.total_points}</div>
