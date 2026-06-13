@@ -507,11 +507,10 @@ async function renderLeaderboard(reset = true) {
   state.lbLoaded += (rows || []).length;
 
   // Movement arrow: prev - curr > 0 = moved UP (better rank).
-  // prev null → new entrant. No change → −.
+  // Show nothing until the next scoring run populates rank_previous —
+  // otherwise the whole leaderboard would render as NEW on first seed.
   function movementHtml(r) {
-    if (r.rank_previous == null || r.rank_current == null) {
-      return `<span class="lb-mv new" title="New">NEW</span>`;
-    }
+    if (r.rank_previous == null || r.rank_current == null) return '';
     const diff = r.rank_previous - r.rank_current;
     if (diff > 0) return `<span class="lb-mv up" title="Moved up ${diff}">▲</span>`;
     if (diff < 0) return `<span class="lb-mv down" title="Moved down ${-diff}">▼</span>`;
