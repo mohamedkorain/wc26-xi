@@ -85,7 +85,10 @@ function canonNation(s: string): string {
   return NATION_ALIAS[s] || s;
 }
 
-async function processMatch(fixture: any, rosterByNation: Record<string, any[]>) {
+// Per-fixture preparation: upsert matches row, fetch API stats, return
+// the enriched event list. Returns null if the match is not yet finished
+// (so we don't score in-progress matches).
+async function prepareFixture(fixture: any): Promise<any> {
   const homeNation = canonNation(fixture.teams.home.name);
   const awayNation = canonNation(fixture.teams.away.name);
   const matchId = String(fixture.fixture.id);
@@ -93,52 +96,52 @@ async function processMatch(fixture: any, rosterByNation: Record<string, any[]>)
   const status = fixture.fixture.status.short;
   const homeGoals = fixture.goals.home ?? 0;
   const awayGoals = fixture.goals.away ?? 0;
+  const kickoff = new Date(fixture.fixture.date);
 
-  // Upsert matches row
   await supa.from('matches').upsert({
-    external_id: matchId,
-    date: dateStr,
-    home: homeNation,
-    away: awayNation,
-    home_goals: homeGoals,
-    away_goals: awayGoals,
+    external_id: matchId, date: dateStr,
+    home: homeNation, away: awayNation,
+    home_goals: homeGoals, away_goals: awayGoals,
     status: (status === 'FT' || status === 'AET' || status === 'PEN') ? 'finished' : 'live',
   }, { onConflict: 'external_id' });
 
-  if (status !== 'FT' && status !== 'AET' && status !== 'PEN') return;   // only score finished
+  if (status !== 'FT' && status !== 'AET' && status !== 'PEN') return null;
 
-  // Fetch detailed events + player stats
   const [eventsRes, playersRes] = await Promise.all([
     apiFetch(`/fixtures/events?fixture=${matchId}`),
     apiFetch(`/fixtures/players?fixture=${matchId}`),
   ]);
-
-  // Build per-player event objects from API-Football's response
   const rawEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation, homeGoals, awayGoals);
-  const playerEvents = enrichEvents(rawEvents);   // pre-normalize once
+  return {
+    homeNation, awayNation, homeGoals, awayGoals, kickoff,
+    events: enrichEvents(rawEvents),
+  };
+}
 
-  // For each entry whose XI includes this nation's players, compute scores.
-  // PRE-FILTER via JSONB containment: only fetch entries that actually have a
-  // player from one of the two playing nations. Cuts 61k → ~23k for a typical match.
-  //
-  // GW-SNAPSHOT: matches before the MD2 first kickoff (2026-06-18) must score
-  // against xi_json_gw1 if it's populated (= the user transferred for GW2 and
-  // their pre-transfer GW1 lineup is preserved there). Later matches use
-  // the current xi_json. This keeps transferred-in players from
-  // retroactively earning GW1 points.
+// Per-date scoring: score each entry against ALL of the day's fixtures in
+// ONE pass, then write a single merged breakdown per entry. The previous
+// per-fixture loop was overwriting earlier matches' contributions (e.g. an
+// entry with USA + Qatar picks on 2026-06-13 lost the USA breakdown when
+// Qatar-Switzerland processed second).
+async function processDate(dateStr: string, prepared: any[]) {
+  if (prepared.length === 0) return;
+
+  // GW-SNAPSHOT: matches before MD2 first kickoff use xi_json_gw1 (the
+  // pre-transfer lineup) so transferred-in players don't retroactively
+  // earn GW1 points.
   const MD2_FIRST_KICKOFF = '2026-06-18';
   const useGw1Snapshot = dateStr < MD2_FIRST_KICKOFF;
-  // For GW1 matches we also match against xi_json_gw1, so a user who
-  // transferred OUT a playing nation still gets that player scored.
-  const filters = [
-    `xi_json.cs.[{"nation":"${homeNation}"}]`,
-    `xi_json.cs.[{"nation":"${awayNation}"}]`,
-  ];
-  if (useGw1Snapshot) {
-    filters.push(`xi_json_gw1.cs.[{"nation":"${homeNation}"}]`);
-    filters.push(`xi_json_gw1.cs.[{"nation":"${awayNation}"}]`);
+
+  // OR filter across ALL playing nations of the day
+  const playingNations = new Set<string>();
+  for (const m of prepared) { playingNations.add(m.homeNation); playingNations.add(m.awayNation); }
+  const filters: string[] = [];
+  for (const n of playingNations) {
+    filters.push(`xi_json.cs.[{"nation":"${n}"}]`);
+    if (useGw1Snapshot) filters.push(`xi_json_gw1.cs.[{"nation":"${n}"}]`);
   }
   const orFilter = filters.join(',');
+
   const PAGE = 1000;
   let offset = 0;
   while (true) {
@@ -149,50 +152,45 @@ async function processMatch(fixture: any, rosterByNation: Record<string, any[]>)
       .range(offset, offset + PAGE - 1);
     if (!batch || batch.length === 0) break;
 
-    const matchKickoff = new Date(fixture.fixture.date);
     const scoresToUpsert: any[] = [];
     for (const entry of batch) {
-      // Late-signup gate: an entry submitted AFTER this match kicked off
-      // didn't exist as a squad when the match happened — they should not
-      // earn retroactive points. This is the only safeguard for users who
-      // join during the transfer window for MD1 matches.
-      if (entry.submitted_at && new Date(entry.submitted_at) > matchKickoff) continue;
-
-      // GW1 matches: prefer the snapshot if present (= user transferred).
-      // Otherwise use xi_json (unchanged for non-transferred users).
       const effectiveXi = useGw1Snapshot
         ? (entry.xi_json_gw1 || entry.xi_json || [])
         : (entry.xi_json || []);
       const starters = effectiveXi.filter((x: any) => !x.wild);
+      const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : null;
+
+      const breakdown: Record<string, any> = {};
       let totalPts = 0;
-      const breakdownByPlayer: Record<string, any> = {};
-      for (const slot of starters) {
-        if (slot.nation !== homeNation && slot.nation !== awayNation) continue;
-        const ev = matchPlayerToEvent(slot, playerEvents);
-        if (!ev) continue;
-        const { points, breakdown } = scorePlayer(
-          ev,
-          slot.roles || [slot.role],
-          homeNation,
-          homeGoals,
-          awayGoals,
-        );
-        totalPts += points;
-        breakdownByPlayer[slot.name] = breakdown;
+
+      for (const m of prepared) {
+        // Late-signup gate per match (an entry created AFTER this match's
+        // kickoff didn't exist as a squad when it played).
+        if (submittedAt && submittedAt > m.kickoff) continue;
+
+        for (const slot of starters) {
+          if (slot.nation !== m.homeNation && slot.nation !== m.awayNation) continue;
+          const ev = matchPlayerToEvent(slot, m.events);
+          if (!ev) continue;
+          const { points, breakdown: b } = scorePlayer(
+            ev, slot.roles || [slot.role], m.homeNation, m.homeGoals, m.awayGoals,
+          );
+          totalPts += points;
+          // If somehow the same player shows in two fixtures the same day
+          // (impossible in WC group stage, but safe), keep the LAST one.
+          breakdown[slot.name] = b;
+        }
       }
+
       if (totalPts === 0) continue;
       scoresToUpsert.push({
-        entry_id: entry.id,
-        match_date: dateStr,
-        points: totalPts,
-        breakdown: breakdownByPlayer,
+        entry_id: entry.id, match_date: dateStr,
+        points: totalPts, breakdown,
       });
     }
-
     if (scoresToUpsert.length > 0) {
       await supa.from('scores').upsert(scoresToUpsert, { onConflict: 'entry_id,match_date' });
     }
-
     if (batch.length < PAGE) break;
     offset += PAGE;
   }
@@ -296,16 +294,24 @@ Deno.serve(async (req) => {
     const { date } = await req.json().catch(() => ({}));
     const dateStr = date || new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const fixtures = await apiFetch(`/fixtures?league=${WC26_LEAGUE_ID}&season=${WC26_SEASON}&date=${dateStr}`);
-    const roster = await loadRoster();
 
+    // Phase 1 — prepare each fixture (upsert matches row, fetch events)
+    const prepared: any[] = [];
     const results: any[] = [];
     for (const f of fixtures.response || []) {
       try {
-        await processMatch(f, roster);
-        results.push({ fixture: f.fixture.id, status: 'ok' });
+        const data = await prepareFixture(f);
+        if (data) prepared.push(data);
+        results.push({ fixture: f.fixture.id, status: data ? 'ok' : 'pending' });
       } catch (e) {
         results.push({ fixture: f.fixture.id, status: 'error', error: String(e) });
       }
+    }
+
+    // Phase 2 — score every entry once across all finished fixtures of this
+    // date. Single UPSERT per entry → no cross-match overwrite.
+    if (prepared.length > 0) {
+      await processDate(dateStr, prepared);
     }
 
     // Refresh derived caches: per-player leaderboard view + per-entry rank
