@@ -643,15 +643,23 @@ async function openSquadModal(entryId) {
     'Turkey':                'Türkiye',
     'United States':         'USA',
   };
-  function nextMatchFor(nation) {
+  // Returns { opp, past }. "past" means: a fixture for this nation has
+  // already kicked off after this entry's submitted_at — so the player
+  // would have been scored if they earned anything. Use this to decide
+  // between "vs OPP" (upcoming) and "0" (played, no points).
+  const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : new Date();
+  function firstApplicableFixture(nation) {
     const fxNation = FIXTURE_NATION_ALIAS[nation] || nation;
-    const now = new Date();
-    const upcoming = (fixturesData.fixtures || []).find(f =>
-      (f.home === fxNation || f.away === fxNation) && new Date(f.date) > now
+    return (fixturesData.fixtures || []).find(f =>
+      (f.home === fxNation || f.away === fxNation) && new Date(f.date) > submittedAt
     );
-    if (!upcoming) return null;
-    const opponent = upcoming.home === fxNation ? upcoming.away : upcoming.home;
-    return `vs ${escapeHtml(opponent)}`;
+  }
+  function nextMatchFor(nation) {
+    const f = firstApplicableFixture(nation);
+    if (!f) return null;
+    const fxNation = FIXTURE_NATION_ALIAS[nation] || nation;
+    const opponent = f.home === fxNation ? f.away : f.home;
+    return { label: `vs ${escapeHtml(opponent)}`, past: new Date(f.date) <= new Date() };
   }
 
   const isAr = document.documentElement.lang === 'ar';
@@ -681,7 +689,13 @@ async function openSquadModal(entryId) {
       tooltipAttr = ` title="${escapeHtml(tip)}"`;
     } else {
       const next = nextMatchFor(item.nation);
-      if (next) foot = `<div class="ps-next">${next}</div>`;
+      if (next) {
+        // Played, no points: show "0" + the opponent line so the user can
+        // see who their pick was up against. Upcoming: just "vs OPP".
+        foot = next.past
+          ? `<div class="ps-pts" style="color:var(--text-dim);">0</div><div class="ps-next">${next.label}</div>`
+          : `<div class="ps-next">${next.label}</div>`;
+      }
     }
     return `<div class="pitch-slot filled"${tooltipAttr} style="left:${coord.x}%;top:${coord.y}%;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
