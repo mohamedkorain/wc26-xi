@@ -8,4 +8,6 @@ create table if not exists public.scoring_progress (
   updated_at  timestamptz not null default now()
 );
 
-grant select on public.scoring_progress to anon, authenticated;
+-- Internal table — only the Edge Function (service_role) reads/writes.
+-- Enable RLS with no policies → anon + authenticated get nothing.
+alter table public.scoring_progress enable row level security;
