@@ -352,15 +352,10 @@ Deno.serve(async (req) => {
       const anyUnscored = prepared.some(m => !scoredAt[m.matchId]);
 
       if (anyUnscored) {
-        // A new fixture finished → reset the per-date offset cursor so the
-        // run starts from scratch and merges contributions across all
-        // fixtures (the cross-match merge fix).
-        const freshFixtureNow = prepared.some(m => !scoredAt[m.matchId]);
-        if (freshFixtureNow) {
-          await supa.from('scoring_progress')
-            .upsert({ match_date: dateStr, offset_: 0, updated_at: new Date().toISOString() },
-                    { onConflict: 'match_date' });
-        }
+        // processDate manages the cursor internally — reads it at start,
+        // saves on time-out, resets to 0 on full completion. No explicit
+        // reset here (resetting on every run while scored_at is null
+        // would wipe progress between successive runs).
         const completed = await processDate(dateStr, prepared);
         if (completed) {
           await supa.from('matches')
