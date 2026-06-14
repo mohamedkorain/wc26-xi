@@ -98,11 +98,20 @@ async function prepareFixture(fixture: any): Promise<any> {
   const awayGoals = fixture.goals.away ?? 0;
   const kickoff = new Date(fixture.fixture.date);
 
+  // Map API-Football's per-state codes to 3 clean buckets.
+  //   FT/AET/PEN          → finished
+  //   1H/HT/2H/ET/BT/P    → live (actually in progress)
+  //   NS/TBD/PST/SUSP/INT → scheduled (not started yet)
+  let bucket: 'finished' | 'live' | 'scheduled';
+  if (status === 'FT' || status === 'AET' || status === 'PEN') bucket = 'finished';
+  else if (['1H','HT','2H','ET','BT','P','LIVE'].includes(status)) bucket = 'live';
+  else bucket = 'scheduled';
+
   await supa.from('matches').upsert({
     external_id: matchId, date: dateStr,
     home: homeNation, away: awayNation,
     home_goals: homeGoals, away_goals: awayGoals,
-    status: (status === 'FT' || status === 'AET' || status === 'PEN') ? 'finished' : 'live',
+    status: bucket,
   }, { onConflict: 'external_id' });
 
   if (status !== 'FT' && status !== 'AET' && status !== 'PEN') return null;
