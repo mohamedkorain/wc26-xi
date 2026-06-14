@@ -173,9 +173,9 @@ function isScoringWindow(now = new Date()) {
   return h === 7 || h === 8 || (h === 9 && m <= 5);
 }
 
-function formatDubaiTime(value) {
+function formatCairoTime(value) {
   return new Intl.DateTimeFormat(document.documentElement.lang || 'en', {
-    timeZone: 'Asia/Dubai',
+    timeZone: 'Africa/Cairo',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -242,7 +242,7 @@ async function renderScoringStatus() {
       const match = `${latestScored.home} - ${latestScored.away}`;
       body = t('score.status.updated', {
         match,
-        time: formatDubaiTime(latestScored.scored_at),
+        time: formatCairoTime(latestScored.scored_at),
       });
     }
 
