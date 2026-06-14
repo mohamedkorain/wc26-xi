@@ -568,6 +568,64 @@ input { font-family: inherit; }
   color: var(--text-dim); font-size: 13px; padding: 18px; text-align: center;
   background: var(--panel); border: 1px dashed var(--line); border-radius: 12px;
 }
+
+.score-status-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 14px;
+  align-items: center;
+  margin: -2px 0 14px;
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.score-status-card::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  box-shadow: 0 0 0 4px rgba(154,154,182,0.12);
+}
+.score-status-card.live::before {
+  background: var(--accent-2);
+  box-shadow: 0 0 0 4px rgba(255,213,92,0.14);
+}
+.score-status-card.queued::before {
+  background: #7aa6ff;
+  box-shadow: 0 0 0 4px rgba(122,166,255,0.14);
+}
+.score-status-card.updating::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(92,240,194,0.16);
+}
+.score-status-card.updated::before {
+  background: var(--accent);
+}
+.score-status-title {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+.score-status-body {
+  grid-column: 2;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.45;
+}
+@media (max-width: 540px) {
+  .score-status-card {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+  }
+  .score-status-body {
+    grid-column: 1 / -1;
+  }
+}
+
 /* ── tournament calendar ─────────────────────────────────────── */
 .cal-grid {
   display: flex; flex-direction: column; gap: 6px;

@@ -92,6 +92,14 @@ function canonNation(s: string): string {
   return NATION_ALIAS[s] || s;
 }
 
+function isFinishedStatus(status: string): boolean {
+  return status === 'FT' || status === 'AET' || status === 'PEN';
+}
+
+function fixtureId(fixture: any): string {
+  return String(fixture.fixture.id);
+}
+
 async function deleteScoreRows(dateStr: string, entryIds: string[]) {
   const CHUNK = 100;
   for (let i = 0; i < entryIds.length; i += CHUNK) {
@@ -111,7 +119,7 @@ async function deleteScoreRows(dateStr: string, entryIds: string[]) {
 async function prepareFixture(fixture: any): Promise<any> {
   const homeNation = canonNation(fixture.teams.home.name);
   const awayNation = canonNation(fixture.teams.away.name);
-  const matchId = String(fixture.fixture.id);
+  const matchId = fixtureId(fixture);
   const dateStr = fixture.fixture.date.slice(0, 10);
   const status = fixture.fixture.status.short;
   const homeGoals = fixture.goals.home ?? 0;
@@ -123,7 +131,7 @@ async function prepareFixture(fixture: any): Promise<any> {
   //   1H/HT/2H/ET/BT/P    → live (actually in progress)
   //   NS/TBD/PST/SUSP/INT → scheduled (not started yet)
   let bucket: 'finished' | 'live' | 'scheduled';
-  if (status === 'FT' || status === 'AET' || status === 'PEN') bucket = 'finished';
+  if (isFinishedStatus(status)) bucket = 'finished';
   else if (['1H','HT','2H','ET','BT','P','LIVE'].includes(status)) bucket = 'live';
   else bucket = 'scheduled';
 
@@ -134,7 +142,7 @@ async function prepareFixture(fixture: any): Promise<any> {
     status: bucket,
   }, { onConflict: 'external_id' });
 
-  if (status !== 'FT' && status !== 'AET' && status !== 'PEN') return null;
+  if (!isFinishedStatus(status)) return null;
 
   const [eventsRes, playersRes] = await Promise.all([
     apiFetch(`/fixtures/events?fixture=${matchId}`),
@@ -381,12 +389,31 @@ Deno.serve(async (req) => {
     const { date } = await req.json().catch(() => ({}));
     const dateStr = date || new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const fixtures = await apiFetch(`/fixtures?league=${WC26_LEAGUE_ID}&season=${WC26_SEASON}&date=${dateStr}`);
+    const fixtureRows = fixtures.response || [];
+    const finishedIds = fixtureRows
+      .filter((f: any) => isFinishedStatus(f.fixture.status.short))
+      .map(fixtureId);
+
+    const scoredAt: Record<string, string | null> = {};
+    if (finishedIds.length > 0) {
+      const { data: existing } = await supa
+        .from('matches')
+        .select('external_id, scored_at')
+        .in('external_id', finishedIds);
+      for (const m of existing || []) scoredAt[m.external_id] = m.scored_at;
+    }
+    const allFinishedAlreadyScored = finishedIds.length > 0
+      && finishedIds.every(id => Boolean(scoredAt[id]));
 
     // Phase 1 — prepare each fixture (upsert matches row, fetch events)
     const prepared: any[] = [];
     const results: any[] = [];
-    for (const f of fixtures.response || []) {
+    for (const f of fixtureRows) {
       try {
+        if (allFinishedAlreadyScored && isFinishedStatus(f.fixture.status.short)) {
+          results.push({ fixture: f.fixture.id, status: 'already_scored' });
+          continue;
+        }
         const data = await prepareFixture(f);
         if (data) prepared.push(data);
         results.push({ fixture: f.fixture.id, status: data ? 'ok' : 'pending' });
@@ -402,12 +429,6 @@ Deno.serve(async (req) => {
     let scored = false;
     if (prepared.length > 0) {
       const ids = prepared.map(m => m.matchId);
-      const { data: existing } = await supa
-        .from('matches')
-        .select('external_id, scored_at')
-        .in('external_id', ids);
-      const scoredAt: Record<string, string | null> = {};
-      for (const m of existing || []) scoredAt[m.external_id] = m.scored_at;
       const anyUnscored = prepared.some(m => !scoredAt[m.matchId]);
 
       if (anyUnscored) {

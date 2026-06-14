@@ -35,6 +35,7 @@ async function boot() {
 
   // Render above-the-fold stuff IMMEDIATELY
   renderHeroStatus();
+  renderScoringStatus();
   renderMySquad();
   // Leaderboard live (Phase 3 scoring deployed 2026-06-12)
   renderLeaderboard();
@@ -50,6 +51,7 @@ async function boot() {
   // Update countdowns every minute (so the page flips to "locked" UX
   // without a refresh if the user is still here when the deadline hits)
   setInterval(() => { renderCalendar(); renderHeroStatus(); }, 60_000);
+  setInterval(() => { renderScoringStatus(); }, 5 * 60_000);
 
   // Players pool — background load
   hydrateFilters();
@@ -82,6 +84,7 @@ async function boot() {
     if (state.players.length) hydrateFilters();
     if (state.players.length) renderPoolStats();
     renderHeroStatus();
+    renderScoringStatus();
     renderMySquad();
     renderCalendar();
     if (state.players.length) renderPool();
@@ -151,6 +154,104 @@ async function jumpToMyRank(rank) {
 function renderPoolStats() {
   document.getElementById('poolStats').textContent =
     t('pool.stats', { n: state.players.length.toLocaleString(), teams: state.teams.length });
+}
+
+function loadFixturesData() {
+  if (!state._fixturesCache) {
+    state._fixturesCache = fetch('data/fixtures.json').then(r => r.json());
+  }
+  return state._fixturesCache;
+}
+
+function expectedFinalWhistle(fixture) {
+  return new Date(new Date(fixture.date).getTime() + 125 * 60_000);
+}
+
+function isScoringWindow(now = new Date()) {
+  const h = now.getUTCHours();
+  const m = now.getUTCMinutes();
+  return h === 7 || h === 8 || (h === 9 && m <= 5);
+}
+
+function formatDubaiTime(value) {
+  return new Intl.DateTimeFormat(document.documentElement.lang || 'en', {
+    timeZone: 'Asia/Dubai',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+function renderStatusBody(title, body) {
+  return `
+    <div class="score-status-title">${title}</div>
+    <div class="score-status-body">${body}</div>
+  `;
+}
+
+async function renderScoringStatus() {
+  const card = document.getElementById('scoringStatusCard');
+  if (!card) return;
+  try {
+    const [fixturesData, matchesRes] = await Promise.all([
+      loadFixturesData(),
+      supabase.from('matches')
+        .select('external_id, home, away, status, scored_at')
+        .order('date', { ascending: false })
+        .limit(140),
+    ]);
+    const fixtures = (fixturesData.fixtures || [])
+      .slice()
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const matches = matchesRes.data || [];
+    const now = new Date();
+    const scoredById = new Set(matches.filter(m => m.scored_at).map(m => String(m.external_id)));
+    const live = fixtures.filter(f => {
+      const kickoff = new Date(f.date);
+      const finalWhistle = expectedFinalWhistle(f);
+      return kickoff <= now && now < finalWhistle;
+    });
+    const finishedUnscored = fixtures.filter(f => {
+      const kickoff = new Date(f.date);
+      return kickoff <= now && expectedFinalWhistle(f) <= now && !scoredById.has(String(f.id));
+    });
+    const latestScored = matches
+      .filter(m => m.scored_at)
+      .sort((a, b) => new Date(b.scored_at) - new Date(a.scored_at))[0];
+
+    const title = t('score.status.title');
+    const windowText = t('score.status.window');
+    let tone = 'idle';
+    let body = t('score.status.waiting', { window: windowText });
+
+    if (isScoringWindow(now) && finishedUnscored.length > 0) {
+      tone = 'updating';
+      body = t('score.status.updating', { window: windowText });
+    } else if (live.length > 0) {
+      tone = 'live';
+      const match = live.length === 1
+        ? `${live[0].home} - ${live[0].away}`
+        : t('score.status.matchcount', { n: live.length });
+      body = t('score.status.live', { match, window: windowText });
+    } else if (finishedUnscored.length > 0) {
+      tone = 'queued';
+      body = t('score.status.queued', { window: windowText });
+    } else if (latestScored) {
+      tone = 'updated';
+      const match = `${latestScored.home} - ${latestScored.away}`;
+      body = t('score.status.updated', {
+        match,
+        time: formatDubaiTime(latestScored.scored_at),
+      });
+    }
+
+    card.className = `score-status-card ${tone}`;
+    card.innerHTML = renderStatusBody(title, body);
+    card.style.display = '';
+  } catch (e) {
+    card.style.display = 'none';
+  }
 }
 
 // Pitch coords matching build.js SLOTS (active 11)
