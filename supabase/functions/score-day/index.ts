@@ -42,6 +42,7 @@ const WC26_SEASON = 2026;
 // player on the winning team; these entries preserve explicit production
 // overrides when a match is re-scored.
 const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
+  '1489373': ['abunada'],      // 2026-06-13 Qatar-Switzerland
   '1489374': ['kai', 'havertz'], // 2026-06-14 Germany-Curacao
 };
 
