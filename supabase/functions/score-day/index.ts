@@ -132,8 +132,12 @@ async function prepareFixture(fixture: any): Promise<any> {
 // per-fixture loop was overwriting earlier matches' contributions (e.g. an
 // entry with USA + Qatar picks on 2026-06-13 lost the USA breakdown when
 // Qatar-Switzerland processed second).
-async function processDate(dateStr: string, prepared: any[]) {
-  if (prepared.length === 0) return;
+async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
+  // Returns true if all entries for the date were processed; false if we
+  // bailed out early on the time budget (caller will not stamp scored_at).
+  if (prepared.length === 0) return true;
+  const start = Date.now();
+  const TIME_BUDGET_MS = 130_000;   // leave headroom under the 150s Edge cap
 
   // GW-SNAPSHOT: matches before MD2 first kickoff use xi_json_gw1 (the
   // pre-transfer lineup) so transferred-in players don't retroactively
@@ -152,8 +156,18 @@ async function processDate(dateStr: string, prepared: any[]) {
   const orFilter = filters.join(',');
 
   const PAGE = 1000;
-  let offset = 0;
+  // Resume from where the last run left off (timeout-safe).
+  const { data: progressRow } = await supa
+    .from('scoring_progress').select('offset_').eq('match_date', dateStr).maybeSingle();
+  let offset = progressRow?.offset_ || 0;
   while (true) {
+    // Time-budget guard: stop before we hit the hard 150s Edge limit.
+    if (Date.now() - start > TIME_BUDGET_MS) {
+      await supa.from('scoring_progress')
+        .upsert({ match_date: dateStr, offset_: offset, updated_at: new Date().toISOString() },
+                { onConflict: 'match_date' });
+      return false;   // not fully done; caller skips scored_at stamp
+    }
     const { data: batch } = await supa
       .from('entries')
       .select('id, user_id, league_id, xi_json, xi_json_gw1, submitted_at')
@@ -203,6 +217,11 @@ async function processDate(dateStr: string, prepared: any[]) {
     if (batch.length < PAGE) break;
     offset += PAGE;
   }
+  // Completed all entries for the date — reset the progress cursor.
+  await supa.from('scoring_progress')
+    .upsert({ match_date: dateStr, offset_: 0, updated_at: new Date().toISOString() },
+            { onConflict: 'match_date' });
+  return true;
 }
 
 function buildPlayerEvents(playersResponse: any[], eventsResponse: any[], homeNation: string, awayNation: string, homeGoals: number, awayGoals: number): PlayerEvent[] {
@@ -333,12 +352,22 @@ Deno.serve(async (req) => {
       const anyUnscored = prepared.some(m => !scoredAt[m.matchId]);
 
       if (anyUnscored) {
-        await processDate(dateStr, prepared);
-        // Stamp every prepared fixture as scored so future calls can skip
-        await supa.from('matches')
-          .update({ scored_at: new Date().toISOString() })
-          .in('external_id', ids);
-        scored = true;
+        // A new fixture finished → reset the per-date offset cursor so the
+        // run starts from scratch and merges contributions across all
+        // fixtures (the cross-match merge fix).
+        const freshFixtureNow = prepared.some(m => !scoredAt[m.matchId]);
+        if (freshFixtureNow) {
+          await supa.from('scoring_progress')
+            .upsert({ match_date: dateStr, offset_: 0, updated_at: new Date().toISOString() },
+                    { onConflict: 'match_date' });
+        }
+        const completed = await processDate(dateStr, prepared);
+        if (completed) {
+          await supa.from('matches')
+            .update({ scored_at: new Date().toISOString() })
+            .in('external_id', ids);
+        }
+        scored = completed;
       }
     }
 
