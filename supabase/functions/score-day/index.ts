@@ -145,15 +145,10 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
   const MD2_FIRST_KICKOFF = '2026-06-18';
   const useGw1Snapshot = dateStr < MD2_FIRST_KICKOFF;
 
-  // OR filter across ALL playing nations of the day
+  // Collect playing nations once
   const playingNations = new Set<string>();
   for (const m of prepared) { playingNations.add(m.homeNation); playingNations.add(m.awayNation); }
-  const filters: string[] = [];
-  for (const n of playingNations) {
-    filters.push(`xi_json.cs.[{"nation":"${n}"}]`);
-    if (useGw1Snapshot) filters.push(`xi_json_gw1.cs.[{"nation":"${n}"}]`);
-  }
-  const orFilter = filters.join(',');
+  const nationsArr = [...playingNations];
 
   const PAGE = 1000;
   // Resume from where the last run left off (timeout-safe).
@@ -161,18 +156,24 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
     .from('scoring_progress').select('offset_').eq('match_date', dateStr).maybeSingle();
   let offset = progressRow?.offset_ || 0;
   while (true) {
-    // Time-budget guard: stop before we hit the hard 150s Edge limit.
     if (Date.now() - start > TIME_BUDGET_MS) {
       await supa.from('scoring_progress')
         .upsert({ match_date: dateStr, offset_: offset, updated_at: new Date().toISOString() },
                 { onConflict: 'match_date' });
-      return false;   // not fully done; caller skips scored_at stamp
+      return false;
     }
-    const { data: batch } = await supa
-      .from('entries')
-      .select('id, user_id, league_id, xi_json, xi_json_gw1, submitted_at')
-      .or(orFilter)
+    // Fetch entries via SECURITY DEFINER RPC — avoids the giant URL-OR
+    // PostgREST was 400'ing on (which silently dropped everything).
+    const { data: batch, error: batchErr } = await supa
+      .rpc('entries_for_nations', { p_nations: nationsArr })
       .range(offset, offset + PAGE - 1);
+    if (batchErr) {
+      console.error('entries_for_nations RPC failed:', batchErr);
+      await supa.from('scoring_progress')
+        .upsert({ match_date: dateStr, offset_: offset, updated_at: new Date().toISOString() },
+                { onConflict: 'match_date' });
+      return false;
+    }
     if (!batch || batch.length === 0) break;
 
     const scoresToUpsert: any[] = [];
