@@ -372,7 +372,7 @@ Deno.serve(async (req) => {
     let refreshed = false;
     if (scored) {
       try { await supa.rpc('refresh_player_leaderboard'); refreshed = true; } catch (_) {}
-      try { await supa.rpc('refresh_entry_ranks'); } catch (_) {}
+      try { await supa.rpc('refresh_leaderboard_and_ranks'); } catch (e) { console.error('refresh_leaderboard_and_ranks failed:', e); }
     }
 
     return new Response(JSON.stringify({ date: dateStr, processed: results.length, results, scored, refreshed }), {
