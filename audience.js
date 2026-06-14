@@ -283,6 +283,10 @@ async function renderMySquad() {
     `🏆 I built my HALLO AMRIKA fantasy XI: "${entry.team_name}"\n\nSee my squad + build yours: ${squadUrl}`
   );
 
+  const lockPassed = state.league?.locked_at && new Date() >= new Date(state.league.locked_at);
+  const editHref = lockPassed ? 'team.html' : 'build.html';
+  const editLabel = lockPassed ? t('tab.team') : t('mysquad.edit');
+
   document.getElementById('mySquadCard').innerHTML = `
     <div class="my-squad-card">
       <div class="pitch-wrap">
@@ -297,7 +301,7 @@ async function renderMySquad() {
       </div>
       <div style="margin-top:14px;text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
         <a href="https://wa.me/?text=${shareText}" target="_blank" rel="noopener" class="ghost-btn" style="text-decoration:none;background:#25D366;color:#0a0a12;border-color:#25D366;">${t('share.whatsapp')}</a>
-        <a href="build.html" class="ghost-btn" style="text-decoration:none;">${t('mysquad.edit')}</a>
+        <a href="${editHref}" class="ghost-btn" style="text-decoration:none;">${editLabel}</a>
       </div>
     </div>
   `;

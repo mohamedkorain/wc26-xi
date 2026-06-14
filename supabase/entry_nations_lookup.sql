@@ -74,7 +74,8 @@ as $$
     select 1 from public.entry_nations en
     where en.entry_id = e.id
       and en.nation = any(p_nations)
-  );
+  )
+  order by e.id;
 $$;
 
 revoke all on function public.entries_for_nations(text[])

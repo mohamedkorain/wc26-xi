@@ -44,6 +44,9 @@ const state = {
   spinning: false,
   step: 'spin',                 // 'spin' | 'bucket' | 'candidates' | 'subin'
   locked: false,
+  lockPassed: false,
+  transferOpen: false,
+  entry: null,
 };
 
 // ─── boot ────────────────────────────────────────────────────────────────────
@@ -71,13 +74,17 @@ async function boot() {
     document.body.innerHTML = `<pre style="padding:30px;color:#ff6b6b;">HALLO AMRIKA league not set up — admin must run supabase/seed_halo.sql.</pre>`;
     return;
   }
-  // Builder stays usable not only pre-lock, but also during the transfer
-  // window — new joiners can still draft a fresh squad via the randomizer.
   const now = new Date();
+  const lockAt = new Date(state.league.locked_at);
   const txOpen = state.league.transfers_open_until ? new Date(state.league.transfers_open_until) : null;
-  state.locked = now >= new Date(state.league.locked_at) && !(txOpen && now < txOpen);
+  state.lockPassed = now >= lockAt;
+  state.transferOpen = !!(txOpen && now < txOpen);
+  // New late joiners can still draft during an open transfer window. Existing
+  // entries must use /team.html so they cannot bypass the transfer flow.
+  state.locked = state.lockPassed && !state.transferOpen;
 
   await loadExistingEntry();
+  if (state.entry && state.lockPassed) state.locked = true;
 
   wireUI();
   renderAll();
@@ -89,6 +96,7 @@ async function loadExistingEntry() {
     .from('entries').select('*')
     .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.user.id).maybeSingle();
   if (!entry) return;
+  state.entry = entry;
   document.getElementById('teamName').value = entry.team_name || '';
   for (const item of entry.xi_json || []) {
     const team = state.teams.find(t => t.name === item.nation);
@@ -394,7 +402,7 @@ function renderAll() {
   updateSubmitState();
   const filled = picksCount();
   if (state.locked) {
-    setHint(t('spin.locked'));
+    setHint(state.entry && state.lockPassed ? t('build.existing.locked') : t('spin.locked'));
     document.getElementById('spinBtn').disabled = true;
     return;
   }
@@ -545,6 +553,13 @@ function swapWithWildcard(slotIdx) {
 async function submit() {
   const name = document.getElementById('teamName').value.trim();
   const msg = document.getElementById('submitMsg');
+  if (state.locked) {
+    msg.style.color = 'var(--danger)';
+    msg.innerHTML = state.entry && state.lockPassed
+      ? `${t('build.existing.locked')} <a href="team.html" style="color:var(--accent);">${t('tab.team')}</a>`
+      : t('spin.locked');
+    return;
+  }
   msg.style.color = 'var(--accent-2)';
   msg.textContent = t('submit.saving');
 

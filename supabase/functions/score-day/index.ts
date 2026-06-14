@@ -38,6 +38,13 @@ const API_BASE = 'https://v3.football.api-sports.io';
 const WC26_LEAGUE_ID = 1;       // World Cup
 const WC26_SEASON = 2026;
 
+// Manual match-level rulings. By default MVP is API-Football's highest-rated
+// player on the winning team; these entries preserve explicit production
+// overrides when a match is re-scored.
+const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
+  '1489374': ['kai', 'havertz'], // 2026-06-14 Germany-Curacao
+};
+
 // Map API-Football team name → our canonical nation name in data/teams.json.
 // API-Football mostly matches; this table is for the diffs.
 const NATION_ALIAS: Record<string, string> = {
@@ -85,6 +92,19 @@ function canonNation(s: string): string {
   return NATION_ALIAS[s] || s;
 }
 
+async function deleteScoreRows(dateStr: string, entryIds: string[]) {
+  const CHUNK = 100;
+  for (let i = 0; i < entryIds.length; i += CHUNK) {
+    const ids = entryIds.slice(i, i + CHUNK);
+    const { error } = await supa
+      .from('scores')
+      .delete()
+      .eq('match_date', dateStr)
+      .in('entry_id', ids);
+    if (error) console.error('scores stale-zero cleanup failed:', error);
+  }
+}
+
 // Per-fixture preparation: upsert matches row, fetch API stats, return
 // the enriched event list. Returns null if the match is not yet finished
 // (so we don't score in-progress matches).
@@ -120,7 +140,7 @@ async function prepareFixture(fixture: any): Promise<any> {
     apiFetch(`/fixtures/events?fixture=${matchId}`),
     apiFetch(`/fixtures/players?fixture=${matchId}`),
   ]);
-  const rawEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation, homeGoals, awayGoals);
+  const rawEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation, homeGoals, awayGoals, matchId);
   return {
     matchId, homeNation, awayNation, homeGoals, awayGoals, kickoff,
     events: enrichEvents(rawEvents),
@@ -166,6 +186,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
     // PostgREST was 400'ing on (which silently dropped everything).
     const { data: batch, error: batchErr } = await supa
       .rpc('entries_for_nations', { p_nations: nationsArr })
+      .order('id', { ascending: true })
       .range(offset, offset + PAGE - 1);
     if (batchErr) {
       console.error('entries_for_nations RPC failed:', batchErr);
@@ -177,6 +198,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
     if (!batch || batch.length === 0) break;
 
     const scoresToUpsert: any[] = [];
+    const staleZeroScoreIds: string[] = [];
     for (const entry of batch) {
       const effectiveXi = useGw1Snapshot
         ? (entry.xi_json_gw1 || entry.xi_json || [])
@@ -194,7 +216,8 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
 
         for (const slot of starters) {
           if (slot.nation !== m.homeNation && slot.nation !== m.awayNation) continue;
-          const ev = matchPlayerToEvent(slot, m.events);
+          const expectedSide = slot.nation === m.homeNation ? 'home' : 'away';
+          const ev = matchPlayerToEvent(slot, m.events, expectedSide);
           if (!ev) continue;
           const { points, breakdown: b } = scorePlayer(
             ev, slot.roles || [slot.role], m.homeNation, m.homeGoals, m.awayGoals,
@@ -206,11 +229,18 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
         }
       }
 
-      if (totalPts === 0) continue;
+      const hasBreakdown = Object.values(breakdown).some((b: any) => b && Object.keys(b).length > 0);
+      if (totalPts === 0 && !hasBreakdown) {
+        staleZeroScoreIds.push(entry.id);
+        continue;
+      }
       scoresToUpsert.push({
         entry_id: entry.id, match_date: dateStr,
         points: totalPts, breakdown,
       });
+    }
+    if (staleZeroScoreIds.length > 0) {
+      await deleteScoreRows(dateStr, staleZeroScoreIds);
     }
     if (scoresToUpsert.length > 0) {
       await supa.from('scores').upsert(scoresToUpsert, { onConflict: 'entry_id,match_date' });
@@ -225,9 +255,18 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
   return true;
 }
 
-function buildPlayerEvents(playersResponse: any[], eventsResponse: any[], homeNation: string, awayNation: string, homeGoals: number, awayGoals: number): PlayerEvent[] {
+function buildPlayerEvents(
+  playersResponse: any[],
+  eventsResponse: any[],
+  homeNation: string,
+  awayNation: string,
+  homeGoals: number,
+  awayGoals: number,
+  matchId: string,
+): PlayerEvent[] {
   // MVP is ONE player per match: highest rating on the winning team.
   // If the match is a draw, MVP goes to the highest-rated player overall.
+  // Manual overrides take precedence.
   const winnerSide: 'home' | 'away' | 'draw' =
     homeGoals > awayGoals ? 'home' : awayGoals > homeGoals ? 'away' : 'draw';
   let mvpId = -1;
@@ -238,6 +277,20 @@ function buildPlayerEvents(playersResponse: any[], eventsResponse: any[], homeNa
     for (const p of teamBlock.players || []) {
       const r = parseFloat(p.statistics?.[0]?.games?.rating || '0') || 0;
       if (r > mvpRating) { mvpRating = r; mvpId = p.player.id; }
+    }
+  }
+  const overrideTokens = MANUAL_MVP_OVERRIDES[matchId];
+  if (overrideTokens) {
+    for (const teamBlock of playersResponse || []) {
+      const side: 'home' | 'away' = canonNation(teamBlock.team.name) === homeNation ? 'home' : 'away';
+      if (winnerSide !== 'draw' && side !== winnerSide) continue;
+      for (const p of teamBlock.players || []) {
+        const tokens = new Set(normaliseName(p.player.name).split(' '));
+        if (overrideTokens.every(tok => tokens.has(tok))) {
+          mvpId = p.player.id;
+          break;
+        }
+      }
     }
   }
 
@@ -275,7 +328,11 @@ function enrichEvents(evs: PlayerEvent[]): EnrichedEvent[] {
   });
 }
 
-function matchPlayerToEvent(slot: any, enriched: EnrichedEvent[]): PlayerEvent | null {
+function matchPlayerToEvent(
+  slot: any,
+  enriched: EnrichedEvent[],
+  expectedSide?: 'home' | 'away',
+): PlayerEvent | null {
   // Our roster format: "LASTNAME Firstname(s)" (family first).
   // API format: "Firstname(s) Lastname".
   // Surname alone is NOT enough — Korea has multiple HWANGs. Require
@@ -285,22 +342,23 @@ function matchPlayerToEvent(slot: any, enriched: EnrichedEvent[]): PlayerEvent |
   const targetTokens = target.split(' ');
   const ourFamily = targetTokens[0] || '';
   const ourGivens = targetTokens.slice(1);
+  const candidates = expectedSide ? enriched.filter(ev => ev.team === expectedSide) : enriched;
 
   // Pass 1: exact normalized full-name match.
-  for (const ev of enriched) {
+  for (const ev of candidates) {
     if (ev._normalized === target) return ev;
   }
   // Pass 2: family AND ≥1 given-name match. Handle hyphenated forms.
-  for (const ev of enriched) {
+  for (const ev of candidates) {
     if (!ourFamily || !ev._tokenSet.has(ourFamily)) continue;
     if (ourGivens.some(g => ev._tokenSet.has(g))) return ev;
     if (ourGivens.some(g => ev._tokens.some(et => et.startsWith(g) || g.startsWith(et)))) return ev;
   }
   // Pass 3: lone surname (only when no one else in the match shares it).
   let familyCount = 0;
-  for (const ev of enriched) if (ev._tokenSet.has(ourFamily)) familyCount++;
+  for (const ev of candidates) if (ev._tokenSet.has(ourFamily)) familyCount++;
   if (familyCount === 1) {
-    for (const ev of enriched) if (ev._tokenSet.has(ourFamily)) return ev;
+    for (const ev of candidates) if (ev._tokenSet.has(ourFamily)) return ev;
   }
   return null;
 }
