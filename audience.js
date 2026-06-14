@@ -197,10 +197,8 @@ async function renderMySquad() {
     for (const [pname, st] of Object.entries(row.breakdown || {})) {
       if (!st || Object.keys(st).length === 0) continue;
       if (!playerStats[pname]) playerStats[pname] = { points: 0, st: {} };
-      const p = (st.win||0) + (st.full90||0) + (st.goals||0) + (st.assists||0) + (st.cleanSheet||0) + (st.mvp||0) - (st.red ? 1 : 0);
-      playerStats[pname].points += p;
-      for (const k of ['goals','assists','cleanSheet','win','full90','mvp']) playerStats[pname].st[k] = (playerStats[pname].st[k] || 0) + (st[k] || 0);
-      if (st.red) playerStats[pname].st.red = true;
+      playerStats[pname].points += pointsFromStatLine(st);
+      addStatTotals(playerStats[pname].st, st);
     }
   }
 
@@ -299,6 +297,7 @@ async function renderMySquad() {
         </div>
         <div class="bench">${benchHtml}</div>
       </div>
+      ${renderScoreDetails(playerStats, starters)}
       <div style="margin-top:14px;text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
         <a href="https://wa.me/?text=${shareText}" target="_blank" rel="noopener" class="ghost-btn" style="text-decoration:none;background:#25D366;color:#0a0a12;border-color:#25D366;">${t('share.whatsapp')}</a>
         <a href="${editHref}" class="ghost-btn" style="text-decoration:none;">${editLabel}</a>
@@ -318,6 +317,29 @@ function displayLast(item) {
   return item.shirt_name || item.last || item.name || '';
 }
 
+function redCardCount(st) {
+  if (!st?.red) return 0;
+  return Number(st.red) || 1;
+}
+
+function pointsFromStatLine(st) {
+  return (st.win || 0)
+    + (st.full90 || 0)
+    + (st.goals || 0)
+    + (st.assists || 0)
+    + (st.cleanSheet || 0)
+    + (st.mvp || 0)
+    - redCardCount(st);
+}
+
+function addStatTotals(into, st) {
+  for (const k of ['goals','assists','cleanSheet','win','full90','mvp']) {
+    if (st[k]) into[k] = (into[k] || 0) + st[k];
+  }
+  const reds = redCardCount(st);
+  if (reds) into.red = (into.red || 0) + reds;
+}
+
 // Localized hover-tooltip text: "Win, 90', Goal x2" / "فوز، ٩٠ دقيقة، جول×٢"
 function describeStatTextLocal(s) {
   const parts = [];
@@ -327,8 +349,51 @@ function describeStatTextLocal(s) {
   if (s.assists)    parts.push(`${t('pts.assist')}${s.assists > 1 ? '×' + s.assists : ''}`);
   if (s.cleanSheet) parts.push(t('pts.cleansheet'));
   if (s.mvp)        parts.push(t('pts.mvp'));
-  if (s.red)        parts.push(t('pts.red'));
+  if (s.red)        parts.push(`${t('pts.red')}${s.red > 1 ? '×' + s.red : ''}`);
   return parts.join(document.documentElement.lang === 'ar' ? '، ' : ', ');
+}
+
+function statPointParts(st) {
+  const parts = [];
+  if (st.win)        parts.push({ icon: '✅', label: t('pts.win'),        value: st.win });
+  if (st.full90)     parts.push({ icon: '⏱️', label: t('pts.full90'),     value: st.full90 });
+  if (st.goals)      parts.push({ icon: '⚽', label: t('pts.goal'),       value: st.goals });
+  if (st.assists)    parts.push({ icon: '🎁', label: t('pts.assist'),     value: st.assists });
+  if (st.cleanSheet) parts.push({ icon: '🧤', label: t('pts.cleansheet'), value: st.cleanSheet });
+  if (st.mvp)        parts.push({ icon: '⭐', label: t('pts.mvp'),        value: st.mvp });
+  if (st.red)        parts.push({ icon: '🟥', label: t('pts.red'),        value: -redCardCount(st) });
+  return parts;
+}
+
+function renderScoreDetails(playerStats, starters) {
+  const rows = starters
+    .map(item => {
+      const ps = playerStats[item.name];
+      if (!ps || !ps.st || Object.keys(ps.st).length === 0) return '';
+      const parts = statPointParts(ps.st);
+      if (!parts.length) return '';
+      const totalClass = ps.points < 0 ? 'neg' : 'pos';
+      const chips = parts.map(p => {
+        const cls = p.value < 0 ? 'neg' : '';
+        const signed = p.value > 0 ? `+${p.value}` : `${p.value}`;
+        return `<span class="score-chip ${cls}"><span>${p.icon} ${escapeHtml(p.label)}</span><b>${signed}</b></span>`;
+      }).join('');
+      return `
+        <div class="score-detail-row">
+          <div class="score-detail-player">
+            ${flagImg(item.nation_code, { width: 18, cls: 'flag-img', fallback: '' })}
+            <b>${escapeHtml(displayLast(item))}</b>
+          </div>
+          <div class="score-detail-chips">${chips}</div>
+          <div class="score-detail-total ${totalClass}">${ps.points >= 0 ? '+' : ''}${ps.points}</div>
+        </div>
+      `;
+    })
+    .filter(Boolean)
+    .join('');
+  if (!rows) return '';
+  const title = t('score.breakdown');
+  return `<div class="score-detail"><div class="score-detail-title">${title}</div>${rows}</div>`;
 }
 
 // Kept for callers that still want the emoji fallback
@@ -662,12 +727,12 @@ async function openSquadModal(entryId) {
   const playerStats = {};   // playerName → {points, matches: [{date, breakdown, pts}]}
   for (const row of scoreRows) {
     for (const [pname, st] of Object.entries(row.breakdown || {})) {
-      if (!playerStats[pname]) playerStats[pname] = { points: 0, lines: [] };
-      const pts = (st.win||0) + (st.full90||0) + (st.goals||0) + (st.assists||0) + (st.cleanSheet||0) + (st.mvp||0) - (st.red ? 1 : 0);
+      if (!st || Object.keys(st).length === 0) continue;
+      if (!playerStats[pname]) playerStats[pname] = { points: 0, lines: [], st: {} };
+      const pts = pointsFromStatLine(st);
       playerStats[pname].points += pts;
-      if (Object.keys(st).length > 0) {
-        playerStats[pname].lines.push({ date: row.match_date, pts, st });
-      }
+      addStatTotals(playerStats[pname].st, st);
+      playerStats[pname].lines.push({ date: row.match_date, pts, st });
     }
   }
 
@@ -735,8 +800,7 @@ async function openSquadModal(entryId) {
       // tooltip ("Win, 90', Goal" / "فوز، ٩٠ دقيقة، جول")
       const agg = {};
       for (const l of stats.lines) {
-        for (const k of ['goals','assists','cleanSheet','win','full90','mvp']) agg[k] = (agg[k]||0) + (l.st[k]||0);
-        if (l.st.red) agg.red = true;
+        addStatTotals(agg, l.st);
       }
       const txt = describeStatTextLocal(agg);
       const tip = `${pts >= 0 ? '+' : ''}${pts} ${ptsLabel}${txt ? '  ·  ' + txt : ''}`;
@@ -784,6 +848,7 @@ async function openSquadModal(entryId) {
         </div>
         <div class="bench" style="max-width:460px;margin:10px auto 0;">${benchHtml}</div>
       </div>
+      ${renderScoreDetails(playerStats, starters)}
     </div>
   `;
   document.body.appendChild(modal);
