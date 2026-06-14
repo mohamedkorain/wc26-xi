@@ -20,6 +20,11 @@ declare
   v_locked_at timestamptz;
   v_transfers_open_until timestamptz;
   v_changed_slots int;
+  v_total_slots int;
+  v_valid_slots int;
+  v_distinct_players int;
+  v_arab_count int;
+  v_max_nation_count int;
 begin
   select l.locked_at, l.transfers_open_until
     into v_locked_at, v_transfers_open_until
@@ -61,6 +66,65 @@ begin
   if NEW.transfers_used is distinct from OLD.transfers_used + 2
      or NEW.transfers_used > 2 then
     raise exception 'Transfer update must use exactly two transfers';
+  end if;
+
+  v_total_slots := jsonb_array_length(coalesce(NEW.xi_json, '[]'::jsonb));
+  if v_total_slots <> 12 then
+    raise exception 'Squad must contain exactly 12 players';
+  end if;
+
+  -- Validate every post-transfer row against the official player pool, not
+  -- just the two changed slots. This prevents crafted JSON from inventing
+  -- players, changing metadata, or putting a player into an invalid role.
+  select count(*) into v_valid_slots
+  from jsonb_array_elements(coalesce(NEW.xi_json, '[]'::jsonb)) with ordinality as x(player, ord)
+  join public.player_pool pp
+    on pp.nation = x.player->>'nation'
+   and pp.name = x.player->>'name'
+  where (x.player->>'slot')::int = (x.ord - 1)
+    and coalesce(x.player->>'nation_code', '') = pp.nation_code
+    and (x.player->>'category')::int = pp.category
+    and (x.player->>'arab')::boolean = pp.arab
+    and (x.player->>'no')::int = pp.no
+    and coalesce(x.player->>'shirt_name', '') = coalesce(pp.shirt_name, '')
+    and coalesce(x.player->>'club', '') = coalesce(pp.club, '')
+    and (
+      coalesce((x.player->>'wild')::boolean, false)
+      or pp.roles @> array[x.player->>'role']
+    );
+
+  if v_valid_slots <> 12 then
+    raise exception 'Squad contains invalid player data';
+  end if;
+
+  select count(distinct (x.player->>'nation') || chr(31) || (x.player->>'name'))
+    into v_distinct_players
+  from jsonb_array_elements(coalesce(NEW.xi_json, '[]'::jsonb)) as x(player);
+
+  if v_distinct_players <> 12 then
+    raise exception 'Squad cannot contain duplicate players';
+  end if;
+
+  select count(*) into v_arab_count
+  from jsonb_array_elements(coalesce(NEW.xi_json, '[]'::jsonb)) as x(player)
+  join public.player_pool pp
+    on pp.nation = x.player->>'nation'
+   and pp.name = x.player->>'name'
+  where pp.arab;
+
+  if v_arab_count < 1 then
+    raise exception 'Squad must keep at least one Arab player';
+  end if;
+
+  select coalesce(max(n), 0) into v_max_nation_count
+  from (
+    select x.player->>'nation' as nation, count(*) as n
+    from jsonb_array_elements(coalesce(NEW.xi_json, '[]'::jsonb)) as x(player)
+    group by x.player->>'nation'
+  ) counts;
+
+  if v_max_nation_count > 3 then
+    raise exception 'Squad cannot contain more than three players from one nation';
   end if;
 
   if OLD.xi_json_gw1 is null then
