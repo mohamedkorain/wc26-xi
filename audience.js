@@ -707,7 +707,34 @@ async function renderLeaderboard(reset = true) {
 // scores.breakdown JSONB across all entries (one match per player counted via
 // a (player, match_date) Set dedup, since many entries picked the same player).
 const TP_PAGE = 20;
-const tpState = { all: [], visible: TP_PAGE, query: '' };
+const tpState = {
+  all: [],
+  visible: TP_PAGE,
+  query: '',
+  ownership: { total: 0, byName: {}, byKey: {} },
+};
+
+function ownershipKey(playerName, nation) {
+  return `${playerName || ''}\u001f${nation || ''}`;
+}
+
+function formatOwnershipPct(owners, total) {
+  if (!owners || !total) return '';
+  const pct = (owners / total) * 100;
+  if (pct >= 10) return `${Math.round(pct)}%`;
+  return `${Math.round(pct * 10) / 10}%`;
+}
+
+function playerOwnership(playerName, nation) {
+  const own = tpState.ownership || {};
+  const owners = (nation && own.byKey?.[ownershipKey(playerName, nation)] !== undefined)
+    ? own.byKey[ownershipKey(playerName, nation)]
+    : own.byName?.[playerName];
+  return {
+    owners: owners || 0,
+    pct: formatOwnershipPct(owners || 0, own.total || 0),
+  };
+}
 
 async function renderTopPlayers() {
   const board = document.getElementById('topPlayersBoard');
@@ -716,14 +743,37 @@ async function renderTopPlayers() {
   // Pull the whole leaderboard once (typically a few hundred players) so the
   // search filter + Load More work without further round-trips.
   if (tpState.all.length === 0) {
-    const { data: rows, error } = await supabase
-      .from('player_leaderboard')
-      .select('player_name, matches, goals, assists, clean_sheets, mvps, reds, total_points')
-      .order('total_points', { ascending: false })
-      .order('goals', { ascending: false })
-      .order('assists', { ascending: false })
-      .limit(2000);
+    const [leaderboardRes, ownershipRes, countRes] = await Promise.all([
+      supabase
+        .from('player_leaderboard')
+        .select('player_name, matches, goals, assists, clean_sheets, mvps, reds, total_points')
+        .order('total_points', { ascending: false })
+        .order('goals', { ascending: false })
+        .order('assists', { ascending: false })
+        .limit(2000),
+      supabase
+        .from('player_ownership_counts')
+        .select('player_name, nation, owners')
+        .eq('league_id', HALO_LEAGUE_ID)
+        .limit(2000),
+      supabase.rpc('entry_count', { p_league_id: HALO_LEAGUE_ID }),
+    ]);
+    const rows = leaderboardRes.data;
+    const error = leaderboardRes.error;
     if (error || !rows || rows.length === 0) return;
+    const byName = {};
+    const byKey = {};
+    if (!ownershipRes.error) {
+      for (const row of ownershipRes.data || []) {
+        byName[row.player_name] = (byName[row.player_name] || 0) + (row.owners || 0);
+        byKey[ownershipKey(row.player_name, row.nation)] = row.owners || 0;
+      }
+    }
+    tpState.ownership = {
+      total: countRes.data || 0,
+      byName,
+      byKey,
+    };
     tpState.all = rows.map(r => ({
       name: r.player_name,
       matches: r.matches,
@@ -765,6 +815,10 @@ function paintTopPlayers() {
 
   const rowsHtml = slice.map((p, i) => {
     const m = meta[p.name];
+    const own = playerOwnership(p.name, m?.nation);
+    const ownTitle = own.pct
+      ? t('players.owned.title', { pct: own.pct, n: own.owners.toLocaleString() })
+      : '';
     const flag = m ? flagImg(m.nation_code, { width: 20, cls: 'flag-img', fallback: '' }) : '';
     return `
     <div class="pl-row">
@@ -781,6 +835,7 @@ function paintTopPlayers() {
         ${p.mvp     ? `<span title="MVP">⭐${p.mvp}</span>`         : ''}
         ${p.red     ? `<span title="Red cards" style="color:var(--danger);">🟥${p.red}</span>` : ''}
       </span>
+      <span class="pl-own" title="${escapeHtml(ownTitle)}">${own.pct || '—'}</span>
       <span class="pl-total">${p.points}</span>
     </div>
     `;

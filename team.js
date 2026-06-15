@@ -113,17 +113,58 @@ function renderTransferBar() {
 // Global per-player tournament points, populated on first transfer-modal open.
 // Map: "PLAYER NAME" → total points.
 let globalPlayerPts = null;
+let globalPlayerOwnership = { total: 0, byName: {}, byKey: {} };
+
+function ownershipKey(playerName, nation) {
+  return `${playerName || ''}\u001f${nation || ''}`;
+}
+
+function formatOwnershipPct(owners, total) {
+  if (!owners || !total) return '';
+  const pct = (owners / total) * 100;
+  if (pct >= 10) return `${Math.round(pct)}%`;
+  return `${Math.round(pct * 10) / 10}%`;
+}
+
+function ownershipLabel(playerName, nation) {
+  const owners = globalPlayerOwnership.byKey[ownershipKey(playerName, nation)] ??
+    globalPlayerOwnership.byName[playerName] ?? 0;
+  const pct = formatOwnershipPct(owners, globalPlayerOwnership.total);
+  if (!pct) return '';
+  return document.documentElement.lang === 'ar' ? `${pct} اختيار` : `${pct} owned`;
+}
 
 async function loadGlobalPlayerPts() {
   if (globalPlayerPts) return globalPlayerPts;
   // Server-side aggregated view — one query instead of paginating 37k+ rows.
-  const { data: rows } = await supabase
-    .from('player_leaderboard')
-    .select('player_name, total_points')
-    .order('total_points', { ascending: false })
-    .limit(2000);   // covers every WC26 player who has scored
+  const [pointsRes, ownershipRes, countRes] = await Promise.all([
+    supabase
+      .from('player_leaderboard')
+      .select('player_name, total_points')
+      .order('total_points', { ascending: false })
+      .limit(2000),   // covers every WC26 player who has scored
+    supabase
+      .from('player_ownership_counts')
+      .select('player_name, nation, owners')
+      .eq('league_id', HALO_LEAGUE_ID)
+      .limit(2000),
+    supabase.rpc('entry_count', { p_league_id: HALO_LEAGUE_ID }),
+  ]);
   const totals = {};
-  for (const r of rows || []) totals[r.player_name] = r.total_points;
+  for (const r of pointsRes.data || []) totals[r.player_name] = r.total_points;
+  if (!ownershipRes.error) {
+    const byName = {};
+    const byKey = {};
+    for (const row of ownershipRes.data || []) {
+      byName[row.player_name] = (byName[row.player_name] || 0) + (row.owners || 0);
+      byKey[ownershipKey(row.player_name, row.nation)] = row.owners || 0;
+    }
+    globalPlayerOwnership = {
+      total: countRes.data || 0,
+      byName,
+      byKey,
+    };
+  }
   globalPlayerPts = totals;
   return totals;
 }
@@ -357,15 +398,21 @@ async function commitBothTransfers(swaps, modal) {
 function txRowHtml(p, isOut) {
   const pos = p.wild ? 'WILD' : (p.role || (p.roles && p.roles[0]) || '');
   const pts = globalPlayerPts?.[p.name] || 0;
+  const ownership = ownershipLabel(p.name, p.nation);
   const next = nextGameFor(p.nation);
   const flag = flagImg(p.nation_code, { width: 20, cls: 'flag-img', fallback: '' });
+  const meta = [
+    escapeHtml(p.nation),
+    p.club ? escapeHtml(p.club) : '',
+    ownership ? escapeHtml(ownership) : '',
+  ].filter(Boolean).join(' · ');
   return `
     <button class="tx-row${isOut ? '' : ' in'}" ${isOut ? `data-slot="${p.slot}" data-wild="${p.wild ? 1 : 0}"` : `data-id="${escapeHtml(p.no + '|' + p.nation + '|' + p.name)}"`}>
       <span class="tx-row-pos">${pos}</span>
       <span class="tx-row-flag">${flag}</span>
       <span class="tx-row-name">
         <b>${escapeHtml(displayLast(p))}</b>
-        <span class="tx-row-meta">${escapeHtml(p.nation)}${p.club ? ' · ' + escapeHtml(p.club) : ''}</span>
+        <span class="tx-row-meta">${meta}</span>
       </span>
       <span class="tx-row-pts">${pts > 0 ? '+' + pts : pts}</span>
       <span class="tx-row-next">${next ? escapeHtml(next.label) : ''}</span>
