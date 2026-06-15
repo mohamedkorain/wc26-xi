@@ -1382,6 +1382,21 @@ input { font-family: inherit; }
 }
 .tp-search::placeholder { color: var(--text-dim); }
 .pl-board { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.pl-head {
+  display: grid;
+  grid-template-columns: 30px 24px minmax(0, 1fr) minmax(72px, auto) 48px 34px;
+  gap: 10px;
+  align-items: center;
+  padding: 0 12px 4px;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.pl-head-stats,
+.pl-head-own,
+.pl-head-total { text-align: right; }
 .pl-row {
   display: grid;
   grid-template-columns: 30px 24px minmax(0, 1fr) minmax(72px, auto) 48px 34px;
@@ -1420,6 +1435,8 @@ input { font-family: inherit; }
   text-align: right;
 }
 @media (max-width: 540px) {
+  .pl-head { grid-template-columns: 26px 22px minmax(0, 1fr) 42px 32px; gap: 6px; }
+  .pl-head-stats { display: none; }
   .pl-row { grid-template-columns: 26px 22px minmax(0, 1fr) 42px 32px; gap: 6px; }
   .pl-row .pl-icons { display: none; }
   .pl-row .pl-own { font-size: 11px; }

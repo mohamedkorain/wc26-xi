@@ -174,13 +174,97 @@ function isScoringWindow(now = new Date()) {
 }
 
 function formatCairoTime(value) {
-  return new Intl.DateTimeFormat(document.documentElement.lang || 'en', {
+  const lang = document.documentElement.lang || 'en';
+  if (lang === 'ar') {
+    const parts = new Intl.DateTimeFormat('ar-EG', {
+      timeZone: 'Africa/Cairo',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).formatToParts(new Date(value));
+    const part = (type) => parts.find(p => p.type === type)?.value || '';
+    return `${part('day')} ${part('month')} ${part('hour')}:${part('minute')} ${part('dayPeriod')}`.trim();
+  }
+  return new Intl.DateTimeFormat(lang, {
     timeZone: 'Africa/Cairo',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
+}
+
+const AR_NATION_NAMES = {
+  'Argentina': 'الأرجنتين',
+  'Brazil': 'البرازيل',
+  'England': 'إنجلترا',
+  'France': 'فرنسا',
+  'Morocco': 'المغرب',
+  'Netherlands': 'هولندا',
+  'Portugal': 'البرتغال',
+  'Spain': 'إسبانيا',
+  'Belgium': 'بلجيكا',
+  'Colombia': 'كولومبيا',
+  'Croatia': 'كرواتيا',
+  'Germany': 'ألمانيا',
+  'Mexico': 'المكسيك',
+  'Senegal': 'السنغال',
+  'United States': 'أمريكا',
+  'Uruguay': 'أوروجواي',
+  'Australia': 'أستراليا',
+  'Austria': 'النمسا',
+  'Ecuador': 'الإكوادور',
+  'Iran': 'إيران',
+  'Japan': 'اليابان',
+  'South Korea': 'كوريا الجنوبية',
+  'Switzerland': 'سويسرا',
+  'Turkey': 'تركيا',
+  'Algeria': 'الجزائر',
+  'Canada': 'كندا',
+  'Egypt': 'مصر',
+  'Ivory Coast': 'كوت ديفوار',
+  'Norway': 'النرويج',
+  'Panama': 'بنما',
+  'Paraguay': 'باراجواي',
+  'Sweden': 'السويد',
+  'Czech Republic': 'التشيك',
+  'DR Congo': 'الكونغو الديمقراطية',
+  'Iraq': 'العراق',
+  'Qatar': 'قطر',
+  'Scotland': 'اسكتلندا',
+  'South Africa': 'جنوب أفريقيا',
+  'Tunisia': 'تونس',
+  'Uzbekistan': 'أوزبكستان',
+  'Bosnia and Herzegovina': 'البوسنة والهرسك',
+  'Cape Verde': 'كاب فيردي',
+  'Curaçao': 'كوراساو',
+  'Ghana': 'غانا',
+  'Haiti': 'هايتي',
+  'Jordan': 'الأردن',
+  'New Zealand': 'نيوزيلندا',
+  'Saudi Arabia': 'السعودية',
+};
+
+function displayNationName(name) {
+  return document.documentElement.lang === 'ar' ? (AR_NATION_NAMES[name] || name) : name;
+}
+
+function displayScoreNumber(value) {
+  return document.documentElement.lang === 'ar'
+    ? Number(value || 0).toLocaleString('ar-EG')
+    : String(value || 0);
+}
+
+function displayMatchLabel(match) {
+  const home = displayNationName(match.home);
+  const away = displayNationName(match.away);
+  if (match.home_goals !== null && match.home_goals !== undefined &&
+      match.away_goals !== null && match.away_goals !== undefined &&
+      match.status === 'finished') {
+    return `${home} ${displayScoreNumber(match.home_goals)}-${displayScoreNumber(match.away_goals)} ${away}`;
+  }
+  return `${home} - ${away}`;
 }
 
 function renderStatusBody(title, body) {
@@ -197,7 +281,7 @@ async function renderScoringStatus() {
     const [fixturesData, matchesRes] = await Promise.all([
       loadFixturesData(),
       supabase.from('matches')
-        .select('external_id, home, away, status, scored_at')
+        .select('external_id, home, away, status, home_goals, away_goals, scored_at')
         .order('date', { ascending: false })
         .limit(140),
     ]);
@@ -231,7 +315,7 @@ async function renderScoringStatus() {
     } else if (live.length > 0) {
       tone = 'live';
       const match = live.length === 1
-        ? `${live[0].home} - ${live[0].away}`
+        ? `${displayNationName(live[0].home)} - ${displayNationName(live[0].away)}`
         : t('score.status.matchcount', { n: live.length });
       body = t('score.status.live', { match, window: windowText });
     } else if (finishedUnscored.length > 0) {
@@ -239,9 +323,8 @@ async function renderScoringStatus() {
       body = t('score.status.queued', { window: windowText });
     } else if (latestScored) {
       tone = 'updated';
-      const match = `${latestScored.home} - ${latestScored.away}`;
       body = t('score.status.updated', {
-        match,
+        match: displayMatchLabel(latestScored),
         time: formatCairoTime(latestScored.scored_at),
       });
     }
@@ -823,6 +906,16 @@ function paintTopPlayers() {
   const searchPlaceholder = isAr ? 'دور بإسم اللاعب…' : 'Search by player, nation, or club…';
   const loadMoreLabel = isAr ? `حمّل المزيد (${filtered.length - tpState.visible})` : `Load more (${filtered.length - tpState.visible})`;
   const noResults = isAr ? 'مفيش نتائج.' : 'No players match.';
+  const headerHtml = `
+    <div class="pl-head">
+      <span>#</span>
+      <span></span>
+      <span>${escapeHtml(t('players.col.player'))}</span>
+      <span class="pl-head-stats">${escapeHtml(t('players.col.stats'))}</span>
+      <span class="pl-head-own">${escapeHtml(t('players.col.owned'))}</span>
+      <span class="pl-head-total">${escapeHtml(t('players.col.total'))}</span>
+    </div>
+  `;
 
   const rowsHtml = slice.map((p, i) => {
     const m = meta[p.name];
@@ -855,7 +948,7 @@ function paintTopPlayers() {
   board.innerHTML = `
     <input type="search" id="tpSearch" class="tp-search" placeholder="${escapeHtml(searchPlaceholder)}" value="${escapeHtml(tpState.query)}" />
     <div class="pl-board" style="margin-top:8px;">
-      ${slice.length ? rowsHtml : `<div class="lb-empty">${noResults}</div>`}
+      ${slice.length ? headerHtml + rowsHtml : `<div class="lb-empty">${noResults}</div>`}
     </div>
     ${filtered.length > tpState.visible
       ? `<div style="text-align:center;margin-top:12px;"><button class="ghost-btn" id="tpLoadMore">${loadMoreLabel}</button></div>`
