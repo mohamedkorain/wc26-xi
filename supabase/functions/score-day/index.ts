@@ -461,13 +461,24 @@ Deno.serve(async (req) => {
 
     // Refresh derived caches only if we actually scored something —
     // otherwise this re-running on idle is just wasted DB CPU.
-    let refreshed = false;
+    let playerLeaderboardRefreshed = false;
+    let entryLeaderboardRefreshed = false;
     if (scored) {
-      try { await supa.rpc('refresh_player_leaderboard'); refreshed = true; } catch (_) {}
-      try { await supa.rpc('refresh_leaderboard_and_ranks'); } catch (e) { console.error('refresh_leaderboard_and_ranks failed:', e); }
+      try { await supa.rpc('refresh_player_leaderboard'); playerLeaderboardRefreshed = true; }
+      catch (e) { console.error('refresh_player_leaderboard failed:', e); }
+      try { await supa.rpc('refresh_leaderboard_and_ranks'); entryLeaderboardRefreshed = true; }
+      catch (e) { console.error('refresh_leaderboard_and_ranks failed:', e); }
     }
 
-    return new Response(JSON.stringify({ date: dateStr, processed: results.length, results, scored, refreshed }), {
+    return new Response(JSON.stringify({
+      date: dateStr,
+      processed: results.length,
+      results,
+      scored,
+      refreshed: playerLeaderboardRefreshed && entryLeaderboardRefreshed,
+      playerLeaderboardRefreshed,
+      entryLeaderboardRefreshed,
+    }), {
       headers: { 'content-type': 'application/json' },
     });
   } catch (err) {

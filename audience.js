@@ -367,13 +367,11 @@ async function renderMySquad() {
 
   // Pull total points + per-match breakdowns + fixtures (for the "vs OPP"
   // / "0 (played, no points)" indicators on each pitch slot).
-  const [lbRow, scoreRows, fixturesData] = await Promise.all([
-    supabase.from('leaderboard_totals').select('total_points')
-      .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle().then(r => r.data),
-    supabase.from('scores').select('match_date, breakdown').eq('entry_id', entry.id).then(r => r.data || []),
+  const [scoreRows, fixturesData] = await Promise.all([
+    supabase.from('scores').select('match_date, points, breakdown').eq('entry_id', entry.id).then(r => r.data || []),
     state._fixturesCache || fetch('data/fixtures.json').then(r => r.json()).then(d => { state._fixturesCache = Promise.resolve(d); return d; }),
   ]);
-  const pts = lbRow?.total_points ?? 0;
+  const pts = scoreRows.reduce((sum, row) => sum + (row.points || 0), 0);
 
   // Aggregate per-player stats across all matches scored.
   const playerStats = {};
