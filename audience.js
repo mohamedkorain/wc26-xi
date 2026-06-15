@@ -736,6 +736,23 @@ function playerOwnership(playerName, nation) {
   };
 }
 
+async function fetchPlayerOwnershipCounts() {
+  const rows = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from('player_ownership_counts')
+      .select('player_name, nation, owners')
+      .eq('league_id', HALO_LEAGUE_ID)
+      .order('player_name', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) return [];
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
 async function renderTopPlayers() {
   const board = document.getElementById('topPlayersBoard');
   if (!board) return;
@@ -751,11 +768,7 @@ async function renderTopPlayers() {
         .order('goals', { ascending: false })
         .order('assists', { ascending: false })
         .limit(2000),
-      supabase
-        .from('player_ownership_counts')
-        .select('player_name, nation, owners')
-        .eq('league_id', HALO_LEAGUE_ID)
-        .limit(2000),
+      fetchPlayerOwnershipCounts(),
       supabase.rpc('entry_count', { p_league_id: HALO_LEAGUE_ID }),
     ]);
     const rows = leaderboardRes.data;
@@ -763,11 +776,9 @@ async function renderTopPlayers() {
     if (error || !rows || rows.length === 0) return;
     const byName = {};
     const byKey = {};
-    if (!ownershipRes.error) {
-      for (const row of ownershipRes.data || []) {
-        byName[row.player_name] = (byName[row.player_name] || 0) + (row.owners || 0);
-        byKey[ownershipKey(row.player_name, row.nation)] = row.owners || 0;
-      }
+    for (const row of ownershipRes || []) {
+      byName[row.player_name] = (byName[row.player_name] || 0) + (row.owners || 0);
+      byKey[ownershipKey(row.player_name, row.nation)] = row.owners || 0;
     }
     tpState.ownership = {
       total: countRes.data || 0,

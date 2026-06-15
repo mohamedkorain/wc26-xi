@@ -134,6 +134,23 @@ function ownershipLabel(playerName, nation) {
   return document.documentElement.lang === 'ar' ? `${pct} اختيار` : `${pct} owned`;
 }
 
+async function fetchPlayerOwnershipCounts() {
+  const rows = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from('player_ownership_counts')
+      .select('player_name, nation, owners')
+      .eq('league_id', HALO_LEAGUE_ID)
+      .order('player_name', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) return [];
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
 async function loadGlobalPlayerPts() {
   if (globalPlayerPts) return globalPlayerPts;
   // Server-side aggregated view — one query instead of paginating 37k+ rows.
@@ -143,28 +160,22 @@ async function loadGlobalPlayerPts() {
       .select('player_name, total_points')
       .order('total_points', { ascending: false })
       .limit(2000),   // covers every WC26 player who has scored
-    supabase
-      .from('player_ownership_counts')
-      .select('player_name, nation, owners')
-      .eq('league_id', HALO_LEAGUE_ID)
-      .limit(2000),
+    fetchPlayerOwnershipCounts(),
     supabase.rpc('entry_count', { p_league_id: HALO_LEAGUE_ID }),
   ]);
   const totals = {};
   for (const r of pointsRes.data || []) totals[r.player_name] = r.total_points;
-  if (!ownershipRes.error) {
-    const byName = {};
-    const byKey = {};
-    for (const row of ownershipRes.data || []) {
-      byName[row.player_name] = (byName[row.player_name] || 0) + (row.owners || 0);
-      byKey[ownershipKey(row.player_name, row.nation)] = row.owners || 0;
-    }
-    globalPlayerOwnership = {
-      total: countRes.data || 0,
-      byName,
-      byKey,
-    };
+  const byName = {};
+  const byKey = {};
+  for (const row of ownershipRes || []) {
+    byName[row.player_name] = (byName[row.player_name] || 0) + (row.owners || 0);
+    byKey[ownershipKey(row.player_name, row.nation)] = row.owners || 0;
   }
+  globalPlayerOwnership = {
+    total: countRes.data || 0,
+    byName,
+    byKey,
+  };
   globalPlayerPts = totals;
   return totals;
 }
