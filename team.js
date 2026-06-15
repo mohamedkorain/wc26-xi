@@ -131,7 +131,7 @@ function ownershipLabel(playerName, nation) {
     globalPlayerOwnership.byName[playerName] ?? 0;
   const pct = formatOwnershipPct(owners, globalPlayerOwnership.total);
   if (!pct) return '';
-  return document.documentElement.lang === 'ar' ? `${pct} اختيار` : `${pct} owned`;
+  return document.documentElement.lang === 'ar' ? `${pct} امتلاك` : `${pct} owned`;
 }
 
 async function fetchPlayerOwnershipCounts() {

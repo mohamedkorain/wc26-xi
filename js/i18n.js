@@ -271,7 +271,7 @@ const DICT = {
     'players.col.assists':'صانع',
     'players.col.cs':     'نضيف',
     'players.col.stats':  'أداء',
-    'players.col.owned':  'اختيار',
+    'players.col.owned':  'امتلاك',
     'players.owned.title':'مختار في {n} تشكيل ({pct})',
     'players.col.total':  'نقاط',
     'next.label':     'الجاي:',
