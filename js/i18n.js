@@ -257,7 +257,7 @@ const DICT = {
     'score.status.matchcount': '{n} ماتشات',
     'score.status.live': '{match} لايف دلوقتي. النقاط هتتحدث بعد ما ماتشات اليوم تخلص: {window}.',
     'score.status.queued': 'الماتشات اللي خلصت مستنية تحديث فترة الصبح: {window}.',
-    'score.status.updating': 'النقاط بتتحدث دلوقتي. الترتيب ممكن يتحرك خلال تشغيل الصبح.',
+    'score.status.updating': 'النقاط بتتحدث دلوقتي. الترتيب ممكن يتحرك خلال حساب النقاط.',
     'score.status.updated': 'آخر تحديث: {match} · {time} بتوقيت القاهرة.',
     'score.status.waiting': 'النقاط بتتحدث يوميًا بعد ما ماتشات اليوم تخلص: {window}.',
     'players.title':  'اللاعبين الأعلى نقاط',
