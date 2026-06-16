@@ -2,7 +2,7 @@
 --
 -- Product decision: users do not need live-after-each-match scoring. Scores
 -- should update after all games of the day have finished, which is usually
--- around 10-11am Dubai on late-match days.
+-- around 10-11am Cairo on late-match days.
 --
 -- The Edge function has a ~130s working budget and resumes with
 -- scoring_progress, so this is intentionally a retry window rather than a
@@ -20,9 +20,23 @@
 --   - all FT fixtures already scored: expensive player-stat fetches are skipped
 --   - newly finished fixture: recomputes all finished fixtures for that date,
 --     then refreshes leaderboard caches/ranks
+--
+-- Secret handling:
+--   Do not paste the service_role key directly into cron.job.command. Store the
+--   current service_role key in Supabase Vault as:
+--
+--     score_day_service_role_key
+--
+--   Then run this file. The cron commands call private.trigger_score_day(),
+--   which reads the key from Vault at runtime. That keeps the secret out of
+--   cron.job and prevents a placeholder token from being silently scheduled.
 
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
+create extension if not exists supabase_vault with schema vault;
+
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
 
 -- Wipe any previous schedule
 select cron.unschedule('hallo-amrika-score-day')
@@ -32,39 +46,55 @@ where exists (select 1 from cron.job where jobname = 'hallo-amrika-score-today')
 select cron.unschedule('hallo-amrika-score-yesterday')
 where exists (select 1 from cron.job where jobname = 'hallo-amrika-score-yesterday');
 
--- Current UTC date, every 15 minutes during the morning window.
-select cron.schedule(
-  'hallo-amrika-score-today',
-  '*/15 7,8 * * *',
-  $$
+create or replace function private.trigger_score_day(score_date date)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  service_role_key text;
+  request_id bigint;
+begin
+  select decrypted_secret
+    into service_role_key
+  from vault.decrypted_secrets
+  where name = 'score_day_service_role_key'
+  order by created_at desc
+  limit 1;
+
+  if service_role_key is null or service_role_key = '' or service_role_key like '<%>' then
+    raise exception 'Missing Supabase Vault secret: score_day_service_role_key';
+  end if;
+
   select net.http_post(
     url := 'https://nyytjswemjrybjfmqaaq.functions.supabase.co/score-day',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      -- IMPORTANT: replace <PASTE_SERVICE_ROLE_KEY> with the actual service_role
-      -- secret from https://supabase.com/dashboard/project/_/settings/api-keys
-      -- before running this SQL.
-      'Authorization', 'Bearer <PASTE_SERVICE_ROLE_KEY>'
+      'Authorization', 'Bearer ' || service_role_key
     ),
-    body := jsonb_build_object('date', (now() at time zone 'utc')::date::text)
-  );
-  $$
+    body := jsonb_build_object('date', score_date::text)
+  )
+    into request_id;
+
+  return request_id;
+end;
+$$;
+
+revoke all on function private.trigger_score_day(date) from public, anon, authenticated;
+
+-- Current UTC date, every 15 minutes during the morning window.
+select cron.schedule(
+  'hallo-amrika-score-today',
+  '*/15 7,8 * * *',
+  $$select private.trigger_score_day((now() at time zone 'utc')::date);$$
 );
 
 -- Previous UTC date, staggered 5 minutes later during the same window.
 select cron.schedule(
   'hallo-amrika-score-yesterday',
   '5,20,35,50 7,8 * * *',
-  $$
-  select net.http_post(
-    url := 'https://nyytjswemjrybjfmqaaq.functions.supabase.co/score-day',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer <PASTE_SERVICE_ROLE_KEY>'
-    ),
-    body := jsonb_build_object('date', ((now() at time zone 'utc')::date - 1)::text)
-  );
-  $$
+  $$select private.trigger_score_day(((now() at time zone 'utc')::date - 1));$$
 );
 
 -- Verify
