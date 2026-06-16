@@ -83,6 +83,30 @@ $$;
 
 revoke all on function private.trigger_score_day(date) from public, anon, authenticated;
 
+create or replace function public.is_score_day_cron_authorized(auth_header text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  expected text;
+begin
+  select 'Bearer ' || decrypted_secret
+    into expected
+  from vault.decrypted_secrets
+  where name = 'score_day_service_role_key'
+  limit 1;
+
+  return auth_header is not null
+     and expected is not null
+     and auth_header = expected;
+end;
+$$;
+
+revoke all on function public.is_score_day_cron_authorized(text) from public, anon, authenticated;
+grant execute on function public.is_score_day_cron_authorized(text) to service_role;
+
 -- Current UTC date, every 15 minutes during the morning window.
 select cron.schedule(
   'hallo-amrika-score-today',

@@ -90,7 +90,7 @@ function parseSecretValues(raw: string | undefined): string[] {
   }
 }
 
-function isAuthorizedCronRequest(req: Request): boolean {
+function isAuthorizedByEnv(req: Request): boolean {
   const authHeader = req.headers.get('authorization') || '';
   const accepted = new Set(
     [SERVICE_ROLE_KEY, SCORE_DAY_CRON_SECRET, ...SUPABASE_SECRET_KEYS]
@@ -98,6 +98,22 @@ function isAuthorizedCronRequest(req: Request): boolean {
       .map((key) => `Bearer ${key}`)
   );
   return accepted.has(authHeader);
+}
+
+async function isAuthorizedCronRequest(req: Request): Promise<boolean> {
+  if (isAuthorizedByEnv(req)) return true;
+
+  const authHeader = req.headers.get('authorization') || '';
+  try {
+    const { data, error } = await supa.rpc('is_score_day_cron_authorized', {
+      auth_header: authHeader,
+    });
+    if (error) console.error('is_score_day_cron_authorized failed:', error);
+    return data === true;
+  } catch (e) {
+    console.error('is_score_day_cron_authorized threw:', e);
+    return false;
+  }
 }
 
 async function apiFetch(path: string): Promise<any> {
@@ -422,7 +438,7 @@ Deno.serve(async (req) => {
     // can POST and burn through API-Football quota / spike DB CPU. Accept both
     // legacy service_role and newer Supabase secret keys because projects may
     // expose only one of them in editable Dashboard surfaces.
-    if (!isAuthorizedCronRequest(req)) {
+    if (!(await isAuthorizedCronRequest(req))) {
       return new Response(JSON.stringify({ error: 'unauthorized' }), {
         status: 401, headers: { 'content-type': 'application/json' },
       });
