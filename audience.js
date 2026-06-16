@@ -281,7 +281,7 @@ async function renderScoringStatus() {
     const [fixturesData, matchesRes] = await Promise.all([
       loadFixturesData(),
       supabase.from('matches')
-        .select('external_id, home, away, status, home_goals, away_goals, scored_at')
+        .select('external_id, date, home, away, status, home_goals, away_goals, scored_at')
         .order('date', { ascending: false })
         .limit(140),
     ]);
@@ -302,7 +302,11 @@ async function renderScoringStatus() {
     });
     const latestScored = matches
       .filter(m => m.scored_at)
-      .sort((a, b) => new Date(b.scored_at) - new Date(a.scored_at))[0];
+      .sort((a, b) => {
+        const dateDiff = new Date(b.date) - new Date(a.date);
+        if (dateDiff !== 0) return dateDiff;
+        return new Date(b.scored_at) - new Date(a.scored_at);
+      })[0];
 
     const title = t('score.status.title');
     const windowText = t('score.status.window');
