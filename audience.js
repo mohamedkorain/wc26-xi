@@ -37,8 +37,6 @@ async function boot() {
   // Render above-the-fold stuff IMMEDIATELY
   renderHeroStatus();
   renderMatchdayHub();
-  renderTodayHeroes();
-  renderTransferPulse();
   renderScoringStatus();
   renderMySquad();
   // Leaderboard live (Phase 3 scoring deployed 2026-06-12)
@@ -83,7 +81,6 @@ async function boot() {
     wireFilters();
     // Top Players widget can now show flag + nation + club (needed players)
     renderTopPlayers();
-    renderTodayHeroes();
   });
   // Re-render dynamic strings on language change (only those that are ready)
   window.addEventListener('langchange', () => {
@@ -91,8 +88,6 @@ async function boot() {
     if (state.players.length) renderPoolStats();
     renderHeroStatus();
     renderMatchdayHub();
-    renderTodayHeroes();
-    renderTransferPulse();
     renderScoringStatus();
     renderMySquad();
     renderCalendar();
@@ -565,134 +560,10 @@ async function getTodayScoreRows(matchday) {
   return rows;
 }
 
-function playerMetaByName() {
-  const meta = {};
-  for (const p of state.players) meta[p.name] = p;
-  return meta;
-}
-
 function formatRosterName(raw) {
   const parts = String(raw || '').trim().split(/\s+/);
   if (parts.length < 2) return raw || '';
   return `${parts.slice(1).join(' ')} ${parts[0]}`;
-}
-
-function aggregateTodayPlayers(scoreRows) {
-  const byPlayer = {};
-  for (const row of scoreRows) {
-    for (const [playerName, st] of Object.entries(row.breakdown || {})) {
-      if (!st || Object.keys(st).length === 0) continue;
-      const points = pointsFromStatLine(st);
-      if (points <= 0) continue;
-      if (!byPlayer[playerName]) {
-        byPlayer[playerName] = {
-          name: playerName,
-          bestPoints: points,
-          impact: 0,
-          squads: new Set(),
-          statLines: new Set(),
-          st: {},
-        };
-      }
-      const item = byPlayer[playerName];
-      item.bestPoints = Math.max(item.bestPoints, points);
-      item.impact += points;
-      item.squads.add(row.entry_id);
-      const statLineKey = `${row.match_date || ''}:${playerName}`;
-      if (!item.statLines.has(statLineKey)) {
-        addStatTotals(item.st, st);
-        item.statLines.add(statLineKey);
-      }
-    }
-  }
-  return Object.values(byPlayer)
-    .sort((a, b) => (b.bestPoints - a.bestPoints) || (b.impact - a.impact) || (b.squads.size - a.squads.size))
-    .map(item => ({ ...item, squadsCount: item.squads.size }));
-}
-
-async function renderTodayHeroes() {
-  const board = document.getElementById('todayHeroesBoard');
-  if (!board) return;
-
-  try {
-    const matchday = await getMatchdayContext();
-    const scoreRows = await getTodayScoreRows(matchday);
-    const heroes = aggregateTodayPlayers(scoreRows).slice(0, 6);
-    if (!heroes.length) {
-      board.innerHTML = `<div class="lb-empty">${escapeHtml(t('heroes.empty'))}</div>`;
-      return;
-    }
-
-    const meta = playerMetaByName();
-    board.innerHTML = heroes.map((hero, idx) => {
-      const m = meta[hero.name];
-      const chips = statPointParts(hero.st)
-        .filter(part => part.value > 0)
-        .slice(0, 4)
-        .map(part => `<span class="hero-chip" title="${escapeHtml(part.label)}">${escapeHtml(part.code)}${part.value > 1 ? ` ${displayScoreNumber(part.value)}` : ''}</span>`)
-        .join('');
-      return `
-        <div class="hero-card">
-          <div class="hero-rank">${displayScoreNumber(idx + 1)}</div>
-          <div class="hero-flag">${m ? flagImg(m.nation_code, { width: 30, cls: 'flag-img', fallback: '' }) : ''}</div>
-          <div class="hero-main">
-            <b>${escapeHtml(formatRosterName(hero.name))}</b>
-            <span>${escapeHtml(m ? displayNationName(m.nation) : '')}</span>
-          </div>
-          <div class="hero-chips">${chips}</div>
-          <div class="hero-impact">
-            <b>+${displayScoreNumber(hero.bestPoints)}</b>
-            <span>${escapeHtml(t('heroes.squads', { n: displayScoreNumber(hero.squadsCount) }))}</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-  } catch (e) {
-    board.innerHTML = `<div class="lb-empty">${escapeHtml(t('heroes.unavailable'))}</div>`;
-  }
-}
-
-async function countEntriesByTransfer(filterFn) {
-  let query = supabase
-    .from('entries')
-    .select('id', { count: 'exact', head: true })
-    .eq('league_id', HALO_LEAGUE_ID);
-  query = filterFn(query);
-  const { count, error } = await query;
-  if (error) throw error;
-  return count || 0;
-}
-
-async function renderTransferPulse() {
-  const board = document.getElementById('transferPulseBoard');
-  if (!board) return;
-  try {
-    const [totalRes, untouched, bundled, used, overLimit] = await Promise.all([
-      supabase.rpc('entry_count', { p_league_id: HALO_LEAGUE_ID }),
-      countEntriesByTransfer(q => q.eq('transfers_used', 0)),
-      countEntriesByTransfer(q => q.eq('transfers_used', 2)),
-      countEntriesByTransfer(q => q.gt('transfers_used', 0)),
-      countEntriesByTransfer(q => q.gt('transfers_used', 2)),
-    ]);
-    if (totalRes.error) throw totalRes.error;
-    const total = totalRes.data || 0;
-    const anomalies = Math.max(0, total - untouched - bundled);
-    const tiles = [
-      { key: 'market.used', value: used, tone: 'hot' },
-      { key: 'market.bundled', value: bundled, tone: 'good' },
-      { key: 'market.untouched', value: untouched, tone: 'muted' },
-      { key: 'market.anomalies', value: anomalies, tone: anomalies ? 'warn' : 'good' },
-      { key: 'market.overlimit', value: overLimit, tone: overLimit ? 'warn' : 'good' },
-    ];
-    board.innerHTML = tiles.map(tile => `
-      <div class="market-card ${tile.tone}">
-        <span>${escapeHtml(t(tile.key))}</span>
-        <b>${Number(tile.value || 0).toLocaleString(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-GB')}</b>
-      </div>
-    `).join('');
-  } catch (e) {
-    board.innerHTML = `<div class="lb-empty">${escapeHtml(t('market.unavailable'))}</div>`;
-  }
 }
 
 function renderStatusBody(title, body) {
