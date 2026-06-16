@@ -73,7 +73,8 @@ begin
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || service_role_key
     ),
-    body := jsonb_build_object('date', score_date::text)
+    body := jsonb_build_object('date', score_date::text),
+    timeout_milliseconds := 150000
   )
     into request_id;
 
