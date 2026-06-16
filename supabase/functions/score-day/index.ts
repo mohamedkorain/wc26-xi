@@ -30,6 +30,8 @@ import {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_SECRET_KEYS = parseSecretValues(Deno.env.get('SUPABASE_SECRET_KEYS'));
+const SCORE_DAY_CRON_SECRET = Deno.env.get('SCORE_DAY_CRON_SECRET') || '';
 const API_FOOTBALL_KEY = Deno.env.get('API_FOOTBALL_KEY')!;
 const API_BASE = 'https://v3.football.api-sports.io';
 
@@ -69,6 +71,34 @@ const NATION_ALIAS: Record<string, string> = {
 };
 
 const supa = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+
+function parseSecretValues(raw: string | undefined): string[] {
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    const values: string[] = [];
+    const collect = (value: unknown) => {
+      if (typeof value === 'string') values.push(value);
+      else if (Array.isArray(value)) value.forEach(collect);
+      else if (value && typeof value === 'object') Object.values(value).forEach(collect);
+    };
+    collect(parsed);
+    return values;
+  } catch (_) {
+    return [raw];
+  }
+}
+
+function isAuthorizedCronRequest(req: Request): boolean {
+  const authHeader = req.headers.get('authorization') || '';
+  const accepted = new Set(
+    [SERVICE_ROLE_KEY, SCORE_DAY_CRON_SECRET, ...SUPABASE_SECRET_KEYS]
+      .filter(Boolean)
+      .map((key) => `Bearer ${key}`)
+  );
+  return accepted.has(authHeader);
+}
 
 async function apiFetch(path: string): Promise<any> {
   const res = await fetch(API_BASE + path, {
@@ -388,12 +418,11 @@ function matchPlayerToEvent(
 
 Deno.serve(async (req) => {
   try {
-    // Require the service_role bearer. Without this check, anyone on the
-    // internet can POST and burn through our API-Football quota / spike DB
-    // CPU. The pg_cron job (and any manual `curl`) already passes this token.
-    const authHeader = req.headers.get('authorization') || '';
-    const expected = `Bearer ${SERVICE_ROLE_KEY}`;
-    if (authHeader !== expected) {
+    // Require a server-side bearer. Without this check, anyone on the internet
+    // can POST and burn through API-Football quota / spike DB CPU. Accept both
+    // legacy service_role and newer Supabase secret keys because projects may
+    // expose only one of them in editable Dashboard surfaces.
+    if (!isAuthorizedCronRequest(req)) {
       return new Response(JSON.stringify({ error: 'unauthorized' }), {
         status: 401, headers: { 'content-type': 'application/json' },
       });
