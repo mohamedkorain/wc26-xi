@@ -455,6 +455,255 @@ input { font-family: inherit; }
   color: var(--text); margin-left: 10px;
 }
 
+/* ── matchday command strip ───────────────── */
+.matchday-hub {
+  padding: 0 20px 34px;
+  margin-top: -16px;
+  background:
+    linear-gradient(180deg, rgba(10,10,18,0) 0%, rgba(10,10,18,0.92) 28%, var(--bg) 100%),
+    linear-gradient(90deg, rgba(230,57,70,0.14), rgba(92,240,194,0.08) 42%, rgba(255,213,92,0.12));
+}
+.matchday-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.8fr);
+  gap: 14px;
+}
+.matchday-panel {
+  min-width: 0;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
+    var(--panel);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 22px 60px rgba(0,0,0,0.28);
+}
+.matchday-panel-main {
+  position: relative;
+  overflow: hidden;
+}
+.matchday-panel-main::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--wc-red), var(--accent-2), var(--accent));
+}
+.matchday-kicker,
+.dash-kicker {
+  color: var(--accent-2);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.7px;
+  text-transform: uppercase;
+}
+.md-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 6px;
+  margin-bottom: 14px;
+}
+.md-title {
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.md-date {
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 700;
+}
+.md-pill {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 7px 11px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  color: #0a0a12;
+  background: var(--accent);
+}
+.md-pill.live { background: var(--wc-red); color: #fff; }
+.md-pill.queued { background: #7aa6ff; color: #07101f; }
+.md-pill.scored { background: var(--accent); }
+.md-pill.upcoming { background: var(--accent-2); }
+.md-games {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.md-game {
+  min-width: 0;
+  background: rgba(10,10,18,0.52);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 12px;
+  padding: 11px;
+}
+.md-game.live { border-color: rgba(230,57,70,0.55); box-shadow: inset 0 0 0 1px rgba(230,57,70,0.18); }
+.md-game.scored { border-color: rgba(92,240,194,0.28); }
+.md-game.queued { border-color: rgba(122,166,255,0.38); }
+.md-status {
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.md-game.live .md-status { color: #ff7b83; }
+.md-game.scored .md-status { color: var(--accent); }
+.md-game.queued .md-status { color: #9bbcff; }
+.md-sides {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 900;
+}
+.md-sides span:first-child,
+.md-sides span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.md-sides span:last-child { text-align: right; }
+.md-score {
+  min-width: 48px;
+  text-align: center;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #f5f1df;
+  color: #101018;
+  font-size: 16px;
+  font-weight: 900;
+}
+.md-time {
+  min-width: 54px;
+  text-align: center;
+  color: var(--accent-2);
+  font-size: 12px;
+  font-weight: 900;
+}
+.md-meta {
+  margin-top: 8px;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.user-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.dash-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.dash-team {
+  margin-top: 5px;
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.dash-link {
+  flex: 0 0 auto;
+  text-decoration: none;
+  color: #0a0a12;
+  background: var(--accent);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 900;
+}
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.dash-stat {
+  background: rgba(10,10,18,0.45);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 11px;
+  padding: 11px;
+}
+.dash-stat.primary {
+  background: linear-gradient(135deg, rgba(92,240,194,0.16), rgba(255,213,92,0.06));
+  border-color: rgba(92,240,194,0.34);
+}
+.dash-stat span,
+.dash-move span {
+  display: block;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.dash-stat b {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 900;
+}
+.dash-stat.primary b { color: var(--accent); }
+.dash-move {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 11px;
+  background: rgba(10,10,18,0.42);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 11px;
+}
+.dash-move b {
+  font-size: 18px;
+  font-weight: 900;
+}
+.dash-move.up b { color: #4ade80; }
+.dash-move.down b { color: var(--danger); }
+.dash-move.flat b { color: var(--text-dim); }
+.dash-guest-title {
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+.dash-guest-copy {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.hub-skeleton {
+  color: var(--text-dim);
+  font-size: 13px;
+  padding: 12px;
+}
+@media (max-width: 860px) {
+  .matchday-inner { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .matchday-hub { padding-left: 12px; padding-right: 12px; }
+  .matchday-panel { padding: 13px; border-radius: 14px; }
+  .md-topline { flex-direction: column; align-items: stretch; }
+  .md-pill { align-self: flex-start; }
+  .md-games { grid-template-columns: 1fr; }
+  .md-title { font-size: 21px; }
+  .md-sides { font-size: 12px; gap: 6px; }
+  .md-score { min-width: 44px; font-size: 15px; }
+}
+
 /* ── strips (sections) ───────────────────── */
 .strip { padding: 36px 20px; }
 .strip-alt { background: var(--bg-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }

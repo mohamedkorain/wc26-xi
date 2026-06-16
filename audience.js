@@ -35,6 +35,7 @@ async function boot() {
 
   // Render above-the-fold stuff IMMEDIATELY
   renderHeroStatus();
+  renderMatchdayHub();
   renderScoringStatus();
   renderMySquad();
   // Leaderboard live (Phase 3 scoring deployed 2026-06-12)
@@ -84,6 +85,7 @@ async function boot() {
     if (state.players.length) hydrateFilters();
     if (state.players.length) renderPoolStats();
     renderHeroStatus();
+    renderMatchdayHub();
     renderScoringStatus();
     renderMySquad();
     renderCalendar();
@@ -265,6 +267,259 @@ function displayMatchLabel(match) {
     return `${home} ${displayScoreNumber(match.home_goals)}-${displayScoreNumber(match.away_goals)} ${away}`;
   }
   return `${home} - ${away}`;
+}
+
+function cairoDateKey(value) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(value));
+  const part = (type) => parts.find(p => p.type === type)?.value || '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+function formatMatchdayDate(value) {
+  const lang = document.documentElement.lang || 'en';
+  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-GB', {
+    timeZone: 'Africa/Cairo',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(value));
+}
+
+function formatKickoffTime(value) {
+  const lang = document.documentElement.lang || 'en';
+  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-GB', {
+    timeZone: 'Africa/Cairo',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+function fixtureDbDate(fixture) {
+  return new Date(fixture.date).toISOString().slice(0, 10);
+}
+
+function mergeFixture(fixture, matchById) {
+  const liveMatch = matchById[String(fixture.id)] || {};
+  const status = liveMatch.status || (fixture.status === 'FT' ? 'finished' : 'scheduled');
+  return {
+    ...fixture,
+    external_id: String(fixture.id),
+    date_key: cairoDateKey(fixture.date),
+    db_date: fixtureDbDate(fixture),
+    status,
+    home_goals: liveMatch.home_goals ?? fixture.home_goals,
+    away_goals: liveMatch.away_goals ?? fixture.away_goals,
+    scored_at: liveMatch.scored_at || null,
+  };
+}
+
+function selectMatchday(fixtures, matches) {
+  const matchById = {};
+  for (const m of matches || []) matchById[String(m.external_id)] = m;
+  const merged = fixtures.map(f => mergeFixture(f, matchById));
+  const today = cairoDateKey(new Date());
+  const days = [...new Set(merged.map(f => f.date_key))].sort();
+
+  let selected = days.includes(today) ? today : null;
+  if (!selected) selected = days.find(d => d > today) || null;
+  if (!selected) {
+    const latestScored = merged
+      .filter(f => f.scored_at)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+    selected = latestScored?.date_key || days[days.length - 1];
+  }
+
+  const games = merged
+    .filter(f => f.date_key === selected)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  return { dateKey: selected, games, dbDates: [...new Set(games.map(f => f.db_date))] };
+}
+
+function matchTone(game, now = new Date()) {
+  const kickoff = new Date(game.date);
+  const finalWhistle = expectedFinalWhistle(game);
+  if (kickoff <= now && now < finalWhistle && game.status !== 'finished') return 'live';
+  if (game.status === 'finished' && game.scored_at) return 'scored';
+  if (game.status === 'finished') return 'queued';
+  return 'upcoming';
+}
+
+function matchToneLabel(tone) {
+  return t(`hub.status.${tone}`);
+}
+
+function renderMatchScore(game) {
+  if (game.home_goals === null || game.home_goals === undefined ||
+      game.away_goals === null || game.away_goals === undefined ||
+      matchTone(game) === 'upcoming') {
+    return `<span class="md-time">${formatKickoffTime(game.date)}</span>`;
+  }
+  return `<span class="md-score">${displayScoreNumber(game.home_goals)}-${displayScoreNumber(game.away_goals)}</span>`;
+}
+
+async function renderUserDashboard(matchday) {
+  const panel = document.getElementById('userDashboard');
+  if (!panel) return;
+
+  if (!state.myUserId) {
+    panel.className = 'matchday-panel user-dashboard guest';
+    panel.innerHTML = `
+      <div class="dash-kicker">${escapeHtml(t('hub.user.kicker'))}</div>
+      <div class="dash-guest-title">${escapeHtml(t('hub.guest.title'))}</div>
+      <div class="dash-guest-copy">${escapeHtml(t('hub.guest.copy'))}</div>
+      <a href="login.html" class="dash-link">${escapeHtml(t('cta.signin'))}</a>
+    `;
+    return;
+  }
+
+  const [rankRes, entryRes] = await Promise.all([
+    supabase.rpc('user_rank', { p_league_id: HALO_LEAGUE_ID, p_user_id: state.myUserId }),
+    supabase
+      .from('entries')
+      .select('id, team_name, transfers_used, rank_current, rank_previous')
+      .eq('league_id', HALO_LEAGUE_ID)
+      .eq('user_id', state.myUserId)
+      .maybeSingle(),
+  ]);
+  const entry = entryRes.data;
+  if (!entry) {
+    panel.className = 'matchday-panel user-dashboard guest';
+    panel.innerHTML = `
+      <div class="dash-kicker">${escapeHtml(t('hub.user.kicker'))}</div>
+      <div class="dash-guest-title">${escapeHtml(t('team.notyet.title'))}</div>
+      <div class="dash-guest-copy">${escapeHtml(t('team.notyet.sub'))}</div>
+      <a href="team.html" class="dash-link">${escapeHtml(t('tab.team'))}</a>
+    `;
+    return;
+  }
+
+  const scoreQuery = supabase
+    .from('scores')
+    .select('points')
+    .eq('entry_id', entry.id);
+  if (matchday.dbDates.length > 0) scoreQuery.in('match_date', matchday.dbDates);
+  const [scoreRows, totalRes] = await Promise.all([
+    scoreQuery.then(r => r.data || []),
+    supabase
+      .from('leaderboard_totals')
+      .select('total_points')
+      .eq('league_id', HALO_LEAGUE_ID)
+      .eq('entry_id', entry.id)
+      .maybeSingle(),
+  ]);
+
+  const rank = rankRes.data || entry.rank_current || '-';
+  const total = totalRes.data?.total_points ?? 0;
+  const todayPoints = scoreRows.reduce((sum, row) => sum + (row.points || 0), 0);
+  const transfersLeft = Math.max(0, 2 - (entry.transfers_used || 0));
+  const rankDiff = entry.rank_previous && entry.rank_current
+    ? entry.rank_previous - entry.rank_current
+    : 0;
+  const rankMove = rankDiff > 0
+    ? `+${rankDiff}`
+    : rankDiff < 0
+      ? `${rankDiff}`
+      : '0';
+  const moveClass = rankDiff > 0 ? 'up' : rankDiff < 0 ? 'down' : 'flat';
+
+  panel.className = 'matchday-panel user-dashboard';
+  panel.innerHTML = `
+    <div class="dash-head">
+      <div>
+        <div class="dash-kicker">${escapeHtml(t('hub.user.kicker'))}</div>
+        <div class="dash-team">${escapeHtml(entry.team_name)}</div>
+      </div>
+      <a href="team.html" class="dash-link">${escapeHtml(t('tab.team'))}</a>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-stat primary">
+        <span>${escapeHtml(t('hub.rank'))}</span>
+        <b>#${rank}</b>
+      </div>
+      <div class="dash-stat">
+        <span>${escapeHtml(t('hub.total'))}</span>
+        <b>${displayScoreNumber(total)}</b>
+      </div>
+      <div class="dash-stat">
+        <span>${escapeHtml(t('hub.today'))}</span>
+        <b>${todayPoints >= 0 ? '+' : ''}${displayScoreNumber(todayPoints)}</b>
+      </div>
+      <div class="dash-stat">
+        <span>${escapeHtml(t('hub.transfers'))}</span>
+        <b>${displayScoreNumber(transfersLeft)}</b>
+      </div>
+    </div>
+    <div class="dash-move ${moveClass}">
+      <span>${escapeHtml(t('hub.rankmove'))}</span>
+      <b>${rankMove}</b>
+    </div>
+  `;
+}
+
+async function renderMatchdayHub() {
+  const board = document.getElementById('matchdayBoard');
+  if (!board) return;
+  try {
+    const [fixturesData, matchesRes] = await Promise.all([
+      loadFixturesData(),
+      supabase
+        .from('matches')
+        .select('external_id, date, home, away, status, home_goals, away_goals, scored_at')
+        .order('date', { ascending: false })
+        .limit(180),
+    ]);
+    const fixtures = fixturesData.fixtures || [];
+    const matchday = selectMatchday(fixtures, matchesRes.data || []);
+    const games = matchday.games;
+    const now = new Date();
+    const tones = games.map(g => matchTone(g, now));
+    const liveCount = tones.filter(x => x === 'live').length;
+    const queuedCount = tones.filter(x => x === 'queued').length;
+    const scoredCount = tones.filter(x => x === 'scored').length;
+    const topTone = liveCount ? 'live' : queuedCount ? 'queued' : scoredCount === games.length ? 'scored' : 'upcoming';
+    const summary = liveCount
+      ? t('hub.summary.live', { n: liveCount })
+      : queuedCount
+        ? t('hub.summary.queued', { n: queuedCount })
+        : scoredCount === games.length && games.length
+          ? t('hub.summary.scored')
+          : t('hub.summary.upcoming');
+
+    const dateLabel = games[0] ? formatMatchdayDate(games[0].date) : '';
+    board.innerHTML = `
+      <div class="md-topline">
+        <div>
+          <div class="md-title">${escapeHtml(t('hub.title'))}</div>
+          <div class="md-date">${escapeHtml(dateLabel)} · ${escapeHtml(t('score.status.window'))}</div>
+        </div>
+        <div class="md-pill ${topTone}">${escapeHtml(summary)}</div>
+      </div>
+      <div class="md-games">
+        ${games.map(game => {
+          const tone = matchTone(game, now);
+          return `
+            <div class="md-game ${tone}">
+              <div class="md-status">${escapeHtml(matchToneLabel(tone))}</div>
+              <div class="md-sides">
+                <span>${escapeHtml(displayNationName(game.home))}</span>
+                ${renderMatchScore(game)}
+                <span>${escapeHtml(displayNationName(game.away))}</span>
+              </div>
+              <div class="md-meta">${tone === 'scored' && game.scored_at ? escapeHtml(formatCairoTime(game.scored_at)) : escapeHtml(formatKickoffTime(game.date))}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    await renderUserDashboard(matchday);
+  } catch (e) {
+    board.innerHTML = `<div class="hub-skeleton">${escapeHtml(t('hub.unavailable'))}</div>`;
+  }
 }
 
 function renderStatusBody(title, body) {
