@@ -12,6 +12,7 @@ const state = {
   players: [],     // flat: each row carries nation + category
   league: null,    // { locked_at, ... }
   myUserId: null,
+  lbMode: 'overall',
 };
 
 const PAGE_SIZE = 60;
@@ -36,9 +37,12 @@ async function boot() {
   // Render above-the-fold stuff IMMEDIATELY
   renderHeroStatus();
   renderMatchdayHub();
+  renderTodayHeroes();
+  renderTransferPulse();
   renderScoringStatus();
   renderMySquad();
   // Leaderboard live (Phase 3 scoring deployed 2026-06-12)
+  wireLeaderboardTabs();
   renderLeaderboard();
   renderTopPlayers();
   if (state.myUserId) renderMyRankCard();
@@ -79,6 +83,7 @@ async function boot() {
     wireFilters();
     // Top Players widget can now show flag + nation + club (needed players)
     renderTopPlayers();
+    renderTodayHeroes();
   });
   // Re-render dynamic strings on language change (only those that are ready)
   window.addEventListener('langchange', () => {
@@ -86,10 +91,13 @@ async function boot() {
     if (state.players.length) renderPoolStats();
     renderHeroStatus();
     renderMatchdayHub();
+    renderTodayHeroes();
+    renderTransferPulse();
     renderScoringStatus();
     renderMySquad();
     renderCalendar();
     if (state.players.length) renderPool();
+    renderLeaderboard();
   });
   // Re-render leaderboard if user just set their display name
   window.addEventListener('displaynamechange', () => renderLeaderboard());
@@ -130,6 +138,8 @@ async function renderMyRankCard() {
 }
 
 async function jumpToMyRank(rank) {
+  state.lbMode = 'overall';
+  paintLeaderboardTabs();
   // Load enough pages to cover the user's rank
   const neededPages = Math.ceil(rank / LB_PAGE_SIZE);
   state.lbRows = [];
@@ -163,6 +173,22 @@ function loadFixturesData() {
     state._fixturesCache = fetch('data/fixtures.json').then(r => r.json());
   }
   return state._fixturesCache;
+}
+
+async function getMatchdayContext() {
+  if (state._matchdayContext) return state._matchdayContext;
+  const [fixturesData, matchesRes] = await Promise.all([
+    loadFixturesData(),
+    supabase
+      .from('matches')
+      .select('external_id, date, home, away, status, home_goals, away_goals, scored_at')
+      .order('date', { ascending: false })
+      .limit(180),
+  ]);
+  if (matchesRes.error) throw matchesRes.error;
+  const fixtures = fixturesData.fixtures || [];
+  state._matchdayContext = selectMatchday(fixtures, matchesRes.data || []);
+  return state._matchdayContext;
 }
 
 function expectedFinalWhistle(fixture) {
@@ -465,16 +491,7 @@ async function renderMatchdayHub() {
   const board = document.getElementById('matchdayBoard');
   if (!board) return;
   try {
-    const [fixturesData, matchesRes] = await Promise.all([
-      loadFixturesData(),
-      supabase
-        .from('matches')
-        .select('external_id, date, home, away, status, home_goals, away_goals, scored_at')
-        .order('date', { ascending: false })
-        .limit(180),
-    ]);
-    const fixtures = fixturesData.fixtures || [];
-    const matchday = selectMatchday(fixtures, matchesRes.data || []);
+    const matchday = await getMatchdayContext();
     const games = matchday.games;
     const now = new Date();
     const tones = games.map(g => matchTone(g, now));
@@ -519,6 +536,162 @@ async function renderMatchdayHub() {
     await renderUserDashboard(matchday);
   } catch (e) {
     board.innerHTML = `<div class="hub-skeleton">${escapeHtml(t('hub.unavailable'))}</div>`;
+  }
+}
+
+function todayScoreKey(matchday) {
+  return (matchday.dbDates || []).join('|') || matchday.dateKey || '';
+}
+
+async function getTodayScoreRows(matchday) {
+  const key = todayScoreKey(matchday);
+  if (!key || !matchday.dbDates?.length) return [];
+  if (state._todayScoreRows?.key === key) return state._todayScoreRows.rows;
+
+  const rows = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from('scores')
+      .select('entry_id, points, breakdown, match_date')
+      .in('match_date', matchday.dbDates)
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+
+  state._todayScoreRows = { key, rows };
+  return rows;
+}
+
+function playerMetaByName() {
+  const meta = {};
+  for (const p of state.players) meta[p.name] = p;
+  return meta;
+}
+
+function formatRosterName(raw) {
+  const parts = String(raw || '').trim().split(/\s+/);
+  if (parts.length < 2) return raw || '';
+  return `${parts.slice(1).join(' ')} ${parts[0]}`;
+}
+
+function aggregateTodayPlayers(scoreRows) {
+  const byPlayer = {};
+  for (const row of scoreRows) {
+    for (const [playerName, st] of Object.entries(row.breakdown || {})) {
+      if (!st || Object.keys(st).length === 0) continue;
+      const points = pointsFromStatLine(st);
+      if (points <= 0) continue;
+      if (!byPlayer[playerName]) {
+        byPlayer[playerName] = {
+          name: playerName,
+          bestPoints: points,
+          impact: 0,
+          squads: new Set(),
+          statLines: new Set(),
+          st: {},
+        };
+      }
+      const item = byPlayer[playerName];
+      item.bestPoints = Math.max(item.bestPoints, points);
+      item.impact += points;
+      item.squads.add(row.entry_id);
+      const statLineKey = `${row.match_date || ''}:${playerName}`;
+      if (!item.statLines.has(statLineKey)) {
+        addStatTotals(item.st, st);
+        item.statLines.add(statLineKey);
+      }
+    }
+  }
+  return Object.values(byPlayer)
+    .sort((a, b) => (b.bestPoints - a.bestPoints) || (b.impact - a.impact) || (b.squads.size - a.squads.size))
+    .map(item => ({ ...item, squadsCount: item.squads.size }));
+}
+
+async function renderTodayHeroes() {
+  const board = document.getElementById('todayHeroesBoard');
+  if (!board) return;
+
+  try {
+    const matchday = await getMatchdayContext();
+    const scoreRows = await getTodayScoreRows(matchday);
+    const heroes = aggregateTodayPlayers(scoreRows).slice(0, 6);
+    if (!heroes.length) {
+      board.innerHTML = `<div class="lb-empty">${escapeHtml(t('heroes.empty'))}</div>`;
+      return;
+    }
+
+    const meta = playerMetaByName();
+    board.innerHTML = heroes.map((hero, idx) => {
+      const m = meta[hero.name];
+      const chips = statPointParts(hero.st)
+        .filter(part => part.value > 0)
+        .slice(0, 4)
+        .map(part => `<span class="hero-chip" title="${escapeHtml(part.label)}">${escapeHtml(part.code)}${part.value > 1 ? ` ${displayScoreNumber(part.value)}` : ''}</span>`)
+        .join('');
+      return `
+        <div class="hero-card">
+          <div class="hero-rank">${displayScoreNumber(idx + 1)}</div>
+          <div class="hero-flag">${m ? flagImg(m.nation_code, { width: 30, cls: 'flag-img', fallback: '' }) : ''}</div>
+          <div class="hero-main">
+            <b>${escapeHtml(formatRosterName(hero.name))}</b>
+            <span>${escapeHtml(m ? displayNationName(m.nation) : '')}</span>
+          </div>
+          <div class="hero-chips">${chips}</div>
+          <div class="hero-impact">
+            <b>+${displayScoreNumber(hero.bestPoints)}</b>
+            <span>${escapeHtml(t('heroes.squads', { n: displayScoreNumber(hero.squadsCount) }))}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    board.innerHTML = `<div class="lb-empty">${escapeHtml(t('heroes.unavailable'))}</div>`;
+  }
+}
+
+async function countEntriesByTransfer(filterFn) {
+  let query = supabase
+    .from('entries')
+    .select('id', { count: 'exact', head: true })
+    .eq('league_id', HALO_LEAGUE_ID);
+  query = filterFn(query);
+  const { count, error } = await query;
+  if (error) throw error;
+  return count || 0;
+}
+
+async function renderTransferPulse() {
+  const board = document.getElementById('transferPulseBoard');
+  if (!board) return;
+  try {
+    const [totalRes, untouched, bundled, used, overLimit] = await Promise.all([
+      supabase.rpc('entry_count', { p_league_id: HALO_LEAGUE_ID }),
+      countEntriesByTransfer(q => q.eq('transfers_used', 0)),
+      countEntriesByTransfer(q => q.eq('transfers_used', 2)),
+      countEntriesByTransfer(q => q.gt('transfers_used', 0)),
+      countEntriesByTransfer(q => q.gt('transfers_used', 2)),
+    ]);
+    if (totalRes.error) throw totalRes.error;
+    const total = totalRes.data || 0;
+    const anomalies = Math.max(0, total - untouched - bundled);
+    const tiles = [
+      { key: 'market.used', value: used, tone: 'hot' },
+      { key: 'market.bundled', value: bundled, tone: 'good' },
+      { key: 'market.untouched', value: untouched, tone: 'muted' },
+      { key: 'market.anomalies', value: anomalies, tone: anomalies ? 'warn' : 'good' },
+      { key: 'market.overlimit', value: overLimit, tone: overLimit ? 'warn' : 'good' },
+    ];
+    board.innerHTML = tiles.map(tile => `
+      <div class="market-card ${tile.tone}">
+        <span>${escapeHtml(t(tile.key))}</span>
+        <b>${Number(tile.value || 0).toLocaleString(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-GB')}</b>
+      </div>
+    `).join('');
+  } catch (e) {
+    board.innerHTML = `<div class="lb-empty">${escapeHtml(t('market.unavailable'))}</div>`;
   }
 }
 
@@ -796,13 +969,13 @@ function describeStatTextLocal(s) {
 
 function statPointParts(st) {
   const parts = [];
-  if (st.win)        parts.push({ icon: '✅', label: t('pts.win'),        value: st.win });
-  if (st.full90)     parts.push({ icon: '⏱️', label: t('pts.full90'),     value: st.full90 });
-  if (st.goals)      parts.push({ icon: '⚽', label: t('pts.goal'),       value: st.goals });
-  if (st.assists)    parts.push({ icon: '🎁', label: t('pts.assist'),     value: st.assists });
-  if (st.cleanSheet) parts.push({ icon: '🧤', label: t('pts.cleansheet'), value: st.cleanSheet });
-  if (st.mvp)        parts.push({ icon: '⭐', label: t('pts.mvp'),        value: st.mvp });
-  if (st.red)        parts.push({ icon: '🟥', label: t('pts.red'),        value: -redCardCount(st) });
+  if (st.win)        parts.push({ code: 'WIN', label: t('pts.win'),        value: st.win });
+  if (st.full90)     parts.push({ code: '90',  label: t('pts.full90'),     value: st.full90 });
+  if (st.goals)      parts.push({ code: 'G',   label: t('pts.goal'),       value: st.goals });
+  if (st.assists)    parts.push({ code: 'A',   label: t('pts.assist'),     value: st.assists });
+  if (st.cleanSheet) parts.push({ code: 'CS',  label: t('pts.cleansheet'), value: st.cleanSheet });
+  if (st.mvp)        parts.push({ code: 'MVP', label: t('pts.mvp'),        value: st.mvp });
+  if (st.red)        parts.push({ code: 'RC',  label: t('pts.red'),        value: -redCardCount(st) });
   return parts;
 }
 
@@ -816,8 +989,8 @@ function renderScoreDetails(playerStats, starters) {
       const totalClass = ps.points < 0 ? 'neg' : 'pos';
       const chips = parts.map(p => {
         const cls = p.value < 0 ? 'neg' : '';
-        const signed = p.value > 0 ? `+${p.value}` : `${p.value}`;
-        return `<span class="score-chip ${cls}"><span>${p.icon} ${escapeHtml(p.label)}</span><b>${signed}</b></span>`;
+        const signed = p.value > 0 ? `+${displayScoreNumber(p.value)}` : displayScoreNumber(p.value);
+        return `<span class="score-chip ${cls}"><em>${escapeHtml(p.code)}</em><span>${escapeHtml(p.label)}</span><b>${signed}</b></span>`;
       }).join('');
       return `
         <div class="score-detail-row">
@@ -826,7 +999,7 @@ function renderScoreDetails(playerStats, starters) {
             <b>${escapeHtml(displayLast(item))}</b>
           </div>
           <div class="score-detail-chips">${chips}</div>
-          <div class="score-detail-total ${totalClass}">${ps.points >= 0 ? '+' : ''}${ps.points}</div>
+          <div class="score-detail-total ${totalClass}">${ps.points >= 0 ? '+' : ''}${displayScoreNumber(ps.points)}</div>
         </div>
       `;
     })
@@ -957,7 +1130,190 @@ function renderHeroStatus() {
     : `Submissions open · locks in ${remaining} (${lockStr})`;
 }
 
+function wireLeaderboardTabs() {
+  const tabs = document.querySelectorAll('#lbTabs .lb-tab');
+  for (const btn of tabs) {
+    if (btn.dataset.wired === '1') continue;
+    btn.dataset.wired = '1';
+    btn.onclick = () => {
+      const mode = btn.dataset.lbMode || 'overall';
+      if (state.lbMode === mode) return;
+      state.lbMode = mode;
+      state.lbRows = [];
+      state.lbLoaded = 0;
+      renderLeaderboard(true);
+    };
+  }
+  paintLeaderboardTabs();
+}
+
+function paintLeaderboardTabs() {
+  const tabs = document.querySelectorAll('#lbTabs .lb-tab');
+  for (const btn of tabs) {
+    btn.classList.toggle('active', (btn.dataset.lbMode || 'overall') === state.lbMode);
+  }
+}
+
+async function profileNamesByUserId(userIds) {
+  const ids = [...new Set((userIds || []).filter(Boolean))];
+  if (!ids.length) return {};
+  const { data } = await supabase
+    .from('profile_displays')
+    .select('id, display_name')
+    .in('id', ids);
+  const names = {};
+  for (const row of data || []) names[row.id] = row.display_name;
+  return names;
+}
+
+async function entriesById(entryIds) {
+  const ids = [...new Set((entryIds || []).filter(Boolean))];
+  if (!ids.length) return {};
+  const { data } = await supabase
+    .from('entries')
+    .select('id, team_name, user_id, rank_current, rank_previous')
+    .in('id', ids);
+  const names = await profileNamesByUserId((data || []).map(row => row.user_id));
+  const entries = {};
+  for (const row of data || []) {
+    entries[row.id] = {
+      ...row,
+      ownerName: names[row.user_id] || '—',
+    };
+  }
+  return entries;
+}
+
+function wireLeaderboardRows() {
+  for (const row of document.querySelectorAll('.lb-row.clickable')) {
+    row.onclick = () => openSquadModal(row.dataset.entry);
+  }
+}
+
+function movementHtml(r) {
+  if (r.rank_previous == null || r.rank_current == null) return '';
+  const diff = r.rank_previous - r.rank_current;
+  if (diff > 0) return `<span class="lb-mv up" title="Moved up ${diff}">▲</span>`;
+  if (diff < 0) return `<span class="lb-mv down" title="Moved down ${-diff}">▼</span>`;
+  return `<span class="lb-mv same" title="No change">—</span>`;
+}
+
+function paintStaticLeaderboard(rows, emptyText) {
+  const table = document.getElementById('lbTable');
+  if (!table) return;
+  if (!rows.length) {
+    table.innerHTML = `<div class="lb-empty">${escapeHtml(emptyText)}</div>`;
+    return;
+  }
+  table.innerHTML = rows.map((r, i) => `
+    <div class="lb-row clickable${r.user_id === state.myUserId ? ' me' : ''}" data-entry="${r.entry_id}">
+      <div class="lb-rank">${displayScoreNumber(i + 1)}${r.rankMoveHtml || ''}</div>
+      <div class="lb-team">${escapeHtml(r.team_name)}</div>
+      <div class="lb-owner">${escapeHtml(r.ownerName || '—')}</div>
+      <div class="lb-pts">${r.pointsPrefix || ''}${displayScoreNumber(r.points)}</div>
+    </div>
+  `).join('');
+  wireLeaderboardRows();
+}
+
+async function renderTodayLeaderboard() {
+  const table = document.getElementById('lbTable');
+  const lbStats = document.getElementById('lbStats');
+  if (!table) return;
+  table.innerHTML = `<div class="lb-empty">${escapeHtml(t('lb.loading'))}</div>`;
+  try {
+    const matchday = await getMatchdayContext();
+    const scoreRows = await getTodayScoreRows(matchday);
+    const byEntry = {};
+    for (const row of scoreRows) {
+      byEntry[row.entry_id] = (byEntry[row.entry_id] || 0) + (row.points || 0);
+    }
+    const totals = Object.entries(byEntry)
+      .map(([entryId, points]) => ({ entry_id: entryId, points }))
+      .filter(row => row.points !== 0)
+      .sort((a, b) => (b.points - a.points))
+      .slice(0, 50);
+    if (lbStats) lbStats.textContent = t('lb.today.stats', { n: displayScoreNumber(Object.keys(byEntry).length) });
+    const entries = await entriesById(totals.map(row => row.entry_id));
+    const rows = totals.map(row => ({
+      ...row,
+      ...(entries[row.entry_id] || {}),
+      pointsPrefix: row.points > 0 ? '+' : '',
+    })).filter(row => row.team_name);
+    paintStaticLeaderboard(rows, t('lb.today.empty'));
+  } catch (e) {
+    table.innerHTML = `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(e.message || t('lb.today.empty'))}</div>`;
+  }
+}
+
+async function fetchMoverEntries() {
+  if (state._moverEntries) return state._moverEntries;
+  const rows = [];
+  const pageSize = 1000;
+  const maxRows = 10000;
+  for (let from = 0; from < maxRows; from += pageSize) {
+    const { data, error } = await supabase
+      .from('entries')
+      .select('id, team_name, user_id, rank_current, rank_previous')
+      .eq('league_id', HALO_LEAGUE_ID)
+      .not('rank_current', 'is', null)
+      .not('rank_previous', 'is', null)
+      .order('rank_current', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  state._moverEntries = rows;
+  return rows;
+}
+
+async function renderMoversLeaderboard() {
+  const table = document.getElementById('lbTable');
+  const lbStats = document.getElementById('lbStats');
+  if (!table) return;
+  table.innerHTML = `<div class="lb-empty">${escapeHtml(t('lb.loading'))}</div>`;
+  try {
+    const entries = await fetchMoverEntries();
+    const movers = entries
+      .map(row => ({ ...row, movement: (row.rank_previous || 0) - (row.rank_current || 0) }))
+      .filter(row => row.movement > 0)
+      .sort((a, b) => (b.movement - a.movement) || (a.rank_current - b.rank_current))
+      .slice(0, 50);
+    if (lbStats) lbStats.textContent = t('lb.movers.stats', { n: displayScoreNumber(movers.length) });
+    if (!movers.length) {
+      paintStaticLeaderboard([], t('lb.movers.empty'));
+      return;
+    }
+    const [names, totalsRes] = await Promise.all([
+      profileNamesByUserId(movers.map(row => row.user_id)),
+      supabase
+        .from('leaderboard_totals')
+        .select('entry_id, total_points')
+        .in('entry_id', movers.map(row => row.id)),
+    ]);
+    if (totalsRes.error) throw totalsRes.error;
+    const pointsByEntry = {};
+    for (const row of totalsRes.data || []) pointsByEntry[row.entry_id] = row.total_points || 0;
+    const rows = movers.map(row => ({
+      entry_id: row.id,
+      user_id: row.user_id,
+      team_name: row.team_name,
+      ownerName: names[row.user_id] || '—',
+      points: pointsByEntry[row.id] || 0,
+      rankMoveHtml: `<span class="lb-mv up" title="Moved up ${row.movement}">+${displayScoreNumber(row.movement)}</span>`,
+    }));
+    paintStaticLeaderboard(rows, t('lb.movers.empty'));
+  } catch (e) {
+    table.innerHTML = `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(e.message || t('lb.movers.empty'))}</div>`;
+  }
+}
+
 async function renderLeaderboard(reset = true) {
+  paintLeaderboardTabs();
+  if (state.lbMode === 'today') return renderTodayLeaderboard();
+  if (state.lbMode === 'movers') return renderMoversLeaderboard();
+
   if (reset) {
     state.lbRows = [];
     state.lbLoaded = 0;
@@ -1015,17 +1371,6 @@ async function renderLeaderboard(reset = true) {
 
   state.lbRows.push(...(rows || []));
   state.lbLoaded += (rows || []).length;
-
-  // Movement arrow: prev - curr > 0 = moved UP (better rank).
-  // Show nothing until the next scoring run populates rank_previous —
-  // otherwise the whole leaderboard would render as NEW on first seed.
-  function movementHtml(r) {
-    if (r.rank_previous == null || r.rank_current == null) return '';
-    const diff = r.rank_previous - r.rank_current;
-    if (diff > 0) return `<span class="lb-mv up" title="Moved up ${diff}">▲</span>`;
-    if (diff < 0) return `<span class="lb-mv down" title="Moved down ${-diff}">▼</span>`;
-    return `<span class="lb-mv same" title="No change">—</span>`;
-  }
 
   document.getElementById('lbTable').innerHTML = state.lbRows.map((r, i) => `
     <div class="lb-row clickable${r.user_id === state.myUserId ? ' me' : ''}" data-entry="${r.entry_id}">
@@ -1142,11 +1487,6 @@ async function renderTopPlayers() {
 function paintTopPlayers() {
   const board = document.getElementById('topPlayersBoard');
   if (!board) return;
-  const flipName = (raw) => {
-    const parts = raw.split(' ');
-    if (parts.length < 2) return raw;
-    return `${parts.slice(1).join(' ')} ${parts[0]}`;
-  };
   const meta = {};
   for (const pl of state.players) meta[pl.name] = pl;
 
@@ -1178,26 +1518,26 @@ function paintTopPlayers() {
     const m = meta[p.name];
     const own = playerOwnership(p.name, m?.nation);
     const ownTitle = own.pct
-      ? t('players.owned.title', { pct: own.pct, n: own.owners.toLocaleString() })
+      ? t('players.owned.title', { pct: own.pct, n: displayScoreNumber(own.owners) })
       : '';
     const flag = m ? flagImg(m.nation_code, { width: 20, cls: 'flag-img', fallback: '' }) : '';
     return `
     <div class="pl-row">
-      <span class="pl-rank">${i + 1}</span>
+      <span class="pl-rank">${displayScoreNumber(i + 1)}</span>
       <span class="pl-flag">${flag}</span>
       <span class="pl-name">
-        <b>${escapeHtml(flipName(p.name))}</b>
+        <b>${escapeHtml(formatRosterName(p.name))}</b>
         <span class="pl-nation">${escapeHtml(m?.nation || '')}</span>
       </span>
       <span class="pl-icons">
-        ${p.goals   ? `<span title="Goals">⚽${p.goals}</span>`    : ''}
-        ${p.assists ? `<span title="Assists">🎁${p.assists}</span>` : ''}
-        ${p.cs      ? `<span title="Clean sheets">🧤${p.cs}</span>` : ''}
-        ${p.mvp     ? `<span title="MVP">⭐${p.mvp}</span>`         : ''}
-        ${p.red     ? `<span title="Red cards" style="color:var(--danger);">🟥${p.red}</span>` : ''}
+        ${p.goals   ? `<span title="${escapeHtml(t('pts.goal'))}"><em>G</em>${displayScoreNumber(p.goals)}</span>` : ''}
+        ${p.assists ? `<span title="${escapeHtml(t('pts.assist'))}"><em>A</em>${displayScoreNumber(p.assists)}</span>` : ''}
+        ${p.cs      ? `<span title="${escapeHtml(t('pts.cleansheet'))}"><em>CS</em>${displayScoreNumber(p.cs)}</span>` : ''}
+        ${p.mvp     ? `<span title="${escapeHtml(t('pts.mvp'))}"><em>MVP</em>${displayScoreNumber(p.mvp)}</span>` : ''}
+        ${p.red     ? `<span title="${escapeHtml(t('pts.red'))}" class="neg"><em>RC</em>${displayScoreNumber(p.red)}</span>` : ''}
       </span>
       <span class="pl-own" title="${escapeHtml(ownTitle)}">${own.pct || '—'}</span>
-      <span class="pl-total">${p.points}</span>
+      <span class="pl-total">${displayScoreNumber(p.points)}</span>
     </div>
     `;
   }).join('');
@@ -1257,18 +1597,6 @@ async function openSquadModal(entryId) {
   const xi = entry.xi_json || [];
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
-
-  function describeStat(s) {
-    const parts = [];
-    if (s.goals) parts.push(`⚽${s.goals}`);
-    if (s.assists) parts.push(`🎁${s.assists}`);
-    if (s.cleanSheet) parts.push('🧤');
-    if (s.win) parts.push('✅');
-    if (s.full90) parts.push('⏱️');
-    if (s.mvp) parts.push('⭐');
-    if (s.red) parts.push('🟥');
-    return parts.join(' ');
-  }
 
   // Some nations are spelled differently in fixtures.json vs xi_json roster.
   // Map our roster spelling → the fixtures.json spelling.

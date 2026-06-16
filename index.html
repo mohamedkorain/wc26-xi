@@ -81,6 +81,30 @@
   </div>
 </section>
 
+<section class="strip strip-alt" id="todayHeroesStrip">
+  <div class="strip-inner">
+    <div class="pool-head">
+      <h2 class="strip-title" style="margin:0;" data-i18n="heroes.title">Today’s Heroes</h2>
+      <div class="pool-stats" data-i18n="heroes.sub">Players moving squads today</div>
+    </div>
+    <div id="todayHeroesBoard" class="heroes-board">
+      <div class="lb-empty" data-i18n="heroes.empty">Today’s scoring leaders appear after matches are calculated.</div>
+    </div>
+  </div>
+</section>
+
+<section class="strip" id="transferPulseStrip">
+  <div class="strip-inner">
+    <div class="pool-head">
+      <h2 class="strip-title" style="margin:0;" data-i18n="market.title">Transfer Market</h2>
+      <div class="pool-stats" data-i18n="market.sub">Current squad movement snapshot</div>
+    </div>
+    <div id="transferPulseBoard" class="market-board">
+      <div class="lb-empty" data-i18n="market.loading">Loading transfer market...</div>
+    </div>
+  </div>
+</section>
+
 <section class="strip strip-alt" id="mySquadStrip" style="display:none;">
   <div class="strip-inner" style="max-width:760px;">
     <div class="pool-head">
@@ -103,6 +127,11 @@
     <div id="scoringStatusCard" class="score-status-card" style="display:none;"></div>
     <div id="myRankCard" class="my-rank-card" style="display:none;"></div>
 
+    <div class="lb-tabs" id="lbTabs" aria-label="Leaderboard views">
+      <button type="button" class="lb-tab active" data-lb-mode="overall" data-i18n="lb.tab.overall">Overall</button>
+      <button type="button" class="lb-tab" data-lb-mode="today" data-i18n="lb.tab.today">Today</button>
+      <button type="button" class="lb-tab" data-lb-mode="movers" data-i18n="lb.tab.movers">Biggest Movers</button>
+    </div>
     <div class="lb-head">
       <div>#</div><div data-i18n="lb.team">TEAM NAME</div><div data-i18n="lb.owner">OWNER</div><div style="text-align:right;" data-i18n="lb.pts">PTS</div>
     </div>
@@ -152,26 +181,26 @@
     </div>
     <div>
       <h2 class="strip-title" data-i18n="scoring.title">Scoring</h2>
-      <table class="rules">
-        <tr><td>✅ <span data-i18n="rule.win">Team win (played 1'+)</span></td><td>+1</td></tr>
-        <tr><td>⏱️ <span data-i18n="rule.90">Bonus if full 90'</span></td><td>+1</td></tr>
-        <tr><td>⚽ <span data-i18n="rule.goal">Goal scored</span></td><td>+1</td></tr>
-        <tr><td>🎁 <span data-i18n="rule.assist">Assist</span></td><td>+1</td></tr>
-        <tr><td>🧤 <span data-i18n="rule.cs">Clean sheet (GK/CB/FB/CM, 45'+)</span></td><td>+1</td></tr>
-        <tr><td>⭐ <span data-i18n="rule.mvp">MVP / Man of the Match</span></td><td>+1</td></tr>
-        <tr><td>🟥 <span data-i18n="rule.red">Red card</span></td><td style="color:var(--danger);">−1</td></tr>
-      </table>
+      <div class="rules-grid">
+        <div class="rule-card"><span class="rule-code">WIN</span><span data-i18n="rule.win">Team win (played 1'+)</span><b>+1</b></div>
+        <div class="rule-card"><span class="rule-code">90</span><span data-i18n="rule.90">Bonus if full 90'</span><b>+1</b></div>
+        <div class="rule-card"><span class="rule-code">G</span><span data-i18n="rule.goal">Goal scored</span><b>+1</b></div>
+        <div class="rule-card"><span class="rule-code">A</span><span data-i18n="rule.assist">Assist</span><b>+1</b></div>
+        <div class="rule-card"><span class="rule-code">CS</span><span data-i18n="rule.cs">Clean sheet (GK/CB/FB/CM, 45'+)</span><b>+1</b></div>
+        <div class="rule-card"><span class="rule-code">MVP</span><span data-i18n="rule.mvp">MVP / Man of the Match</span><b>+1</b></div>
+        <div class="rule-card danger"><span class="rule-code">RC</span><span data-i18n="rule.red">Red card</span><b>−1</b></div>
+      </div>
 
       <h3 class="rules-subhead" data-i18n="prog.title">Progression bonuses (per starter, cumulative)</h3>
-      <table class="rules">
-        <tr><td>🏟️ <span data-i18n="prog.r32">Reach Round of 32</span></td><td>+2</td></tr>
-        <tr><td>🎯 <span data-i18n="prog.r16">Reach Round of 16</span></td><td>+2</td></tr>
-        <tr><td>🥉 <span data-i18n="prog.qf">Reach Quarter-final</span></td><td>+3</td></tr>
-        <tr><td>🥈 <span data-i18n="prog.sf">Reach Semi-final</span></td><td>+4</td></tr>
-        <tr><td>🏅 <span data-i18n="prog.final">Reach Final</span></td><td>+4</td></tr>
-        <tr><td>🏆 <span data-i18n="prog.champ">Win the World Cup</span></td><td>+5</td></tr>
-        <tr class="rules-total"><td><b data-i18n="prog.total">Total</b></td><td><b>+20</b></td></tr>
-      </table>
+      <div class="rules-grid progression">
+        <div class="rule-card"><span class="rule-code">R32</span><span data-i18n="prog.r32">Reach Round of 32</span><b>+2</b></div>
+        <div class="rule-card"><span class="rule-code">R16</span><span data-i18n="prog.r16">Reach Round of 16</span><b>+2</b></div>
+        <div class="rule-card"><span class="rule-code">QF</span><span data-i18n="prog.qf">Reach Quarter-final</span><b>+3</b></div>
+        <div class="rule-card"><span class="rule-code">SF</span><span data-i18n="prog.sf">Reach Semi-final</span><b>+4</b></div>
+        <div class="rule-card"><span class="rule-code">FIN</span><span data-i18n="prog.final">Reach Final</span><b>+4</b></div>
+        <div class="rule-card"><span class="rule-code">CUP</span><span data-i18n="prog.champ">Win the World Cup</span><b>+5</b></div>
+        <div class="rule-card total"><span class="rule-code">MAX</span><span><b data-i18n="prog.total">Total</b></span><b>+20</b></div>
+      </div>
     </div>
   </div>
 </section>
