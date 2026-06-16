@@ -286,7 +286,7 @@ const DICT = {
     'hub.kicker':     'غرفة الماتشات',
     'hub.loading':    'تحميل الماتشات...',
     'hub.unavailable':'حالة الماتشات مش متاحة دلوقتي.',
-    'hub.title':      'اليوم في لمحة',
+    'hub.title':      'ملخص اليوم',
     'hub.summary.live': '{n} لايف',
     'hub.summary.queued': '{n} مستني الحساب',
     'hub.summary.scored': 'كله اتحسب',
