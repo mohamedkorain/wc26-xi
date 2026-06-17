@@ -6,6 +6,18 @@ import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 const LB_PAGE_SIZE = 20;
+// Curated show/presenter league. Emails are intentionally not shipped; these
+// entry IDs were resolved once from private profiles/admin data.
+const HALLO_AMRIKA_MINI_ENTRY_IDS = [
+  'a098a535-a561-428b-b978-b1ff413e6683',
+  'b4bf20e4-e454-4859-9dd7-c2ec55874ee9',
+  '06f4870f-9cc9-408e-aa10-b744ab2acf08',
+  '550eed0a-73c3-44c0-8478-03ff9797f1c0',
+  'f9ced3d7-7ab8-4e09-81c0-b01e74644f79',
+  '1ae17874-1b08-4b08-a54c-122f3d87b676',
+  'd8089b80-3ce9-45c5-b94f-f8f90c6e205d',
+  'e6613d8c-ac16-4bf6-81d5-bae433394ee2',
+];
 
 const state = {
   teams: [],
@@ -39,6 +51,7 @@ async function boot() {
   renderMatchdayHub();
   renderScoringStatus();
   renderMySquad();
+  renderFeaturedLeague();
   // Leaderboard live (Phase 3 scoring deployed 2026-06-12)
   wireLeaderboardTabs();
   renderLeaderboard();
@@ -90,6 +103,7 @@ async function boot() {
     renderMatchdayHub();
     renderScoringStatus();
     renderMySquad();
+    renderFeaturedLeague();
     renderCalendar();
     if (state.players.length) renderPool();
     renderLeaderboard();
@@ -155,6 +169,71 @@ async function jumpToMyRank(rank) {
     me.scrollIntoView({ behavior: 'smooth', block: 'center' });
     me.classList.add('flash');
     setTimeout(() => me.classList.remove('flash'), 1800);
+  }
+}
+
+async function renderFeaturedLeague() {
+  const card = document.getElementById('featuredLeagueCard');
+  if (!card) return;
+
+  card.style.display = '';
+  card.innerHTML = `<div class="lb-empty">${escapeHtml(t('mini.loading'))}</div>`;
+
+  try {
+    const { data, error } = await supabase
+      .from('leaderboard_totals')
+      .select('entry_id, team_name, user_id, submitted_at, total_points')
+      .in('entry_id', HALLO_AMRIKA_MINI_ENTRY_IDS);
+    if (error) throw error;
+
+    const entries = await entriesById((data || []).map(row => row.entry_id));
+    const rows = (data || [])
+      .map(row => ({
+        ...row,
+        ...(entries[row.entry_id] || {}),
+        points: row.total_points || 0,
+      }))
+      .filter(row => row.team_name)
+      .sort((a, b) => (b.points - a.points) || String(a.submitted_at || '').localeCompare(String(b.submitted_at || '')));
+
+    const stat = t('mini.stats', {
+      n: displayScoreNumber(rows.length),
+      total: displayScoreNumber(HALLO_AMRIKA_MINI_ENTRY_IDS.length),
+    });
+
+    card.innerHTML = `
+      <div class="mini-league-head">
+        <div>
+          <h3>${escapeHtml(t('mini.title'))}</h3>
+          <p>${escapeHtml(t('mini.sub'))}</p>
+        </div>
+        <div class="mini-league-stat">${escapeHtml(stat)}</div>
+      </div>
+      <div class="lb-head mini-league-cols">
+        <div>#</div>
+        <div>${escapeHtml(t('lb.team'))}</div>
+        <div>${escapeHtml(t('lb.owner'))}</div>
+        <div style="text-align:right;">${escapeHtml(t('lb.pts'))}</div>
+      </div>
+      <div class="lb-table mini-league-board">
+        ${rows.length ? rows.map((r, i) => {
+          const globalRank = r.rank_current
+            ? t('mini.globalRank', { rank: displayScoreNumber(r.rank_current) })
+            : t('mini.globalPending');
+          return `
+            <div class="lb-row clickable${r.user_id === state.myUserId ? ' me' : ''}" data-entry="${r.entry_id}">
+              <div class="lb-rank">${displayScoreNumber(i + 1)}${movementHtml(r)}</div>
+              <div class="lb-team">${escapeHtml(r.team_name)}</div>
+              <div class="lb-owner">${escapeHtml(r.ownerName || '—')} <span class="mini-global">${escapeHtml(globalRank)}</span></div>
+              <div class="lb-pts">${displayScoreNumber(r.points)}</div>
+            </div>
+          `;
+        }).join('') : `<div class="lb-empty">${escapeHtml(t('mini.empty'))}</div>`}
+      </div>
+    `;
+    wireLeaderboardRows();
+  } catch (e) {
+    card.innerHTML = `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(e.message || t('mini.empty'))}</div>`;
   }
 }
 
