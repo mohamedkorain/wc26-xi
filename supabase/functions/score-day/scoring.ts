@@ -107,6 +107,14 @@ export const PROGRESSION_BONUS: Record<string, number> = {
  */
 export function normaliseName(s: string): string {
   return (s || '')
+    .replace(/[Øø]/g, 'o')
+    .replace(/[Ææ]/g, 'ae')
+    .replace(/[Œœ]/g, 'oe')
+    .replace(/[Ðð]/g, 'd')
+    .replace(/[Þþ]/g, 'th')
+    .replace(/[Łł]/g, 'l')
+    .replace(/[Đđ]/g, 'd')
+    .replace(/[İı]/g, 'i')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')   // strip accents
     .toLowerCase()
