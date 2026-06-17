@@ -197,8 +197,8 @@ async function renderFeaturedLeague() {
       .sort((a, b) => (b.points - a.points) || String(a.submitted_at || '').localeCompare(String(b.submitted_at || '')));
 
     const stat = t('mini.stats', {
-      n: displayScoreNumber(rows.length),
-      total: displayScoreNumber(HALLO_AMRIKA_MINI_ENTRY_IDS.length),
+      n: rows.length,
+      total: HALLO_AMRIKA_MINI_ENTRY_IDS.length,
     });
 
     card.innerHTML = `
@@ -218,14 +218,14 @@ async function renderFeaturedLeague() {
       <div class="lb-table mini-league-board">
         ${rows.length ? rows.map((r, i) => {
           const globalRank = r.rank_current
-            ? t('mini.globalRank', { rank: displayScoreNumber(r.rank_current) })
+            ? t('mini.globalRank', { rank: r.rank_current })
             : t('mini.globalPending');
           return `
             <div class="lb-row clickable${r.user_id === state.myUserId ? ' me' : ''}" data-entry="${r.entry_id}">
-              <div class="lb-rank">${displayScoreNumber(i + 1)}${movementHtml(r)}</div>
+              <div class="lb-rank">${i + 1}${movementHtml(r)}</div>
               <div class="lb-team">${escapeHtml(r.team_name)}</div>
               <div class="lb-owner">${escapeHtml(r.ownerName || '—')} <span class="mini-global">${escapeHtml(globalRank)}</span></div>
-              <div class="lb-pts">${displayScoreNumber(r.points)}</div>
+              <div class="lb-pts">${r.points}</div>
             </div>
           `;
         }).join('') : `<div class="lb-empty">${escapeHtml(t('mini.empty'))}</div>`}
