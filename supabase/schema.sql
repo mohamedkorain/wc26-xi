@@ -105,7 +105,8 @@ create policy "profiles read all"  on public.profiles for select using (true);
 create policy "profiles edit self" on public.profiles for update using (auth.uid() = id);
 
 -- leagues: anyone can read a league by id (so /league/[code] works for invitees).
--- Only owner can create/update/delete.
+-- Only owner can create/update. Deleting leagues stays admin-only via SQL
+-- Editor/service_role because entries cascade from leagues.
 drop policy if exists "leagues read all"     on public.leagues;
 drop policy if exists "leagues insert owner" on public.leagues;
 drop policy if exists "leagues update owner" on public.leagues;
@@ -113,7 +114,6 @@ drop policy if exists "leagues delete owner" on public.leagues;
 create policy "leagues read all"     on public.leagues for select using (true);
 create policy "leagues insert owner" on public.leagues for insert with check (auth.uid() = owner_id);
 create policy "leagues update owner" on public.leagues for update using (auth.uid() = owner_id);
-create policy "leagues delete owner" on public.leagues for delete using (auth.uid() = owner_id);
 
 -- league_members: members readable to everyone in the league; self-insert; self-delete.
 drop policy if exists "members read all"   on public.league_members;
