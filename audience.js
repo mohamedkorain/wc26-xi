@@ -1544,7 +1544,11 @@ async function openSquadModal(entryId) {
   }
 
   const totalPts = scoreRows.reduce((s, r) => s + (r.points || 0), 0);
-  const xi = entry.xi_json || [];
+  // Public squad view should match the scoring phase. Before MD2 kickoff,
+  // show the GW1 snapshot so transferred-in players do not appear beside GW1
+  // points. From MD2 onward, show the current transferred squad.
+  const md2Kickoff = new Date('2026-06-18T16:00:00Z');
+  const xi = (new Date() < md2Kickoff ? (entry.xi_json_gw1 || entry.xi_json) : entry.xi_json) || [];
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
