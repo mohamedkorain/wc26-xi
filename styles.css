@@ -896,6 +896,25 @@ input { font-family: inherit; }
   font-size: 10px;
   font-weight: 700;
 }
+.overall-league-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 18px 0 10px;
+}
+.overall-league-head h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 19px;
+  line-height: 1.2;
+}
+.overall-league-head p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 700;
+}
 
 /* ── My Rank persistent card ─────────────────────────────────── */
 .my-rank-card {
@@ -1037,6 +1056,11 @@ input { font-family: inherit; }
   }
   .mini-league-stat {
     align-self: flex-start;
+  }
+  .overall-league-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
   .mini-league-card .lb-head,
   .mini-league-card .lb-row {
