@@ -1,4 +1,4 @@
--- Presenter lineup override: Mohamedalaaorfy@gmail.com / Ya 3otle.
+-- Presenter lineup override: Mohamedalaaorfy@gmail.com / Saba7o.
 --
 -- Why: Mohamed supplied Nsoo7y's presenter lineup and requested it to be
 -- applied to this account with the same MD1 treatment as the other presenter
@@ -65,10 +65,10 @@ begin
      set xi_json = v_xi,
          xi_json_gw1 = v_xi,
          formation = '4-4-2',
+         team_name = 'Saba7o',
          transfers_used = 0
    where id = v_entry_id
-     and user_id = v_user_id
-     and lower(team_name) = lower('Ya 3otle');
+     and user_id = v_user_id;
 
   get diagnostics v_updated = row_count;
 
