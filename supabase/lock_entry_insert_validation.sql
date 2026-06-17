@@ -11,12 +11,18 @@
 
 set statement_timeout = '5min';
 
--- Remove the three known crafted entries. Their scores cascade from entries.
+-- Remove known crafted entries. Their scores cascade from entries.
 delete from public.entries
 where id in (
   'b66b30d4-002a-4237-8331-81fdd0b35254',
   '3a3aa5fb-53b2-49f5-947b-5d31584becb2',
-  '08e7061a-3792-4aa1-901f-8af7cae4006a'
+  '08e7061a-3792-4aa1-901f-8af7cae4006a',
+  '29df2537-fd8c-4fb6-a4d1-7bbee24048fd',
+  '634dfde1-468f-45c7-b694-47b548244c70',
+  '9fb81cfd-15fd-48f9-88a4-90a54d00a8e5',
+  'fb692e38-2181-40ed-a192-afe07ac758c8',
+  '2990d213-07e3-4423-9380-7779ab73eed4',
+  '9fc521b2-ea3f-4c11-87cb-01048fb1510b'
 );
 
 -- Transfer flow uses UPDATE, not INSERT. New entries after lock must stay
@@ -195,7 +201,13 @@ from public.entries
 where id in (
   'b66b30d4-002a-4237-8331-81fdd0b35254',
   '3a3aa5fb-53b2-49f5-947b-5d31584becb2',
-  '08e7061a-3792-4aa1-901f-8af7cae4006a'
+  '08e7061a-3792-4aa1-901f-8af7cae4006a',
+  '29df2537-fd8c-4fb6-a4d1-7bbee24048fd',
+  '634dfde1-468f-45c7-b694-47b548244c70',
+  '9fb81cfd-15fd-48f9-88a4-90a54d00a8e5',
+  'fb692e38-2181-40ed-a192-afe07ac758c8',
+  '2990d213-07e3-4423-9380-7779ab73eed4',
+  '9fc521b2-ea3f-4c11-87cb-01048fb1510b'
 )
 union all
 select 'scores' as source, count(*) as remaining
@@ -203,7 +215,13 @@ from public.scores
 where entry_id in (
   'b66b30d4-002a-4237-8331-81fdd0b35254',
   '3a3aa5fb-53b2-49f5-947b-5d31584becb2',
-  '08e7061a-3792-4aa1-901f-8af7cae4006a'
+  '08e7061a-3792-4aa1-901f-8af7cae4006a',
+  '29df2537-fd8c-4fb6-a4d1-7bbee24048fd',
+  '634dfde1-468f-45c7-b694-47b548244c70',
+  '9fb81cfd-15fd-48f9-88a4-90a54d00a8e5',
+  'fb692e38-2181-40ed-a192-afe07ac758c8',
+  '2990d213-07e3-4423-9380-7779ab73eed4',
+  '9fc521b2-ea3f-4c11-87cb-01048fb1510b'
 )
 union all
 select 'leaderboard_totals' as source, count(*) as remaining
@@ -211,7 +229,13 @@ from public.leaderboard_totals
 where entry_id in (
   'b66b30d4-002a-4237-8331-81fdd0b35254',
   '3a3aa5fb-53b2-49f5-947b-5d31584becb2',
-  '08e7061a-3792-4aa1-901f-8af7cae4006a'
+  '08e7061a-3792-4aa1-901f-8af7cae4006a',
+  '29df2537-fd8c-4fb6-a4d1-7bbee24048fd',
+  '634dfde1-468f-45c7-b694-47b548244c70',
+  '9fb81cfd-15fd-48f9-88a4-90a54d00a8e5',
+  'fb692e38-2181-40ed-a192-afe07ac758c8',
+  '2990d213-07e3-4423-9380-7779ab73eed4',
+  '9fc521b2-ea3f-4c11-87cb-01048fb1510b'
 );
 
 select jobname, schedule, command
