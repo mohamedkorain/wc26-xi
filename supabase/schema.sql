@@ -138,7 +138,15 @@ create policy "entries insert self open" on public.entries
     )
   );
 create policy "entries update self open" on public.entries
-  for update using (
+  for update
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.leagues l
+      where l.id = league_id and now() < l.locked_at
+    )
+  )
+  with check (
     auth.uid() = user_id
     and exists (
       select 1 from public.leagues l
