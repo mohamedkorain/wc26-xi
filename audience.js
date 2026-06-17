@@ -17,6 +17,7 @@ const HALLO_AMRIKA_MINI_ENTRY_IDS = [
   '1ae17874-1b08-4b08-a54c-122f3d87b676',
   'd8089b80-3ce9-45c5-b94f-f8f90c6e205d',
   'e6613d8c-ac16-4bf6-81d5-bae433394ee2',
+  '8bf0e040-6920-4a8b-9909-63afca7ca413',
 ];
 
 const state = {
