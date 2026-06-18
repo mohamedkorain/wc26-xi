@@ -275,7 +275,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
           const ev = matchPlayerToEvent(slot, m.events, expectedSide);
           if (!ev) continue;
           const { points, breakdown: b } = scorePlayer(
-            ev, slot.roles || [slot.role], m.homeNation, m.homeGoals, m.awayGoals,
+            ev, slot.role ? [slot.role] : [], m.homeNation, m.homeGoals, m.awayGoals,
           );
           totalPts += points;
           // If somehow the same player shows in two fixtures the same day
