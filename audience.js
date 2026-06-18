@@ -223,7 +223,7 @@ async function renderFeaturedLeague() {
             : t('mini.globalPending');
           return `
             <div class="lb-row clickable${r.user_id === state.myUserId ? ' me' : ''}" data-entry="${r.entry_id}">
-              <div class="lb-rank">${i + 1}${movementHtml(r)}</div>
+              <div class="lb-rank">${i + 1}</div>
               <div class="lb-team">${escapeHtml(r.team_name)}</div>
               <div class="lb-owner">${escapeHtml(r.ownerName || '—')} <span class="mini-global">${escapeHtml(globalRank)}</span></div>
               <div class="lb-pts">${r.points}</div>
