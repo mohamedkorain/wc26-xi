@@ -35,6 +35,24 @@ begin
     return NEW;
   end if;
 
+  -- Server-maintained fields such as rank_current/rank_previous may still
+  -- update after transfer windows close. Only allow this path when squad,
+  -- transfer, ownership, and submission fields are unchanged, and never for
+  -- authenticated client requests.
+  if NEW.xi_json is not distinct from OLD.xi_json
+     and NEW.xi_json_gw1 is not distinct from OLD.xi_json_gw1
+     and NEW.transfers_used is not distinct from OLD.transfers_used
+     and NEW.team_name is not distinct from OLD.team_name
+     and NEW.formation is not distinct from OLD.formation
+     and NEW.user_id is not distinct from OLD.user_id
+     and NEW.league_id is not distinct from OLD.league_id
+     and NEW.submitted_at is not distinct from OLD.submitted_at then
+    if coalesce(current_setting('request.jwt.claim.role', true), '') = 'authenticated' then
+      raise exception 'Only transfer updates are allowed after lock';
+    end if;
+    return NEW;
+  end if;
+
   if v_transfers_open_until is null or now() >= v_transfers_open_until then
     raise exception 'Entry updates are locked';
   end if;

@@ -119,7 +119,8 @@ export function normaliseName(s: string): string {
     .replace(/[̀-ͯ]/g, '')   // strip accents
     .toLowerCase()
     .replace(/-/g, '')         // collapse hyphens: "in-beom" ↔ "inbeom"
-    .replace(/[^a-z\s']/g, ' ')
+    .replace(/'/g, '')          // O'Reilly -> oreilly
+    .replace(/[^a-z\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
