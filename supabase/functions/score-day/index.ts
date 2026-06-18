@@ -160,10 +160,17 @@ async function deleteScoreRows(dateStr: string, entryIds: string[]) {
   }
 }
 
-// Per-fixture preparation: upsert matches row, fetch API stats, return
-// the enriched event list. Returns null if the match is not yet finished
-// (so we don't score in-progress matches).
-async function prepareFixture(fixture: any): Promise<any> {
+function fixtureStatusBucket(status: string): 'finished' | 'live' | 'scheduled' {
+  // Map API-Football's per-state codes to 3 clean buckets.
+  //   FT/AET/PEN          -> finished
+  //   1H/HT/2H/ET/BT/P    -> live (actually in progress)
+  //   NS/TBD/PST/SUSP/INT -> scheduled (not started yet)
+  if (isFinishedStatus(status)) return 'finished';
+  if (['1H','HT','2H','ET','BT','P','LIVE'].includes(status)) return 'live';
+  return 'scheduled';
+}
+
+async function refreshFixtureSummary(fixture: any): Promise<any> {
   const homeNation = canonNation(fixture.teams.home.name);
   const awayNation = canonNation(fixture.teams.away.name);
   const matchId = fixtureId(fixture);
@@ -172,15 +179,7 @@ async function prepareFixture(fixture: any): Promise<any> {
   const homeGoals = fixture.goals.home ?? 0;
   const awayGoals = fixture.goals.away ?? 0;
   const kickoff = new Date(fixture.fixture.date);
-
-  // Map API-Football's per-state codes to 3 clean buckets.
-  //   FT/AET/PEN          → finished
-  //   1H/HT/2H/ET/BT/P    → live (actually in progress)
-  //   NS/TBD/PST/SUSP/INT → scheduled (not started yet)
-  let bucket: 'finished' | 'live' | 'scheduled';
-  if (isFinishedStatus(status)) bucket = 'finished';
-  else if (['1H','HT','2H','ET','BT','P','LIVE'].includes(status)) bucket = 'live';
-  else bucket = 'scheduled';
+  const bucket = fixtureStatusBucket(status);
 
   await supa.from('matches').upsert({
     external_id: matchId, date: dateStr,
@@ -189,7 +188,17 @@ async function prepareFixture(fixture: any): Promise<any> {
     status: bucket,
   }, { onConflict: 'external_id' });
 
-  if (!isFinishedStatus(status)) return null;
+  return { matchId, homeNation, awayNation, homeGoals, awayGoals, kickoff, bucket };
+}
+
+// Per-fixture preparation: upsert matches row, fetch API stats, return
+// the enriched event list. Returns null if the match is not yet finished
+// (so we don't score in-progress matches).
+async function prepareFixture(fixture: any): Promise<any> {
+  const summary = await refreshFixtureSummary(fixture);
+  const { matchId, homeNation, awayNation, homeGoals, awayGoals, kickoff, bucket } = summary;
+
+  if (bucket !== 'finished') return null;
 
   const [eventsRes, playersRes] = await Promise.all([
     apiFetch(`/fixtures/events?fixture=${matchId}`),
@@ -444,10 +453,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { date } = await req.json().catch(() => ({}));
+    const { date, liveOnly } = await req.json().catch(() => ({}));
     const dateStr = date || new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const fixtures = await apiFetch(`/fixtures?league=${WC26_LEAGUE_ID}&season=${WC26_SEASON}&date=${dateStr}`);
     const fixtureRows = fixtures.response || [];
+
+    if (liveOnly) {
+      const results: any[] = [];
+      for (const f of fixtureRows) {
+        try {
+          const data = await refreshFixtureSummary(f);
+          results.push({
+            fixture: f.fixture.id,
+            status: data.bucket,
+            home_goals: data.homeGoals,
+            away_goals: data.awayGoals,
+          });
+        } catch (e) {
+          results.push({ fixture: f.fixture.id, status: 'error', error: String(e) });
+        }
+      }
+      return new Response(JSON.stringify({
+        date: dateStr,
+        liveOnly: true,
+        processed: results.length,
+        results,
+        scored: false,
+        refreshed: false,
+        playerLeaderboardRefreshed: false,
+        entryLeaderboardRefreshed: false,
+      }), {
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
     const finishedIds = fixtureRows
       .filter((f: any) => isFinishedStatus(f.fixture.status.short))
       .map(fixtureId);

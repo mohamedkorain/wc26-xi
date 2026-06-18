@@ -6,6 +6,7 @@ import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 const LB_PAGE_SIZE = 20;
+const MATCHDAY_REFRESH_MS = 60_000;
 // Curated show/presenter league. Emails are intentionally not shipped; these
 // entry IDs were resolved once from private profiles/admin data.
 const HALLO_AMRIKA_MINI_ENTRY_IDS = [
@@ -68,6 +69,10 @@ async function boot() {
   // Update countdowns every minute (so the page flips to "locked" UX
   // without a refresh if the user is still here when the deadline hits)
   setInterval(() => { renderCalendar(); renderHeroStatus(); }, 60_000);
+  setInterval(() => {
+    state._matchdayContext = null;
+    renderMatchdayHub();
+  }, MATCHDAY_REFRESH_MS);
   setInterval(() => { renderScoringStatus(); }, 5 * 60_000);
 
   // Players pool — background load
