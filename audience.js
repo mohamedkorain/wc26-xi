@@ -884,7 +884,7 @@ function displayLast(item) {
 
 function redCardCount(st) {
   if (!st?.red) return 0;
-  return Number(st.red) || 1;
+  return Math.abs(Number(st.red)) || 1;
 }
 
 function pointsFromStatLine(st) {
@@ -914,7 +914,10 @@ function describeStatTextLocal(s) {
   if (s.assists)    parts.push(`${t('pts.assist')}${s.assists > 1 ? '×' + s.assists : ''}`);
   if (s.cleanSheet) parts.push(t('pts.cleansheet'));
   if (s.mvp)        parts.push(t('pts.mvp'));
-  if (s.red)        parts.push(`${t('pts.red')}${s.red > 1 ? '×' + s.red : ''}`);
+  if (s.red) {
+    const reds = redCardCount(s);
+    parts.push(`${t('pts.red')}${reds > 1 ? '×' + reds : ''}`);
+  }
   return parts.join(document.documentElement.lang === 'ar' ? '، ' : ', ');
 }
 

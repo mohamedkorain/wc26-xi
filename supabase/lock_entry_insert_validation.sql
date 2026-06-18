@@ -163,18 +163,23 @@ declare
   v_locked_at timestamptz;
   v_request_role text;
 begin
-  perform public.validate_entry_xi_json(NEW.xi_json);
+  select l.locked_at
+    into v_locked_at
+  from public.leagues l
+  where l.id = NEW.league_id;
 
-  if NEW.xi_json_gw1 is not null then
-    perform public.validate_entry_xi_json(NEW.xi_json_gw1);
+  -- Initial submissions and pre-lock edits should be fully canonical. After
+  -- lock, transfer updates are checked by guard_locked_entry_transfer_trg so
+  -- legacy saved rows are not blocked by later player-metadata drift.
+  if TG_OP = 'INSERT' or now() < v_locked_at then
+    perform public.validate_entry_xi_json(NEW.xi_json);
+
+    if NEW.xi_json_gw1 is not null then
+      perform public.validate_entry_xi_json(NEW.xi_json_gw1);
+    end if;
   end if;
 
   if TG_OP = 'INSERT' then
-    select l.locked_at
-      into v_locked_at
-    from public.leagues l
-    where l.id = NEW.league_id;
-
     v_request_role := coalesce(current_setting('request.jwt.claim.role', true), '');
 
     if now() >= v_locked_at and v_request_role in ('authenticated', 'anon') then

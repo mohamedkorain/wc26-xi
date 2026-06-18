@@ -1,14 +1,55 @@
--- Guard locked-squad updates during transfer windows.
+-- Fix post-lock transfer validation.
 --
--- RLS allows users to UPDATE their own entry while a transfer window is open.
--- This trigger narrows what that UPDATE may do after the initial lock:
---   - no team/user/league/submission metadata edits
---   - exactly two lineup slots changed
---   - transfers_used advances by exactly 2, capped at 2 for this window
---   - xi_json_gw1 preserves the pre-transfer lineup
+-- Why:
+--   Transfer updates send the old XI into xi_json_gw1 and the new XI into
+--   xi_json. The generic lineup validator was re-validating both after lock,
+--   so legacy saved rows with harmless player-metadata drift could block the
+--   bundled two-transfer flow with:
 --
--- This blocks build.html/upsert or crafted requests from replacing a full
--- locked squad while preserving the bundled two-transfer flow in team.js.
+--     Squad contains invalid player, role, or slot data
+--
+-- This keeps initial submissions strict, and lets the post-lock transfer
+-- guard enforce transfer-specific safety.
+
+set statement_timeout = '5min';
+
+create or replace function public.validate_entry_lineup_write()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_locked_at timestamptz;
+  v_request_role text;
+begin
+  select l.locked_at
+    into v_locked_at
+  from public.leagues l
+  where l.id = NEW.league_id;
+
+  -- Initial submissions and pre-lock edits should be fully canonical. After
+  -- lock, transfer updates are checked by guard_locked_entry_transfer_trg so
+  -- legacy saved rows are not blocked by later player-metadata drift.
+  if TG_OP = 'INSERT' or now() < v_locked_at then
+    perform public.validate_entry_xi_json(NEW.xi_json);
+
+    if NEW.xi_json_gw1 is not null then
+      perform public.validate_entry_xi_json(NEW.xi_json_gw1);
+    end if;
+  end if;
+
+  if TG_OP = 'INSERT' then
+    v_request_role := coalesce(current_setting('request.jwt.claim.role', true), '');
+
+    if now() >= v_locked_at and v_request_role in ('authenticated', 'anon') then
+      raise exception 'Entry submission is locked';
+    end if;
+  end if;
+
+  return NEW;
+end;
+$$;
 
 create or replace function public.guard_locked_entry_transfer()
 returns trigger
@@ -31,7 +72,6 @@ begin
   from public.leagues l
   where l.id = NEW.league_id;
 
-  -- Pre-lock edits are the original draft flow.
   if now() < v_locked_at then
     return NEW;
   end if;
@@ -40,8 +80,6 @@ begin
     raise exception 'Entry updates are locked';
   end if;
 
-  -- Server-maintained fields such as rank_current/rank_previous may still
-  -- update after lock. Only validate when the squad or transfer counter moves.
   if NEW.xi_json is not distinct from OLD.xi_json
      and NEW.xi_json_gw1 is not distinct from OLD.xi_json_gw1
      and NEW.transfers_used is not distinct from OLD.transfers_used
@@ -73,11 +111,6 @@ begin
     raise exception 'Squad must contain exactly 12 players';
   end if;
 
-  -- Validate every post-transfer row against the official player pool while
-  -- allowing unchanged legacy rows to pass as exact snapshots. This keeps
-  -- old saved squads from being blocked by later player-metadata drift, but
-  -- still requires the two incoming transfer rows to use canonical metadata
-  -- and a valid role for their slot.
   select count(*) into v_valid_slots
   from jsonb_array_elements(coalesce(OLD.xi_json, '[]'::jsonb)) with ordinality as o(player, ord)
   full join jsonb_array_elements(coalesce(NEW.xi_json, '[]'::jsonb)) with ordinality as x(player, ord)
@@ -89,10 +122,11 @@ begin
     and (x.player->>'slot') ~ '^[0-9]+$'
     and (x.player->>'slot')::int = (x.ord - 1)
     and (
-      -- Exact unchanged rows are allowed even if old display metadata no
-      -- longer matches player_pool.
+      -- Unchanged legacy rows must be byte-for-byte unchanged, but do not
+      -- need to match today's player_pool display metadata.
       (o.player is not null and x.player = o.player)
       or
+      -- The two incoming transfer rows must be canonical and valid for slot.
       (
         ((o.player->>'name') is distinct from (x.player->>'name')
           or (o.player->>'nation') is distinct from (x.player->>'nation'))
@@ -185,7 +219,8 @@ begin
 end;
 $$;
 
-drop trigger if exists guard_locked_entry_transfer_trg on public.entries;
-create trigger guard_locked_entry_transfer_trg
-  before update on public.entries
-  for each row execute function public.guard_locked_entry_transfer();
+select tgname, tgenabled
+from pg_trigger
+where tgrelid = 'public.entries'::regclass
+  and tgname in ('guard_locked_entry_transfer_trg', 'validate_entry_lineup_write_trg')
+order by tgname;

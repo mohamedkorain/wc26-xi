@@ -1351,24 +1351,59 @@ begin
     raise exception 'Squad must contain exactly 12 players';
   end if;
 
-  -- Validate every post-transfer row against the official player pool, not
-  -- just the two changed slots. This prevents crafted JSON from inventing
-  -- players, changing metadata, or putting a player into an invalid role.
+  -- Validate every post-transfer row against the official player pool while
+  -- allowing unchanged legacy rows to pass as exact snapshots. This keeps
+  -- old saved squads from being blocked by later player-metadata drift, but
+  -- still requires the two incoming transfer rows to use canonical metadata
+  -- and a valid role for their slot.
   select count(*) into v_valid_slots
-  from jsonb_array_elements(coalesce(NEW.xi_json, '[]'::jsonb)) with ordinality as x(player, ord)
+  from jsonb_array_elements(coalesce(OLD.xi_json, '[]'::jsonb)) with ordinality as o(player, ord)
+  full join jsonb_array_elements(coalesce(NEW.xi_json, '[]'::jsonb)) with ordinality as x(player, ord)
+    using (ord)
   join public.player_pool pp
     on pp.nation = x.player->>'nation'
    and pp.name = x.player->>'name'
-  where (x.player->>'slot')::int = (x.ord - 1)
-    and coalesce(x.player->>'nation_code', '') = pp.nation_code
-    and (x.player->>'category')::int = pp.category
-    and (x.player->>'arab')::boolean = pp.arab
-    and (x.player->>'no')::int = pp.no
-    and coalesce(x.player->>'shirt_name', '') = coalesce(pp.shirt_name, '')
-    and coalesce(x.player->>'club', '') = coalesce(pp.club, '')
+  where jsonb_typeof(x.player) = 'object'
+    and (x.player->>'slot') ~ '^[0-9]+$'
+    and (x.player->>'slot')::int = (x.ord - 1)
     and (
-      coalesce((x.player->>'wild')::boolean, false)
-      or pp.roles @> array[x.player->>'role']
+      -- Exact unchanged rows are allowed even if old display metadata no
+      -- longer matches player_pool.
+      (o.player is not null and x.player = o.player)
+      or
+      (
+        ((o.player->>'name') is distinct from (x.player->>'name')
+          or (o.player->>'nation') is distinct from (x.player->>'nation'))
+        and coalesce(x.player->>'nation_code', '') = pp.nation_code
+        and (x.player->>'category') ~ '^[0-9]+$'
+        and (x.player->>'category')::int = pp.category
+        and coalesce((x.player->>'arab')::boolean, false) = pp.arab
+        and (x.player->>'no') ~ '^[0-9]+$'
+        and (x.player->>'no')::int = pp.no
+        and coalesce(x.player->>'shirt_name', '') = coalesce(pp.shirt_name, '')
+        and coalesce(x.player->>'club', '') = coalesce(pp.club, '')
+        and (
+          (
+            (x.ord - 1) = 11
+            and coalesce((x.player->>'wild')::boolean, false)
+            and nullif(x.player->>'role', '') is null
+          )
+          or
+          (
+            (x.ord - 1) <> 11
+            and not coalesce((x.player->>'wild')::boolean, false)
+            and x.player->>'role' = case
+              when (x.ord - 1) = 0 then 'GK'
+              when (x.ord - 1) in (1, 2) then 'CB'
+              when (x.ord - 1) in (3, 4) then 'FB'
+              when (x.ord - 1) in (5, 6) then 'CM'
+              when (x.ord - 1) in (7, 8) then 'WIN'
+              when (x.ord - 1) in (9, 10) then 'ST'
+            end
+            and pp.roles @> array[x.player->>'role']
+          )
+        )
+      )
     );
 
   if v_valid_slots <> 12 then
