@@ -104,10 +104,15 @@ function renderTransferBar() {
       <div class="tx-counter"><span class="tx-num">${left}</span><span class="tx-num-label">${t('tx.left')}</span></div>
       <div class="tx-closes">${escapeHtml(closesAt)}</div>
     </div>
-    <button class="tx-btn" id="openTxBtn" ${left === 0 ? 'disabled' : ''}>${t('tx.btn')}</button>
+    <div class="tx-actions">
+      <button class="tx-btn tx-btn-secondary" id="openWildBtn">${t('tx.wild.btn')}</button>
+      <button class="tx-btn" id="openTxBtn" ${left === 0 ? 'disabled' : ''}>${t('tx.btn')}</button>
+    </div>
   `;
   const btn = document.getElementById('openTxBtn');
   if (btn) btn.onclick = openTransferModal;
+  const wildBtn = document.getElementById('openWildBtn');
+  if (wildBtn) wildBtn.onclick = openWildcardSwapModal;
 }
 
 // Global per-player tournament points, populated on first transfer-modal open.
@@ -132,6 +137,52 @@ function ownershipLabel(playerName, nation) {
   const pct = formatOwnershipPct(owners, globalPlayerOwnership.total);
   if (!pct) return '';
   return document.documentElement.lang === 'ar' ? `${pct} امتلاك` : `${pct} owned`;
+}
+
+async function ensurePlayersLoaded() {
+  if (state.players.length > 0) return;
+  const data = await (await fetch('data/players.json')).json();
+  for (const nation of data.nations) {
+    const code = state.nations[nation.name]?.code || nation.code || '';
+    for (const p of nation.players) {
+      state.players.push({
+        ...p,
+        nation: nation.name,
+        nation_code: code,
+        arab: nation.arab === true,
+        category: nation.category,
+      });
+    }
+  }
+}
+
+function playerKey(p) {
+  return `${p?.no || ''}|${p?.nation || ''}|${p?.name || ''}`;
+}
+
+function playerSame(a, b) {
+  return a && b && a.name === b.name && a.nation === b.nation;
+}
+
+function playerFromPool(p) {
+  return state.players.find(candidate => playerSame(candidate, p));
+}
+
+function slotRole(slot) {
+  return PITCH_COORDS[Number(slot)]?.tag || '';
+}
+
+function bucketForRole(role) {
+  if (role === 'GK' || role === 'ST') return 'GK_ST';
+  if (role === 'CB' || role === 'FB') return 'DEF';
+  if (role === 'CM' || role === 'WIN') return 'MID';
+  return '';
+}
+
+function playerRoles(p) {
+  if (!p) return [];
+  const fromPool = playerFromPool(p);
+  return fromPool?.roles || p.roles || (p.role ? [p.role] : []);
 }
 
 async function fetchPlayerOwnershipCounts() {
@@ -185,24 +236,7 @@ async function loadGlobalPlayerPts() {
 //  Step 2 — pick 2nd OUT, then 2nd IN
 //  Step 3 — confirm both. One UPDATE; transfers_used jumps from 0 to 2.
 async function openTransferModal() {
-  // Lazy-load the players pool on first open. players.json's nation objects
-  // don't carry the ISO-2 code (that lives in teams.json), so look up via
-  // state.nations to keep the flag column populated.
-  if (state.players.length === 0) {
-    const data = await (await fetch('data/players.json')).json();
-    for (const nation of data.nations) {
-      const code = state.nations[nation.name]?.code || nation.code || '';
-      for (const p of nation.players) {
-        state.players.push({
-          ...p,
-          nation: nation.name,
-          nation_code: code,
-          arab: nation.arab === true,
-          category: nation.category,
-        });
-      }
-    }
-  }
+  await ensurePlayersLoaded();
   await loadGlobalPlayerPts();
 
   const xi = state.entry.xi_json || [];
@@ -287,10 +321,10 @@ async function openTransferModal() {
     // Players already in the squad + players being transferred OUT this session
     // are excluded (you can't pick a player you're swapping out as your IN).
     const inUseIds = new Set();
-    for (const p of xi) inUseIds.add(p.no + '|' + p.nation + '|' + p.name);
+    for (const p of xi) inUseIds.add(playerKey(p));
     // …but the ones you're swapping OUT freed up
     for (const s of swaps) {
-      if (s.in) inUseIds.add(s.in.no + '|' + s.in.nation + '|' + s.in.name);
+      if (s.in) inUseIds.add(playerKey(s.in));
     }
 
     // Arab constraint: simulate the post-transfer squad and require ≥1 Arab.
@@ -334,7 +368,7 @@ async function openTransferModal() {
     list.querySelectorAll('.tx-row.in').forEach(btn => {
       btn.onclick = () => {
         const id = btn.dataset.id;
-        const pick = filtered.find(p => (p.no + '|' + p.nation + '|' + p.name) === id);
+        const pick = filtered.find(p => playerKey(p) === id);
         if (!pick) return;
         swaps[swaps.length - 1].in = pick;
         if (swaps.length < 2) {
@@ -370,6 +404,92 @@ async function openTransferModal() {
 
   document.getElementById('txSearch').addEventListener('input', renderInCandidates);
   showOutPanel();
+}
+
+async function openWildcardSwapModal() {
+  await ensurePlayersLoaded();
+  await loadGlobalPlayerPts();
+
+  const xi = state.entry.xi_json || [];
+  const wild = xi.find(p => p.wild);
+  const roles = playerRoles(wild);
+  const starters = xi
+    .filter(p => !p.wild)
+    .filter(p => roles.includes(p.role || slotRole(p.slot)))
+    .sort((a, b) => Number(a.slot) - Number(b.slot));
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:620px;">
+      <button class="modal-x" id="wildX">×</button>
+      <h2 class="modal-title">${t('tx.wild.title')}</h2>
+      <p class="modal-sub">${t('tx.wild.sub')}</p>
+      ${wild ? `
+        <div class="tx-wild-card">
+          <span class="tx-row-pos">WILD</span>
+          ${flagImg(wild.nation_code, { width: 22, cls: 'flag-img', fallback: '' })}
+          <b>${escapeHtml(displayLast(wild))}</b>
+          <span>${escapeHtml(roles.join(' / ') || wild.nation)}</span>
+        </div>
+      ` : ''}
+      <div class="tx-step">
+        <div class="tx-step-label">${t('tx.wild.pick')}</div>
+        <div class="tx-out-list" id="wildSwapList">
+          ${starters.length ? starters.map(p => txRowHtml(p, true)).join('') : `<div class="tx-empty">${t('tx.wild.none')}</div>`}
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('wildX').onclick = () => modal.remove();
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+
+  document.querySelectorAll('#wildSwapList .tx-row').forEach(btn => {
+    btn.onclick = () => {
+      const starter = starters.find(p => String(p.slot) === btn.dataset.slot);
+      if (!starter || !wild) return;
+      commitWildcardSwap(wild, starter, modal);
+    };
+  });
+}
+
+async function commitWildcardSwap(wild, starter, modal) {
+  const starterRole = starter.role || slotRole(starter.slot);
+  const wildAsStarter = {
+    ...wild,
+    slot: starter.slot,
+    tag: starter.tag || starterRole,
+    role: starterRole,
+    wild: false,
+    bucket: starter.bucket || bucketForRole(starterRole),
+  };
+  const starterAsWild = {
+    ...starter,
+    slot: 11,
+    tag: 'WILD',
+    role: null,
+    wild: true,
+    bucket: 'WILD',
+  };
+  const newXi = (state.entry.xi_json || []).map(p => {
+    if (p === starter) return wildAsStarter;
+    if (p === wild) return starterAsWild;
+    return p;
+  });
+
+  const update = { xi_json: newXi };
+  if (!state.entry.xi_json_gw1) {
+    update.xi_json_gw1 = state.entry.xi_json;
+  }
+  const { error } = await supabase
+    .from('entries')
+    .update(update)
+    .eq('id', state.entry.id);
+  if (error) { alert('Wildcard swap failed: ' + error.message); return; }
+  if (modal) modal.remove();
+  alert(t('tx.wild.success'));
+  location.reload();
 }
 
 async function commitBothTransfers(swaps, modal) {
@@ -418,7 +538,7 @@ function txRowHtml(p, isOut) {
     ownership ? escapeHtml(ownership) : '',
   ].filter(Boolean).join(' · ');
   return `
-    <button class="tx-row${isOut ? '' : ' in'}" ${isOut ? `data-slot="${p.slot}" data-wild="${p.wild ? 1 : 0}"` : `data-id="${escapeHtml(p.no + '|' + p.nation + '|' + p.name)}"`}>
+    <button class="tx-row${isOut ? '' : ' in'}" ${isOut ? `data-slot="${p.slot}" data-wild="${p.wild ? 1 : 0}"` : `data-id="${escapeHtml(playerKey(p))}"`}>
       <span class="tx-row-pos">${pos}</span>
       <span class="tx-row-flag">${flag}</span>
       <span class="tx-row-name">
