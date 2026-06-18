@@ -22,6 +22,7 @@ const DICT = {
     'submit.modal.title': 'Squad submitted!',
     'submit.modal.sub':   '"{name}" is on the leaderboard. Share with friends — every signup is one more squad to beat.',
     'submit.modal.view':  'View leaderboard →',
+    'submit.modal.transfers': 'Use my 2 transfers →',
     'submit.modal.close': 'Close',
     'wildcard.help': 'WILDCARD: your 12th pick, sits on the bench. After the 12-pick draft you can swap them with a starter of the same position. Use it as a safety net for a position you regret.',
 
@@ -270,6 +271,7 @@ const DICT = {
     'submit.modal.title': 'التشكيلة اتبعتت!',
     'submit.modal.sub':   '"{name}" دلوقتي في الترتيب. شيرها مع أصحابك.',
     'submit.modal.view':  '← شوف الترتيب',
+    'submit.modal.transfers': '← استخدم التبديلين',
     'submit.modal.close': 'إغلاق',
     'wildcard.help': 'الورقة الرابحة: الاختيار رقم ١٢ بيقعد على الدكة. بعد ما تخلص التشكيلة، تقدر تبدّله مع أساسي في نفس المركز. استخدمه لو ندمت على لاعب.',
 

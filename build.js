@@ -605,13 +605,17 @@ async function submit() {
     return;
   }
   msg.style.color = 'var(--accent)';
-  msg.innerHTML = t('submit.saved', { at: new Date(state.league.locked_at).toLocaleString() });
+  const editUntil = state.lockPassed && state.transferOpen
+    ? state.league.transfers_open_until
+    : state.league.locked_at;
+  msg.innerHTML = t('submit.saved', { at: new Date(editUntil).toLocaleString() });
   showSubmitConfirmation(name, upserted?.id);
 }
 
 function showSubmitConfirmation(teamName, entryId) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
+  const lateJoiner = state.lockPassed && state.transferOpen;
   const squadUrl = entryId
     ? `https://halloamrika.saba7okorah.com/?squad=${entryId}`
     : `https://halloamrika.saba7okorah.com`;
@@ -628,7 +632,7 @@ function showSubmitConfirmation(teamName, entryId) {
           ${t('share.whatsapp')}
         </a>
         <button class="modal-btn copy" id="modalCopyBtn">${t('share.copy')}</button>
-        <a href="index.html#leaderboard" class="modal-btn primary">${t('submit.modal.view')}</a>
+        <a href="${lateJoiner ? 'team.html' : 'index.html#leaderboard'}" class="modal-btn primary">${lateJoiner ? t('submit.modal.transfers') : t('submit.modal.view')}</a>
         <button class="modal-btn ghost" id="modalCloseBtn">${t('submit.modal.close')}</button>
       </div>
     </div>
