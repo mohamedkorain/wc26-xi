@@ -742,11 +742,14 @@ async function renderMySquad() {
     .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle();
   if (!entry) { document.getElementById('mySquadStrip').style.display = 'none'; return; }
 
-  // Homepage shows the GW1 lineup (the squad that's currently being scored).
-  // If the user has transferred for GW2, xi_json_gw1 holds the original GW1
-  // picks; otherwise fall back to xi_json (which IS the GW1 squad until
-  // they transfer).
-  const gw1Squad = entry.xi_json_gw1 || entry.xi_json;
+  // Before the MD2 deadline, homepage scoring should still show the GW1
+  // snapshot so transferred-in players do not appear beside MD1 points. Once
+  // the transfer window closes, the homepage becomes the current MD2 squad.
+  const txClose = state.league?.transfers_open_until
+    ? new Date(state.league.transfers_open_until)
+    : null;
+  const showCurrentSquad = txClose && new Date() >= txClose;
+  const displaySquad = showCurrentSquad ? entry.xi_json : (entry.xi_json_gw1 || entry.xi_json);
 
   // Pull total points + per-match breakdowns + fixtures (for the "vs OPP"
   // / "0 (played, no points)" indicators on each pitch slot).
@@ -771,7 +774,7 @@ async function renderMySquad() {
   document.getElementById('mySquadMeta').innerHTML =
     `${escapeHtml(entry.team_name)} · <b style="color:var(--accent);">${pts} pts</b>`;
 
-  const xi = gw1Squad || [];
+  const xi = displaySquad || [];
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
@@ -1039,15 +1042,10 @@ function renderHeroStatus() {
   if (now >= lock && !inTransferWindow) {
     // Hard-locked (transfer window has also closed)
     ctaBuild.style.display = 'none';
-    if (state.myUserId) {
-      el.innerHTML = '';
-      if (banner) banner.style.display = 'none';
-    } else {
-      el.textContent = '🔒 ' + (t('spin.locked')?.replace('🔒 ','') || 'Submissions locked');
-      if (banner) {
-        banner.textContent = t('lock.banner');
-        banner.style.display = 'block';
-      }
+    el.textContent = '🔒 ' + (t('spin.locked')?.replace('🔒 ','') || 'Submissions locked');
+    if (banner) {
+      banner.textContent = t('lock.banner');
+      banner.style.display = 'block';
     }
     return;
   }
