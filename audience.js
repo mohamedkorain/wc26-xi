@@ -758,10 +758,15 @@ async function renderMySquad() {
     state._fixturesCache || fetch('data/fixtures.json').then(r => r.json()).then(d => { state._fixturesCache = Promise.resolve(d); return d; }),
   ]);
   const pts = scoreRows.reduce((sum, row) => sum + (row.points || 0), 0);
+  const displayScoreRows = showCurrentSquad && txClose
+    ? scoreRows.filter(row => row.match_date >= txClose.toISOString().slice(0, 10))
+    : scoreRows;
 
-  // Aggregate per-player stats across all matches scored.
+  // Aggregate per-player stats for the squad phase being displayed. After
+  // the MD2 deadline, the pitch shows the MD2 squad, so player chips must not
+  // carry over MD1 points from the old snapshot.
   const playerStats = {};
-  for (const row of scoreRows) {
+  for (const row of displayScoreRows) {
     for (const [pname, st] of Object.entries(row.breakdown || {})) {
       if (!st || Object.keys(st).length === 0) continue;
       if (!playerStats[pname]) playerStats[pname] = { points: 0, st: {} };
@@ -778,23 +783,20 @@ async function renderMySquad() {
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
-  // Find the GW1 fixture for each nation (so we can show "vs OPP" for
-  // unplayed nations and "0" for nations that played but didn't earn).
+  // Find the fixture for the squad phase being displayed. Before MD2 lock it
+  // is the first applicable fixture after submission; after MD2 lock it is
+  // the first fixture from the MD2 deadline onward.
   const NATION_ALIAS_HS = {
     'DR Congo':'Congo DR', 'Cape Verde':'Cape Verde Islands',
     'Bosnia and Herzegovina':'Bosnia & Herzegovina', 'Turkey':'Türkiye', 'United States':'USA',
   };
-  // For new users (signed up after MD1 kicked off), MD1 fixtures aren't
-  // applicable — the score-day gate skips matches that started before
-  // their entry existed. Find the first fixture that started AFTER they
-  // submitted: pre-lock submitters get their MD1 fixture; late joiners
-  // get MD2.
   const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : null;
+  const fixtureCutoff = showCurrentSquad && txClose ? txClose : submittedAt;
   function firstFixtureFor(nation) {
     const fx = NATION_ALIAS_HS[nation] || nation;
     return (fixturesData?.fixtures || []).find(f =>
       (f.home === fx || f.away === fx)
-      && (!submittedAt || new Date(f.date) > submittedAt)
+      && (!fixtureCutoff || new Date(f.date) >= fixtureCutoff)
     );
   }
 
