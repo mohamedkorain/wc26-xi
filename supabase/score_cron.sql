@@ -8,8 +8,8 @@
 -- scoring_progress, so this is intentionally a retry window rather than a
 -- single HTTP call:
 --
---   07:00/07:15/07:30/07:45/08:00/08:15/08:30/08:45 UTC
---   = 11:00-12:45 Dubai / 10:00-11:45 Cairo
+--   07:00/07:15/.../09:45 UTC
+--   = 11:00-13:45 Dubai / 10:00-12:45 Cairo
 --
 -- Current UTC date and previous UTC date are staggered by 5 minutes. This
 -- catches matches whose kickoff date was yesterday UTC but whose final whistle
@@ -45,6 +45,8 @@ select cron.unschedule('hallo-amrika-score-today')
 where exists (select 1 from cron.job where jobname = 'hallo-amrika-score-today');
 select cron.unschedule('hallo-amrika-score-yesterday')
 where exists (select 1 from cron.job where jobname = 'hallo-amrika-score-yesterday');
+select cron.unschedule('hallo-amrika-score-two-days-ago')
+where exists (select 1 from cron.job where jobname = 'hallo-amrika-score-two-days-ago');
 
 create or replace function private.trigger_score_day(score_date date)
 returns bigint
@@ -108,22 +110,34 @@ $$;
 revoke all on function public.is_score_day_cron_authorized(text) from public, anon, authenticated;
 grant execute on function public.is_score_day_cron_authorized(text) to service_role;
 
--- Current UTC date, every 15 minutes during the morning window.
+-- Current UTC date, every 15 minutes during the morning retry window.
 select cron.schedule(
   'hallo-amrika-score-today',
-  '*/15 7,8 * * *',
+  '*/15 7,8,9 * * *',
   $$select private.trigger_score_day((now() at time zone 'utc')::date);$$
 );
 
 -- Previous UTC date, staggered 5 minutes later during the same window.
 select cron.schedule(
   'hallo-amrika-score-yesterday',
-  '5,20,35,50 7,8 * * *',
+  '5,20,35,50 7,8,9 * * *',
   $$select private.trigger_score_day(((now() at time zone 'utc')::date - 1));$$
+);
+
+-- One missed-day catch-up. Fast when already scored, but protects against an
+-- outage or resource-limit day that did not fully complete yesterday.
+select cron.schedule(
+  'hallo-amrika-score-two-days-ago',
+  '10,25,40,55 9 * * *',
+  $$select private.trigger_score_day(((now() at time zone 'utc')::date - 2));$$
 );
 
 -- Verify
 select jobname, schedule, command
 from cron.job
-where jobname in ('hallo-amrika-score-today', 'hallo-amrika-score-yesterday')
+where jobname in (
+  'hallo-amrika-score-today',
+  'hallo-amrika-score-yesterday',
+  'hallo-amrika-score-two-days-ago'
+)
 order by jobname;
