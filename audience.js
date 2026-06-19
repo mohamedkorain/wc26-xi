@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260619-md3window';
+import { t } from './js/i18n.js?v=20260619-md3label';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -810,6 +810,8 @@ async function renderMySquad() {
   // open, it must still show the frozen MD2 squad until MD3 kicks off.
   const phase = currentSquadPhase();
   const displaySquad = squadForPhase(entry, phase);
+  const titleEl = document.querySelector('#mySquadStrip .strip-title');
+  if (titleEl) titleEl.textContent = t(`mysquad.phase.${phase}`);
 
   // Pull total points + per-match breakdowns + fixtures (for the "vs OPP"
   // / "0 (played, no points)" indicators on each pitch slot).
