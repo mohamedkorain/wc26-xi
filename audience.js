@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260619-md3squadfix';
+import { t } from './js/i18n.js?v=20260619-md3squadfallback';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -837,12 +837,17 @@ async function renderMySquad() {
   const xi = displaySquad || [];
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
+  const cardEl = document.getElementById('mySquadCard');
+  if (!cardEl) return;
 
   if (!starters.length) {
-    document.getElementById('mySquadCard').innerHTML =
-      `<div class="lb-empty">${escapeHtml(t('team.notyet.sub'))}</div>`;
+    cardEl.innerHTML = `<div class="lb-empty">${escapeHtml(t('team.notyet.sub'))}</div>`;
     return;
   }
+
+  // Paint a basic pitch immediately. Optional fixture/score/share details
+  // below can enhance it, but cannot leave the section blank if they fail.
+  cardEl.innerHTML = simpleSquadCardHtml(starters, wild);
 
   // Find the fixture for the squad phase being displayed.
   const NATION_ALIAS_HS = {
@@ -925,7 +930,7 @@ async function renderMySquad() {
   const editLabel = lockPassed ? t('tab.team') : t('mysquad.edit');
 
   const detailsHtml = safeScoreDetails(playerStats, starters);
-  document.getElementById('mySquadCard').innerHTML = `
+  cardEl.innerHTML = `
     <div class="my-squad-card">
       <div class="pitch-wrap">
         <div class="pitch442">
@@ -951,6 +956,52 @@ async function renderMySquad() {
     cta.textContent = t('cta.viewsquad');
     cta.setAttribute('href', '#mySquadStrip');
   }
+}
+
+function simpleSquadCardHtml(starters, wild) {
+  const slotsHtml = starters.map((item, i) => {
+    const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag || item.role || '' };
+    const name = displayLast(item) || '?';
+    const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
+    let flag = '';
+    try {
+      flag = flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' });
+    } catch {}
+    return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;">
+      <div class="ps-flag">${flag}</div>
+      <div class="ps-name" style="font-size:${sz}px;">${escapeHtml(name)}</div>
+      <div class="ps-tag">${escapeHtml(coord.tag || item.role || '')}</div>
+    </div>`;
+  }).join('');
+  let benchHtml = '';
+  if (wild) {
+    let flag = '';
+    try {
+      flag = flagImg(wild.nation_code, { width: 20, cls: 'flag-img', fallback: '' });
+    } catch {}
+    benchHtml = `
+      <div class="bench-label">${t('squad.bench')}</div>
+      <div class="bench-slot filled">
+        <span>${flag} <b>${escapeHtml(displayLast(wild))}</b>
+          <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(wild.club || '')}</span>
+        </span>
+      </div>
+    `;
+  }
+  return `
+    <div class="my-squad-card">
+      <div class="pitch-wrap">
+        <div class="pitch442">
+          <div class="pl-box pl-box-top"></div>
+          <div class="pl-box pl-box-bottom"></div>
+          <div class="pl-circle"></div>
+          <div class="pl-halfway"></div>
+          ${slotsHtml}
+        </div>
+        <div class="bench">${benchHtml}</div>
+      </div>
+    </div>
+  `;
 }
 
 function safeScoreDetails(playerStats, starters) {
