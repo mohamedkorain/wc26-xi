@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260619-mdround';
+import { t } from './js/i18n.js?v=20260619-roundcols';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -207,7 +207,7 @@ async function renderFeaturedLeague() {
     } catch (e) {
       console.error('mini league matchday points fetch failed:', e);
     }
-    for (const row of rows) row.md_points = mdPoints[row.entry_id] || 0;
+    for (const row of rows) row.round_points = mdPoints[row.entry_id] || 0;
 
     const stat = t('mini.stats', {
       n: rows.length,
@@ -226,7 +226,8 @@ async function renderFeaturedLeague() {
         <div>#</div>
         <div>${escapeHtml(t('lb.team'))}</div>
         <div>${escapeHtml(t('lb.owner'))}</div>
-        <div style="text-align:right;">${escapeHtml(t('lb.pts'))}</div>
+        <div style="text-align:right;">${escapeHtml(t('lb.roundpts'))}</div>
+        <div style="text-align:right;">${escapeHtml(t('lb.totalpts'))}</div>
       </div>
       <div class="lb-table mini-league-board">
         ${rows.length ? rows.map((r, i) => {
@@ -238,7 +239,7 @@ async function renderFeaturedLeague() {
               <div class="lb-rank">${i + 1}</div>
               <div class="lb-team">${escapeHtml(r.team_name)}</div>
               <div class="lb-owner">${escapeHtml(r.ownerName || '—')} <span class="mini-global">${escapeHtml(globalRank)}</span></div>
-              <div class="lb-pts">${leaderboardPointsHtml(r.points, r.md_points)}</div>
+              ${leaderboardPointsCells(r.round_points, r.points)}
             </div>
           `;
         }).join('') : `<div class="lb-empty">${escapeHtml(t('mini.empty'))}</div>`}
@@ -1175,21 +1176,24 @@ function movementHtml(r) {
   return `<span class="lb-mv same" title="No change">—</span>`;
 }
 
-function leaderboardPointsHtml(totalPoints, mdPoints, prefix = '') {
-  const total = `${prefix || ''}${displayScoreNumber(totalPoints)}`;
-  if (mdPoints === undefined || mdPoints === null) {
-    return `<span class="lb-pts-main">${total}</span>`;
-  }
-  const md = Number(mdPoints || 0);
-  const mdClass = md > 0 ? 'pos' : md < 0 ? 'neg' : 'zero';
-  const sign = md > 0 ? '+' : '';
+function leaderboardPointsCells(roundPoints, totalPoints) {
   return `
-    <span class="lb-pts-main">${total}</span>
-    <span class="lb-mdpts ${mdClass}" title="${escapeHtml(t('lb.mdpts.title'))}">
-      <span>${escapeHtml(t('lb.mdpts.short'))}</span>
-      <b>${sign}${displayScoreNumber(md)}</b>
-    </span>
+    <div class="lb-round-pts">${displayScoreNumber(roundPoints || 0)}</div>
+    <div class="lb-pts">${displayScoreNumber(totalPoints || 0)}</div>
   `;
+}
+
+async function totalPointsForEntries(entryIds) {
+  const ids = [...new Set((entryIds || []).filter(Boolean))];
+  if (!ids.length) return {};
+  const { data, error } = await supabase
+    .from('leaderboard_totals')
+    .select('entry_id, total_points')
+    .in('entry_id', ids);
+  if (error) throw error;
+  const byEntry = {};
+  for (const row of data || []) byEntry[row.entry_id] = row.total_points || 0;
+  return byEntry;
 }
 
 async function matchdayPointsForEntries(entryIds) {
@@ -1276,7 +1280,7 @@ function paintStaticLeaderboard(rows, emptyText) {
       <div class="lb-rank">${displayScoreNumber(i + 1)}${r.rankMoveHtml || ''}</div>
       <div class="lb-team">${escapeHtml(r.team_name)}</div>
       <div class="lb-owner">${escapeHtml(r.ownerName || '—')}</div>
-      <div class="lb-pts">${leaderboardPointsHtml(r.points, r.md_points, r.pointsPrefix || '')}</div>
+      ${leaderboardPointsCells(r.round_points ?? 0, r.total_points ?? r.points ?? 0)}
     </div>
   `).join('');
   wireLeaderboardRows();
@@ -1300,11 +1304,16 @@ async function renderTodayLeaderboard() {
       .sort((a, b) => (b.points - a.points))
       .slice(0, 50);
     if (lbStats) lbStats.textContent = t('lb.today.stats', { n: displayScoreNumber(Object.keys(byEntry).length) });
-    const entries = await entriesById(totals.map(row => row.entry_id));
+    const entryIds = totals.map(row => row.entry_id);
+    const [entries, totalPoints] = await Promise.all([
+      entriesById(entryIds),
+      totalPointsForEntries(entryIds),
+    ]);
     const rows = totals.map(row => ({
       ...row,
       ...(entries[row.entry_id] || {}),
-      pointsPrefix: row.points > 0 ? '+' : '',
+      round_points: row.points || 0,
+      total_points: totalPoints[row.entry_id] || 0,
     })).filter(row => row.team_name);
     paintStaticLeaderboard(rows, t('lb.today.empty'));
   } catch (e) {
@@ -1366,7 +1375,7 @@ async function renderMoversLeaderboard() {
       user_id: row.user_id,
       team_name: row.team_name,
       ownerName: names[row.user_id] || '—',
-      points: pointsByEntry[row.id] || 0,
+      total_points: pointsByEntry[row.id] || 0,
       rankMoveHtml: `<span class="lb-mv up" title="Moved up ${row.movement}">+${displayScoreNumber(row.movement)}</span>`,
     }));
     let mdPoints = {};
@@ -1375,7 +1384,7 @@ async function renderMoversLeaderboard() {
     } catch (e) {
       console.error('movers matchday points fetch failed:', e);
     }
-    for (const row of rows) row.md_points = mdPoints[row.entry_id] || 0;
+    for (const row of rows) row.round_points = mdPoints[row.entry_id] || 0;
     paintStaticLeaderboard(rows, t('lb.movers.empty'));
   } catch (e) {
     table.innerHTML = `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(e.message || t('lb.movers.empty'))}</div>`;
@@ -1443,7 +1452,7 @@ async function renderLeaderboard(reset = true) {
   }
   try {
     const mdPoints = await matchdayPointsForEntries(newEntryIds);
-    for (const r of rows || []) r.md_points = mdPoints[r.entry_id] || 0;
+    for (const r of rows || []) r.round_points = mdPoints[r.entry_id] || 0;
   } catch (e) {
     console.error('matchday points fetch failed:', e);
   }
@@ -1456,7 +1465,7 @@ async function renderLeaderboard(reset = true) {
       <div class="lb-rank">${i + 1}${movementHtml(r)}</div>
       <div class="lb-team">${escapeHtml(r.team_name)}</div>
       <div class="lb-owner">${escapeHtml(r.ownerName)}</div>
-      <div class="lb-pts">${leaderboardPointsHtml(r.total_points, r.md_points)}</div>
+      ${leaderboardPointsCells(r.round_points, r.total_points)}
     </div>
   `).join('') + renderLoadMore();
 

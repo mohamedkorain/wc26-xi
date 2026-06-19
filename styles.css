@@ -831,7 +831,7 @@ input { font-family: inherit; }
 }
 .lb-head, .lb-row {
   display: grid;
-  grid-template-columns: 44px 1fr 1fr 92px;
+  grid-template-columns: 44px minmax(0, 1.35fr) minmax(0, 1fr) 82px 82px;
   gap: 10px; align-items: center;
   padding: 10px 14px;
 }
@@ -966,45 +966,14 @@ input { font-family: inherit; }
 .lb-team { font-weight: 700; }
 .lb-team .lb-form { color: var(--text-dim); font-weight: 400; font-size: 11px; margin-left: 6px; }
 .lb-owner { color: var(--text-dim); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-round-pts,
 .lb-pts {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  flex-wrap: wrap;
   text-align: right;
   font-weight: 800;
   font-size: 16px;
-  line-height: 1.05;
 }
-.lb-pts-main {
-  display: block;
-}
-.lb-mdpts {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 18px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  border: 1px solid rgba(92,240,194,0.30);
-  background: rgba(92,240,194,0.08);
+.lb-round-pts {
   color: var(--accent);
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-.lb-mdpts.zero {
-  border-color: rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.035);
-  color: var(--text-dim);
-}
-.lb-mdpts.neg {
-  border-color: rgba(255,107,107,0.35);
-  background: rgba(255,107,107,0.08);
-  color: var(--danger);
 }
 .lb-empty {
   color: var(--text-dim); font-size: 13px; padding: 18px; text-align: center;
@@ -1103,17 +1072,19 @@ input { font-family: inherit; }
   }
   .mini-league-card .lb-head,
   .mini-league-card .lb-row {
-    grid-template-columns: 34px minmax(0, 1.2fr) minmax(0, 0.9fr) 66px;
+    grid-template-columns: 30px minmax(0, 1.15fr) minmax(0, 0.85fr) 46px 46px;
     gap: 8px;
     padding-inline: 10px;
   }
-  .lb-pts {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 3px;
+  .lb-head,
+  .lb-row {
+    grid-template-columns: 30px minmax(0, 1.15fr) minmax(0, 0.85fr) 46px 46px;
+    gap: 8px;
+    padding-inline: 10px;
   }
-  [dir="rtl"] .lb-pts {
-    align-items: flex-start;
+  .lb-round-pts,
+  .lb-pts {
+    font-size: 14px;
   }
 }
 
@@ -1197,7 +1168,8 @@ input { font-family: inherit; }
 [dir="rtl"] .cand-pick { letter-spacing: 0; }
 [dir="rtl"] .lb-head,
 [dir="rtl"] .lb-row { direction: rtl; }
-[dir="rtl"] .lb-pts { justify-content: flex-start; text-align: left; }
+[dir="rtl"] .lb-round-pts,
+[dir="rtl"] .lb-pts { text-align: left; }
 [dir="rtl"] .role-chip { letter-spacing: 0; }
 [dir="rtl"] .hero-cta.ghost { margin-left: 0; margin-right: 10px; }
 
