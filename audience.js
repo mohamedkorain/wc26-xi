@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260619-mdpts';
+import { t } from './js/i18n.js?v=20260619-mdround';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -363,6 +363,18 @@ const AR_NATION_NAMES = {
 
 function displayNationName(name) {
   return document.documentElement.lang === 'ar' ? (AR_NATION_NAMES[name] || name) : name;
+}
+
+const ROSTER_TO_FIXTURE_NATION = {
+  'DR Congo': 'Congo DR',
+  'Cape Verde': 'Cape Verde Islands',
+  'Bosnia and Herzegovina': 'Bosnia & Herzegovina',
+  'Turkey': 'Türkiye',
+  'United States': 'USA',
+};
+
+function fixtureNationName(name) {
+  return ROSTER_TO_FIXTURE_NATION[name] || name;
 }
 
 function displayScoreNumber(value) {
@@ -1183,18 +1195,71 @@ function leaderboardPointsHtml(totalPoints, mdPoints, prefix = '') {
 async function matchdayPointsForEntries(entryIds) {
   const ids = [...new Set((entryIds || []).filter(Boolean))];
   if (!ids.length) return {};
-  const matchday = await getMatchdayContext();
-  const dates = matchday.dbDates || [];
-  if (!dates.length) return Object.fromEntries(ids.map(id => [id, 0]));
+
+  const [fixturesData, matchesRes, entriesRes] = await Promise.all([
+    loadFixturesData(),
+    supabase
+      .from('matches')
+      .select('external_id, scored_at')
+      .order('date', { ascending: false })
+      .limit(180),
+    supabase
+      .from('entries')
+      .select('id, xi_json')
+      .in('id', ids),
+  ]);
+  if (matchesRes.error) throw matchesRes.error;
+  if (entriesRes.error) throw entriesRes.error;
+
+  const fixtures = fixturesData.fixtures || [];
+  const txClose = state.league?.transfers_open_until
+    ? new Date(state.league.transfers_open_until)
+    : null;
+  const anchor = fixtures.find(f => !txClose || new Date(f.date) >= txClose)
+    || fixtures.find(f => new Date(f.date) >= new Date())
+    || fixtures[fixtures.length - 1];
+  const roundName = anchor?.round || '';
+  const matchById = {};
+  for (const m of matchesRes.data || []) matchById[String(m.external_id)] = m;
+
+  const fixtureByNation = {};
+  const scoredDates = new Set();
+  for (const f of fixtures.filter(f => f.round === roundName)) {
+    const scored = Boolean(matchById[String(f.id)]?.scored_at);
+    const normalized = { ...f, scored, db_date: fixtureDbDate(f) };
+    fixtureByNation[f.home] = normalized;
+    fixtureByNation[f.away] = normalized;
+    if (scored) scoredDates.add(normalized.db_date);
+  }
+  const dates = [...scoredDates];
+  const byEntry = Object.fromEntries(ids.map(id => [id, 0]));
+  if (!dates.length) return byEntry;
+
+  const currentPlayersByEntry = {};
+  for (const entry of entriesRes.data || []) {
+    const players = {};
+    for (const slot of entry.xi_json || []) {
+      if (slot?.wild) continue;
+      players[slot.name] = slot;
+    }
+    currentPlayersByEntry[entry.id] = players;
+  }
+
   const { data, error } = await supabase
     .from('scores')
-    .select('entry_id, points')
+    .select('entry_id, match_date, breakdown')
     .in('entry_id', ids)
     .in('match_date', dates);
   if (error) throw error;
-  const byEntry = Object.fromEntries(ids.map(id => [id, 0]));
   for (const row of data || []) {
-    byEntry[row.entry_id] = (byEntry[row.entry_id] || 0) + (row.points || 0);
+    const currentPlayers = currentPlayersByEntry[row.entry_id] || {};
+    for (const [pname, st] of Object.entries(row.breakdown || {})) {
+      const slot = currentPlayers[pname];
+      if (!slot) continue;
+      const fixture = fixtureByNation[fixtureNationName(slot.nation)];
+      if (!fixture?.scored || fixture.db_date !== row.match_date) continue;
+      byEntry[row.entry_id] += pointsFromStatLine(st);
+    }
   }
   return byEntry;
 }

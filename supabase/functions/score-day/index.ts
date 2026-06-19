@@ -224,11 +224,10 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
   const start = Date.now();
   const TIME_BUDGET_MS = 45_000;    // return before Supabase's worker compute cap
 
-  // GW-SNAPSHOT: matches before MD2 first kickoff use xi_json_gw1 (the
-  // pre-transfer lineup) so transferred-in players don't retroactively
-  // earn GW1 points.
-  const MD2_FIRST_KICKOFF = '2026-06-18';
-  const useGw1Snapshot = dateStr < MD2_FIRST_KICKOFF;
+  // GW-SNAPSHOT: choose the scoring squad per fixture kickoff, not per
+  // calendar date. 2026-06-18 contains both Colombia-Uzbekistan before the
+  // MD2 deadline and MD2 fixtures after it.
+  const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
 
   // Collect playing nations once
   const playingNations = new Set<string>();
@@ -265,10 +264,10 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
     const scoresToUpsert: any[] = [];
     const staleZeroScoreIds: string[] = [];
     for (const entry of batch) {
-      const effectiveXi = useGw1Snapshot
-        ? (entry.xi_json_gw1 || entry.xi_json || [])
-        : (entry.xi_json || []);
-      const starters = effectiveXi.filter((x: any) => !x.wild);
+      const gw1Xi = entry.xi_json_gw1
+        || ((entry.transfers_used || 0) === 0 ? entry.xi_json : []);
+      const gw1Starters = (gw1Xi || []).filter((x: any) => !x.wild);
+      const currentStarters = (entry.xi_json || []).filter((x: any) => !x.wild);
       const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : null;
 
       const breakdown: Record<string, any> = {};
@@ -279,6 +278,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
         // kickoff didn't exist as a squad when it played).
         if (submittedAt && submittedAt > m.kickoff) continue;
 
+        const starters = m.kickoff < MD2_FIRST_KICKOFF ? gw1Starters : currentStarters;
         for (const slot of starters) {
           if (slot.nation !== m.homeNation && slot.nation !== m.awayNation) continue;
           const expectedSide = slot.nation === m.homeNation ? 'home' : 'away';
