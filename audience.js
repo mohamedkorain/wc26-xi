@@ -770,22 +770,8 @@ async function renderMySquad() {
   const matchById = {};
   for (const m of matchesRes.data || []) matchById[String(m.external_id)] = m;
   const pts = scoreRows.reduce((sum, row) => sum + (row.points || 0), 0);
-  const displayScoreRows = showCurrentSquad && txClose
-    ? scoreRows.filter(row => row.match_date >= txClose.toISOString().slice(0, 10))
-    : scoreRows;
-
-  // Aggregate per-player stats for the squad phase being displayed. After
-  // the MD2 deadline, the pitch shows the MD2 squad, so player chips must not
-  // carry over MD1 points from the old snapshot.
-  const playerStats = {};
-  for (const row of displayScoreRows) {
-    for (const [pname, st] of Object.entries(row.breakdown || {})) {
-      if (!st || Object.keys(st).length === 0) continue;
-      if (!playerStats[pname]) playerStats[pname] = { points: 0, st: {} };
-      playerStats[pname].points += pointsFromStatLine(st);
-      addStatTotals(playerStats[pname].st, st);
-    }
-  }
+  const scoreRowByDate = {};
+  for (const row of scoreRows) scoreRowByDate[row.match_date] = row;
 
   document.getElementById('mySquadStrip').style.display = '';
   document.getElementById('mySquadMeta').innerHTML =
@@ -811,21 +797,27 @@ async function renderMySquad() {
       && (!fixtureCutoff || new Date(f.date) >= fixtureCutoff)
     );
   }
+  function statsForFixture(item, fixture, fixtureScored) {
+    if (!fixture || !fixtureScored) return null;
+    const row = scoreRowByDate[(fixture.date || '').slice(0, 10)];
+    const st = row?.breakdown?.[item.name];
+    if (!st || Object.keys(st).length === 0) return null;
+    return { points: pointsFromStatLine(st), st };
+  }
 
   // Pitch HTML — show +pts if scored, "0" if their nation played but they
   // earned nothing, otherwise "vs OPP" for the upcoming match.
   const isAr = document.documentElement.lang === 'ar';
   const ptsLabel = isAr ? 'نقاط' : 'pts';
-  const now = new Date();
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     const name = displayLast(item) || '?';
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
     const extra = name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : '';
-    const ps = playerStats[item.name];
     const fixture = firstFixtureFor(item.nation);
     const opp = fixture ? (fixture.home === (NATION_ALIAS_HS[item.nation] || item.nation) ? fixture.away : fixture.home) : '';
     const fixtureScored = fixture ? Boolean(matchById[String(fixture.id)]?.scored_at) : false;
+    const ps = statsForFixture(item, fixture, fixtureScored);
     const vsLine = opp ? `<div class="ps-next">vs ${escapeHtml(opp)}</div>` : '';
     let foot = '';
     let tooltipAttr = '';
@@ -1552,29 +1544,14 @@ async function openSquadModal(entryId) {
   const scoreRows = scoresRes.data || [];
   const matchById = {};
   for (const m of matchesRes.data || []) matchById[String(m.external_id)] = m;
+  const scoreRowByDate = {};
+  for (const row of scoreRows) scoreRowByDate[row.match_date] = row;
 
   const txClose = state.league?.transfers_open_until
     ? new Date(state.league.transfers_open_until)
     : null;
   const showCurrentSquad = txClose && new Date() >= txClose;
-  const displayScoreRows = showCurrentSquad && txClose
-    ? scoreRows.filter(row => row.match_date >= txClose.toISOString().slice(0, 10))
-    : scoreRows;
-
-  // Aggregate player points for the squad phase being displayed. After the
-  // MD2 deadline, public squad modals show the current MD2 squad, so do not
-  // carry over MD1 points from a previous squad snapshot.
-  const playerStats = {};   // playerName → {points, matches: [{date, breakdown, pts}]}
-  for (const row of displayScoreRows) {
-    for (const [pname, st] of Object.entries(row.breakdown || {})) {
-      if (!st || Object.keys(st).length === 0) continue;
-      if (!playerStats[pname]) playerStats[pname] = { points: 0, lines: [], st: {} };
-      const pts = pointsFromStatLine(st);
-      playerStats[pname].points += pts;
-      addStatTotals(playerStats[pname].st, st);
-      playerStats[pname].lines.push({ date: row.match_date, pts, st });
-    }
-  }
+  const playerStats = {};
 
   const totalPts = scoreRows.reduce((s, r) => s + (r.points || 0), 0);
   // Public squad view should match the scoring phase. Before MD2 kickoff,
@@ -1610,7 +1587,16 @@ async function openSquadModal(entryId) {
     const fxNation = FIXTURE_NATION_ALIAS[nation] || nation;
     const opponent = f.home === fxNation ? f.away : f.home;
     const dbMatch = matchById[String(f.id)] || {};
-    return { label: `vs ${escapeHtml(opponent)}`, scored: Boolean(dbMatch.scored_at) };
+    return { fixture: f, label: `vs ${escapeHtml(opponent)}`, scored: Boolean(dbMatch.scored_at) };
+  }
+  function statsForFixture(item, match) {
+    if (!match?.fixture || !match.scored) return null;
+    const row = scoreRowByDate[(match.fixture.date || '').slice(0, 10)];
+    const st = row?.breakdown?.[item.name];
+    if (!st || Object.keys(st).length === 0) return null;
+    const stats = { points: pointsFromStatLine(st), st };
+    playerStats[item.name] = stats;
+    return stats;
   }
 
   const isAr = document.documentElement.lang === 'ar';
@@ -1620,31 +1606,22 @@ async function openSquadModal(entryId) {
     const name = displayLast(item) || '?';
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
     const extra = name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : '';
-    const stats = playerStats[item.name];
-    const hasPlayed = stats && stats.lines.length > 0;
+    const next = nextMatchFor(item.nation);
+    const stats = statsForFixture(item, next);
     let foot = '';
     let tooltipAttr = '';
-    if (hasPlayed) {
+    if (stats) {
       const pts = stats.points;
       const cls = pts > 0 ? 'pos' : pts < 0 ? 'neg' : '';
       foot = `<div class="ps-pts ${cls}">${pts >= 0 ? '+' : ''}${pts}</div>`;
-      // Aggregate stats across this player's lines for a single localized
-      // tooltip ("Win, 90', Goal" / "فوز، ٩٠ دقيقة، جول")
-      const agg = {};
-      for (const l of stats.lines) {
-        addStatTotals(agg, l.st);
-      }
-      const txt = describeStatTextLocal(agg);
+      const txt = describeStatTextLocal(stats.st);
       const tip = `${pts >= 0 ? '+' : ''}${pts} ${ptsLabel}${txt ? '  ·  ' + txt : ''}`;
       tooltipAttr = ` title="${escapeHtml(tip)}"`;
-    } else {
-      const next = nextMatchFor(item.nation);
-      if (next) {
-        // Scored, no points → just "0". Not scored yet → just "vs OPP".
-        foot = next.scored
-          ? `<div class="ps-pts" style="color:var(--text-dim);">0</div>`
-          : `<div class="ps-next">${next.label}</div>`;
-      }
+    } else if (next) {
+      // Scored, no points → just "0". Not scored yet → just "vs OPP".
+      foot = next.scored
+        ? `<div class="ps-pts" style="color:var(--text-dim);">0</div>`
+        : `<div class="ps-next">${next.label}</div>`;
     }
     return `<div class="pitch-slot filled"${tooltipAttr} style="left:${coord.x}%;top:${coord.y}%;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>

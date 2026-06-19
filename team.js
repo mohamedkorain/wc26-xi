@@ -574,28 +574,8 @@ function renderEntry() {
     </div>
   `;
 
-  const txClose = state.league?.transfers_open_until
-    ? new Date(state.league.transfers_open_until)
-    : null;
-  const showCurrentSquad = txClose && new Date() >= txClose;
-  const displayScoreRows = showCurrentSquad && txClose
-    ? state.scores.filter(row => row.match_date >= txClose.toISOString().slice(0, 10))
-    : state.scores;
-
-  // Aggregate per-player stats for the squad phase being displayed. After
-  // the MD2 deadline, the pitch shows the current MD2 squad, so player chips
-  // must not carry over MD1 points from the old snapshot.
-  const playerStats = {};
-  for (const row of displayScoreRows) {
-    for (const [pname, st] of Object.entries(row.breakdown || {})) {
-      if (!st || Object.keys(st).length === 0) continue;
-      if (!playerStats[pname]) playerStats[pname] = { points: 0, st: {} };
-      const pts = (st.win||0) + (st.full90||0) + (st.goals||0) + (st.assists||0) + (st.cleanSheet||0) + (st.mvp||0) - (st.red ? 1 : 0);
-      playerStats[pname].points += pts;
-      for (const k of ['goals','assists','cleanSheet','win','full90','mvp']) playerStats[pname].st[k] = (playerStats[pname].st[k] || 0) + (st[k] || 0);
-      if (st.red) playerStats[pname].st.red = true;
-    }
-  }
+  const scoreRowByDate = {};
+  for (const row of state.scores) scoreRowByDate[row.match_date] = row;
 
   // Pitch
   const xi = state.entry.xi_json || [];
@@ -606,7 +586,7 @@ function renderEntry() {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     const name = displayLast(item) || '?';
     const next = nextGameFor(item.nation);
-    const stats = playerStats[item.name];
+    const stats = statsForFixture(item, next, scoreRowByDate);
     let foot = '';
     if (stats) {
       const cls = stats.points > 0 ? 'pos' : stats.points < 0 ? 'neg' : '';
@@ -728,7 +708,30 @@ function nextGameFor(nation) {
   if (!upcoming) return null;
   const opponent = upcoming.home === fxNation ? upcoming.away : upcoming.home;
   const dbMatch = state.matches.find(m => String(m.external_id) === String(upcoming.id)) || {};
-  return { label: `vs ${opponent}`, live: dbMatch.status === 'live', scored: Boolean(dbMatch.scored_at) };
+  return { fixture: upcoming, label: `vs ${opponent}`, live: dbMatch.status === 'live', scored: Boolean(dbMatch.scored_at) };
+}
+
+function redCardCount(st) {
+  if (!st?.red) return 0;
+  return Math.abs(Number(st.red)) || 1;
+}
+
+function pointsFromStatLine(st) {
+  return (st.win || 0)
+    + (st.full90 || 0)
+    + (st.goals || 0)
+    + (st.assists || 0)
+    + (st.cleanSheet || 0)
+    + (st.mvp || 0)
+    - redCardCount(st);
+}
+
+function statsForFixture(item, match, scoreRowByDate) {
+  if (!match?.fixture || !match.scored) return null;
+  const row = scoreRowByDate[(match.fixture.date || '').slice(0, 10)];
+  const st = row?.breakdown?.[item.name];
+  if (!st || Object.keys(st).length === 0) return null;
+  return { points: pointsFromStatLine(st), st };
 }
 
 function displayLast(item) {
