@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260619-md3label';
+import { t } from './js/i18n.js?v=20260619-md3squadfix';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -838,6 +838,12 @@ async function renderMySquad() {
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
+  if (!starters.length) {
+    document.getElementById('mySquadCard').innerHTML =
+      `<div class="lb-empty">${escapeHtml(t('team.notyet.sub'))}</div>`;
+    return;
+  }
+
   // Find the fixture for the squad phase being displayed.
   const NATION_ALIAS_HS = {
     'DR Congo':'Congo DR', 'Cape Verde':'Cape Verde Islands',
@@ -864,35 +870,40 @@ async function renderMySquad() {
   const isAr = document.documentElement.lang === 'ar';
   const ptsLabel = isAr ? 'نقاط' : 'pts';
   const slotsHtml = starters.map((item, i) => {
-    const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
-    const name = displayLast(item) || '?';
-    const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
-    const extra = name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : '';
-    const fixture = firstFixtureFor(item.nation);
-    const opp = fixture ? (fixture.home === (NATION_ALIAS_HS[item.nation] || item.nation) ? fixture.away : fixture.home) : '';
-    const fixtureScored = fixture ? Boolean(matchById[String(fixture.id)]?.scored_at) : false;
-    const ps = statsForFixture(item, fixture, fixtureScored);
-    const vsLine = opp ? `<div class="ps-next">vs ${escapeHtml(opp)}</div>` : '';
-    let foot = '';
-    let tooltipAttr = '';
-    if (ps) {
-      const cls = ps.points > 0 ? 'pos' : ps.points < 0 ? 'neg' : '';
-      foot = `<div class="ps-pts ${cls}">${ps.points >= 0 ? '+' : ''}${ps.points}</div>${vsLine}`;
-      const txt = describeStatTextLocal(ps.st);
-      tooltipAttr = ` title="${escapeHtml((ps.points >= 0 ? '+' : '') + ps.points + ' ' + ptsLabel + (txt ? '  ·  ' + txt : ''))}"`;
-    } else if (fixture) {
-      // Nation's current-phase fixture has been scored but player earned 0
-      // → show "0". If not scored yet, keep showing the fixture.
-      foot = fixtureScored
-        ? `<div class="ps-pts" style="color:var(--text-dim);">0</div>${vsLine}`
-        : vsLine;
+    try {
+      const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
+      const name = displayLast(item) || '?';
+      const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
+      const extra = name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : '';
+      const fixture = firstFixtureFor(item.nation);
+      const opp = fixture ? (fixture.home === (NATION_ALIAS_HS[item.nation] || item.nation) ? fixture.away : fixture.home) : '';
+      const fixtureScored = fixture ? Boolean(matchById[String(fixture.id)]?.scored_at) : false;
+      const ps = statsForFixture(item, fixture, fixtureScored);
+      const vsLine = opp ? `<div class="ps-next">vs ${escapeHtml(opp)}</div>` : '';
+      let foot = '';
+      let tooltipAttr = '';
+      if (ps) {
+        const cls = ps.points > 0 ? 'pos' : ps.points < 0 ? 'neg' : '';
+        foot = `<div class="ps-pts ${cls}">${ps.points >= 0 ? '+' : ''}${ps.points}</div>${vsLine}`;
+        const txt = describeStatTextLocal(ps.st);
+        tooltipAttr = ` title="${escapeHtml((ps.points >= 0 ? '+' : '') + ps.points + ' ' + ptsLabel + (txt ? '  ·  ' + txt : ''))}"`;
+      } else if (fixture) {
+        // Nation's current-phase fixture has been scored but player earned 0
+        // → show "0". If not scored yet, keep showing the fixture.
+        foot = fixtureScored
+          ? `<div class="ps-pts" style="color:var(--text-dim);">0</div>${vsLine}`
+          : vsLine;
+      }
+      return `<div class="pitch-slot filled"${tooltipAttr} style="left:${coord.x}%;top:${coord.y}%;">
+        <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
+        <div class="ps-name" style="font-size:${sz}px;${extra}">${escapeHtml(name)}</div>
+        <div class="ps-tag">${coord.tag}</div>
+        ${foot}
+      </div>`;
+    } catch (e) {
+      console.error('pitch slot render failed:', item, e);
+      return '';
     }
-    return `<div class="pitch-slot filled"${tooltipAttr} style="left:${coord.x}%;top:${coord.y}%;">
-      <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
-      <div class="ps-name" style="font-size:${sz}px;${extra}">${escapeHtml(name)}</div>
-      <div class="ps-tag">${coord.tag}</div>
-      ${foot}
-    </div>`;
   }).join('');
 
   const benchHtml = wild ? `
@@ -913,6 +924,7 @@ async function renderMySquad() {
   const editHref = lockPassed ? 'team.html' : 'build.html';
   const editLabel = lockPassed ? t('tab.team') : t('mysquad.edit');
 
+  const detailsHtml = safeScoreDetails(playerStats, starters);
   document.getElementById('mySquadCard').innerHTML = `
     <div class="my-squad-card">
       <div class="pitch-wrap">
@@ -925,7 +937,7 @@ async function renderMySquad() {
         </div>
         <div class="bench">${benchHtml}</div>
       </div>
-      ${renderScoreDetails(playerStats, starters)}
+      ${detailsHtml}
       <div style="margin-top:14px;text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
         <a href="https://wa.me/?text=${shareText}" target="_blank" rel="noopener" class="ghost-btn" style="text-decoration:none;background:#25D366;color:#0a0a12;border-color:#25D366;">${t('share.whatsapp')}</a>
         <a href="${editHref}" class="ghost-btn" style="text-decoration:none;">${editLabel}</a>
@@ -938,6 +950,15 @@ async function renderMySquad() {
   if (cta) {
     cta.textContent = t('cta.viewsquad');
     cta.setAttribute('href', '#mySquadStrip');
+  }
+}
+
+function safeScoreDetails(playerStats, starters) {
+  try {
+    return renderScoreDetails(playerStats, starters);
+  } catch (e) {
+    console.error('score details render failed:', e);
+    return '';
   }
 }
 
