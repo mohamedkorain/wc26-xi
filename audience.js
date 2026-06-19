@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260619-md3squadfallback';
+import { t } from './js/i18n.js?v=20260619-mdpointsmodal';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -826,13 +826,16 @@ async function renderMySquad() {
   ]);
   const matchById = {};
   for (const m of matchesRes.data || []) matchById[String(m.external_id)] = m;
-  const pts = scoreRows.reduce((sum, row) => sum + (row.points || 0), 0);
   const scoreRowByDate = {};
   for (const row of scoreRows) scoreRowByDate[row.match_date] = row;
+  const phasePoints = phasePointsFromRows(scoreRows, fixturesData, entry, phase);
+  const phasePointsLabel = document.documentElement.lang === 'ar'
+    ? `${displayScoreNumber(phasePoints)} نقاط الجولة`
+    : `${displayScoreNumber(phasePoints)} round pts`;
 
   document.getElementById('mySquadStrip').style.display = '';
   document.getElementById('mySquadMeta').innerHTML =
-    `${escapeHtml(entry.team_name)} · <b style="color:var(--accent);">${pts} pts</b>`;
+    `${escapeHtml(entry.team_name)} · <b style="color:var(--accent);">${escapeHtml(phasePointsLabel)}</b>`;
 
   const xi = displaySquad || [];
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
@@ -1030,6 +1033,29 @@ function pointsFromStatLine(st) {
     + (st.cleanSheet || 0)
     + (st.mvp || 0)
     - redCardCount(st);
+}
+
+function phasePointsFromRows(scoreRows, fixturesData, entry, phase = currentSquadPhase()) {
+  const roundName = roundNameForPhase(fixturesData?.fixtures || [], phase);
+  const roundDates = new Set((fixturesData?.fixtures || [])
+    .filter(f => f.round === roundName)
+    .map(fixtureDbDate));
+  if (!roundDates.size) return 0;
+
+  const activePlayers = new Set((squadForPhase(entry, phase) || [])
+    .filter(slot => !slot?.wild)
+    .map(slot => slot.name));
+  if (!activePlayers.size) return 0;
+
+  let total = 0;
+  for (const row of scoreRows || []) {
+    if (!roundDates.has(row.match_date)) continue;
+    for (const [playerName, st] of Object.entries(row.breakdown || {})) {
+      if (!activePlayers.has(playerName)) continue;
+      total += pointsFromStatLine(st || {});
+    }
+  }
+  return total;
 }
 
 function addStatTotals(into, st) {
@@ -1789,12 +1815,12 @@ async function openSquadModal(entryId) {
   const phase = currentSquadPhase();
   const playerStats = {};
 
-  const totalPts = scoreRows.reduce((s, r) => s + (r.points || 0), 0);
   // Public squad view should match the scoring phase. During the MD3 transfer
   // window, show the frozen MD2 squad until MD3 actually kicks off.
   const xi = squadForPhase(entry, phase);
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
+  const phasePoints = phasePointsFromRows(scoreRows, fixturesData, entry, phase);
 
   // Some nations are spelled differently in fixtures.json vs xi_json roster.
   // Map our roster spelling → the fixtures.json spelling.
@@ -1876,11 +1902,14 @@ async function openSquadModal(entryId) {
 
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
+  const modalPointsLabel = isAr
+    ? `${displayScoreNumber(phasePoints)} نقاط الجولة`
+    : `${displayScoreNumber(phasePoints)} round pts`;
   modal.innerHTML = `
     <div class="modal-card" style="max-width:560px;">
       <button class="modal-x" id="squadModalX">×</button>
       <h2 class="modal-title">${escapeHtml(entry.team_name)}</h2>
-      <p class="modal-sub"><b style="color:var(--accent);">${totalPts} pts</b></p>
+      <p class="modal-sub"><b style="color:var(--accent);">${escapeHtml(modalPointsLabel)}</b></p>
       <div class="pitch-wrap">
         <div class="pitch442" style="aspect-ratio:1/1.25;width:100%;max-width:460px;margin:0 auto;">
           <div class="pl-box pl-box-top"></div>
