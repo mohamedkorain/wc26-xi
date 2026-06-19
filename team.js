@@ -34,6 +34,7 @@ const state = {
   league: null,
   fixtures: [],
   scores: [],
+  matches: [],
   nations: {},
   players: [],   // flat list, loaded lazily on first transfer-modal open
 };
@@ -49,7 +50,7 @@ const MAX_TRANSFERS = 2;
     return;
   }
 
-  const [entryRes, leagueRes, fixturesRes, teamsRes] = await Promise.all([
+  const [entryRes, leagueRes, fixturesRes, teamsRes, matchesRes] = await Promise.all([
     supabase.from('entries')
       .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, transfers_used')
       .eq('league_id', HALO_LEAGUE_ID).eq('user_id', u.id).maybeSingle(),
@@ -58,6 +59,11 @@ const MAX_TRANSFERS = 2;
       .eq('id', HALO_LEAGUE_ID).maybeSingle(),
     fetch('data/fixtures.json').then(r => r.json()),
     fetch('data/teams.json').then(r => r.json()),
+    supabase
+      .from('matches')
+      .select('external_id, date, home, away, status, home_goals, away_goals, scored_at')
+      .order('date', { ascending: false })
+      .limit(180),
   ]);
   state.league = leagueRes.data;
 
@@ -74,6 +80,7 @@ const MAX_TRANSFERS = 2;
 
   state.entry = entryRes.data;
   state.fixtures = fixturesRes.fixtures || [];
+  state.matches = matchesRes.data || [];
   for (const tm of teamsRes.teams) state.nations[tm.name] = tm;
 
   const { data: scoreRows } = await supabase
@@ -567,10 +574,19 @@ function renderEntry() {
     </div>
   `;
 
-  // Aggregate per-player stats from this entry's scores so each pitch slot
-  // can show its total points + the icon breakdown of how those were earned.
+  const txClose = state.league?.transfers_open_until
+    ? new Date(state.league.transfers_open_until)
+    : null;
+  const showCurrentSquad = txClose && new Date() >= txClose;
+  const displayScoreRows = showCurrentSquad && txClose
+    ? state.scores.filter(row => row.match_date >= txClose.toISOString().slice(0, 10))
+    : state.scores;
+
+  // Aggregate per-player stats for the squad phase being displayed. After
+  // the MD2 deadline, the pitch shows the current MD2 squad, so player chips
+  // must not carry over MD1 points from the old snapshot.
   const playerStats = {};
-  for (const row of state.scores) {
+  for (const row of displayScoreRows) {
     for (const [pname, st] of Object.entries(row.breakdown || {})) {
       if (!st || Object.keys(st).length === 0) continue;
       if (!playerStats[pname]) playerStats[pname] = { points: 0, st: {} };
@@ -586,14 +602,20 @@ function renderEntry() {
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
-  // /team.html is the next-GW view, so every slot shows the player's
-  // upcoming match — never past points. Past performance is shown only
-  // on the homepage (which renders the GW1 lineup with its points).
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
     const name = displayLast(item) || '?';
     const next = nextGameFor(item.nation);
-    const foot = next ? `<div class="next-game ${next.live ? 'live' : ''}">${next.label}</div>` : '';
+    const stats = playerStats[item.name];
+    let foot = '';
+    if (stats) {
+      const cls = stats.points > 0 ? 'pos' : stats.points < 0 ? 'neg' : '';
+      foot = `<div class="ps-pts ${cls}">${stats.points >= 0 ? '+' : ''}${stats.points}</div>`;
+    } else if (next) {
+      foot = next.scored
+        ? `<div class="ps-pts" style="color:var(--text-dim);">0</div>`
+        : `<div class="next-game ${next.live ? 'live' : ''}">${next.label}</div>`;
+    }
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
     return `<div class="pitch-slot filled" style="left:${coord.x}%;top:${coord.y}%;direction:ltr;">
       <div class="ps-flag">${flagImg(item.nation_code, { width: 40, cls: 'flag-img-mid', fallback: '' })}</div>
@@ -692,12 +714,9 @@ const FIXTURE_NATION_ALIAS = {
   'Turkey':                'Türkiye',
   'United States':         'USA',
 };
-// /team.html is the FORWARD-LOOKING view (next gameweek's squad + fixtures).
-// So for each player we deliberately skip fixtures inside the in-progress
-// gameweek and surface their MD2+ fixture instead. The cutoff is the
-// transfer-window close (= MD2 first kickoff). If the player's nation has
-// no fixture beyond that (eliminated early), fall back to their nearest
-// upcoming match so the row isn't blank.
+// /team.html shows the current squad phase. After the MD2 transfer deadline,
+// each player resolves to their current-MD fixture: scored fixtures show
+// points/0, and unscored fixtures stay as "vs OPP".
 function nextGameFor(nation) {
   const fxNation = FIXTURE_NATION_ALIAS[nation] || nation;
   const txClose = state.league?.transfers_open_until
@@ -708,7 +727,8 @@ function nextGameFor(nation) {
     || state.fixtures.find(f => isNation(f) && new Date(f.date) > new Date());
   if (!upcoming) return null;
   const opponent = upcoming.home === fxNation ? upcoming.away : upcoming.home;
-  return { label: `vs ${opponent}`, live: false };
+  const dbMatch = state.matches.find(m => String(m.external_id) === String(upcoming.id)) || {};
+  return { label: `vs ${opponent}`, live: dbMatch.status === 'live', scored: Boolean(dbMatch.scored_at) };
 }
 
 function displayLast(item) {

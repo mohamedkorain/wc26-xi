@@ -758,10 +758,17 @@ async function renderMySquad() {
 
   // Pull total points + per-match breakdowns + fixtures (for the "vs OPP"
   // / "0 (played, no points)" indicators on each pitch slot).
-  const [scoreRows, fixturesData] = await Promise.all([
+  const [scoreRows, fixturesData, matchesRes] = await Promise.all([
     supabase.from('scores').select('match_date, points, breakdown').eq('entry_id', entry.id).then(r => r.data || []),
     state._fixturesCache || fetch('data/fixtures.json').then(r => r.json()).then(d => { state._fixturesCache = Promise.resolve(d); return d; }),
+    supabase
+      .from('matches')
+      .select('external_id, date, home, away, status, home_goals, away_goals, scored_at')
+      .order('date', { ascending: false })
+      .limit(180),
   ]);
+  const matchById = {};
+  for (const m of matchesRes.data || []) matchById[String(m.external_id)] = m;
   const pts = scoreRows.reduce((sum, row) => sum + (row.points || 0), 0);
   const displayScoreRows = showCurrentSquad && txClose
     ? scoreRows.filter(row => row.match_date >= txClose.toISOString().slice(0, 10))
@@ -818,6 +825,7 @@ async function renderMySquad() {
     const ps = playerStats[item.name];
     const fixture = firstFixtureFor(item.nation);
     const opp = fixture ? (fixture.home === (NATION_ALIAS_HS[item.nation] || item.nation) ? fixture.away : fixture.home) : '';
+    const fixtureScored = fixture ? Boolean(matchById[String(fixture.id)]?.scored_at) : false;
     const vsLine = opp ? `<div class="ps-next">vs ${escapeHtml(opp)}</div>` : '';
     let foot = '';
     let tooltipAttr = '';
@@ -827,10 +835,9 @@ async function renderMySquad() {
       const txt = describeStatTextLocal(ps.st);
       tooltipAttr = ` title="${escapeHtml((ps.points >= 0 ? '+' : '') + ps.points + ' ' + ptsLabel + (txt ? '  ·  ' + txt : ''))}"`;
     } else if (fixture) {
-      const past = new Date(fixture.date) <= now;
-      // Nation played but the player earned 0 → show "0" + the current-MD
-      // opponent line. Nation hasn't played yet → just the opponent line.
-      foot = past
+      // Nation's current-phase fixture has been scored but player earned 0
+      // → show "0". If not scored yet, keep showing the fixture.
+      foot = fixtureScored
         ? `<div class="ps-pts" style="color:var(--text-dim);">0</div>${vsLine}`
         : vsLine;
     }
@@ -1529,19 +1536,36 @@ function paintTopPlayers() {
 }
 
 async function openSquadModal(entryId) {
-  const [entryRes, scoresRes, fixturesRes] = await Promise.all([
+  const [entryRes, scoresRes, fixturesRes, matchesRes] = await Promise.all([
     supabase.from('entries').select('*').eq('id', entryId).maybeSingle(),
     supabase.from('scores').select('match_date, points, breakdown').eq('entry_id', entryId),
     state._fixturesCache || fetch('data/fixtures.json').then(r => r.json()).then(d => { state._fixturesCache = Promise.resolve(d); return d; }),
+    supabase
+      .from('matches')
+      .select('external_id, date, home, away, status, home_goals, away_goals, scored_at')
+      .order('date', { ascending: false })
+      .limit(180),
   ]);
   const entry = entryRes.data;
   if (!entry) return;
   const fixturesData = fixturesRes;
   const scoreRows = scoresRes.data || [];
+  const matchById = {};
+  for (const m of matchesRes.data || []) matchById[String(m.external_id)] = m;
 
-  // Aggregate player points across all this entry's scored matches
+  const txClose = state.league?.transfers_open_until
+    ? new Date(state.league.transfers_open_until)
+    : null;
+  const showCurrentSquad = txClose && new Date() >= txClose;
+  const displayScoreRows = showCurrentSquad && txClose
+    ? scoreRows.filter(row => row.match_date >= txClose.toISOString().slice(0, 10))
+    : scoreRows;
+
+  // Aggregate player points for the squad phase being displayed. After the
+  // MD2 deadline, public squad modals show the current MD2 squad, so do not
+  // carry over MD1 points from a previous squad snapshot.
   const playerStats = {};   // playerName → {points, matches: [{date, breakdown, pts}]}
-  for (const row of scoreRows) {
+  for (const row of displayScoreRows) {
     for (const [pname, st] of Object.entries(row.breakdown || {})) {
       if (!st || Object.keys(st).length === 0) continue;
       if (!playerStats[pname]) playerStats[pname] = { points: 0, lines: [], st: {} };
@@ -1556,8 +1580,7 @@ async function openSquadModal(entryId) {
   // Public squad view should match the scoring phase. Before MD2 kickoff,
   // show the GW1 snapshot so transferred-in players do not appear beside GW1
   // points. From MD2 onward, show the current transferred squad.
-  const md2Kickoff = new Date('2026-06-18T16:00:00Z');
-  const xi = (new Date() < md2Kickoff ? (entry.xi_json_gw1 || entry.xi_json) : entry.xi_json) || [];
+  const xi = showCurrentSquad ? (entry.xi_json || []) : ((entry.xi_json_gw1 || entry.xi_json) || []);
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
@@ -1570,15 +1593,15 @@ async function openSquadModal(entryId) {
     'Turkey':                'Türkiye',
     'United States':         'USA',
   };
-  // Returns { opp, past }. "past" means: a fixture for this nation has
-  // already kicked off after this entry's submitted_at — so the player
-  // would have been scored if they earned anything. Use this to decide
-  // between "vs OPP" (upcoming) and "0" (played, no points).
+  // Returns { opp, scored }. "scored" means this current-phase fixture has
+  // been scored in fantasy, so an absent player breakdown is a true 0.
+  // Unscored/live/upcoming fixtures stay as "vs OPP".
   const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : new Date();
+  const fixtureCutoff = showCurrentSquad && txClose ? txClose : submittedAt;
   function firstApplicableFixture(nation) {
     const fxNation = FIXTURE_NATION_ALIAS[nation] || nation;
     return (fixturesData.fixtures || []).find(f =>
-      (f.home === fxNation || f.away === fxNation) && new Date(f.date) > submittedAt
+      (f.home === fxNation || f.away === fxNation) && (!fixtureCutoff || new Date(f.date) >= fixtureCutoff)
     );
   }
   function nextMatchFor(nation) {
@@ -1586,7 +1609,8 @@ async function openSquadModal(entryId) {
     if (!f) return null;
     const fxNation = FIXTURE_NATION_ALIAS[nation] || nation;
     const opponent = f.home === fxNation ? f.away : f.home;
-    return { label: `vs ${escapeHtml(opponent)}`, past: new Date(f.date) <= new Date() };
+    const dbMatch = matchById[String(f.id)] || {};
+    return { label: `vs ${escapeHtml(opponent)}`, scored: Boolean(dbMatch.scored_at) };
   }
 
   const isAr = document.documentElement.lang === 'ar';
@@ -1616,8 +1640,8 @@ async function openSquadModal(entryId) {
     } else {
       const next = nextMatchFor(item.nation);
       if (next) {
-        // Played, no points → just "0". Upcoming → just "vs OPP".
-        foot = next.past
+        // Scored, no points → just "0". Not scored yet → just "vs OPP".
+        foot = next.scored
           ? `<div class="ps-pts" style="color:var(--text-dim);">0</div>`
           : `<div class="ps-next">${next.label}</div>`;
       }

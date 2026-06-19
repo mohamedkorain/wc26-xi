@@ -222,7 +222,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
   // bailed out early on the time budget (caller will not stamp scored_at).
   if (prepared.length === 0) return true;
   const start = Date.now();
-  const TIME_BUDGET_MS = 80_000;    // return before Supabase's worker compute cap
+  const TIME_BUDGET_MS = 45_000;    // return before Supabase's worker compute cap
 
   // GW-SNAPSHOT: matches before MD2 first kickoff use xi_json_gw1 (the
   // pre-transfer lineup) so transferred-in players don't retroactively
@@ -235,7 +235,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
   for (const m of prepared) { playingNations.add(m.homeNation); playingNations.add(m.awayNation); }
   const nationsArr = [...playingNations];
 
-  const PAGE = 500;
+  const PAGE = 300;
   // Resume from where the last run left off (timeout-safe).
   const { data: progressRow } = await supa
     .from('scoring_progress').select('offset_').eq('match_date', dateStr).maybeSingle();
