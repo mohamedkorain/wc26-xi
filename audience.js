@@ -1,12 +1,14 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260619-roundcols';
+import { t } from './js/i18n.js?v=20260619-md3window';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 const LB_PAGE_SIZE = 20;
 const MATCHDAY_REFRESH_MS = 60_000;
+const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
+const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
 // Curated show/presenter league. Emails are intentionally not shipped; these
 // entry IDs were resolved once from private profiles/admin data.
 const HALLO_AMRIKA_MINI_ENTRY_IDS = [
@@ -31,6 +33,43 @@ const state = {
 
 const PAGE_SIZE = 60;
 let visible = PAGE_SIZE;
+
+function currentSquadPhase(now = new Date()) {
+  if (now < MD2_FIRST_KICKOFF) return 'gw1';
+  if (now < MD3_FIRST_KICKOFF) return 'gw2';
+  return 'current';
+}
+
+function squadForPhase(entry, phase = currentSquadPhase()) {
+  if (!entry) return [];
+  if (phase === 'gw1') return entry.xi_json_gw1 || entry.xi_json || [];
+  if (phase === 'gw2') return entry.xi_json_gw2 || [];
+  return entry.xi_json || [];
+}
+
+function maxDate(...dates) {
+  const valid = dates.filter(Boolean).map(d => new Date(d)).filter(d => !Number.isNaN(d.getTime()));
+  if (!valid.length) return null;
+  return new Date(Math.max(...valid.map(d => d.getTime())));
+}
+
+function fixtureCutoffForPhase(entry, phase = currentSquadPhase()) {
+  const submittedAt = entry?.submitted_at ? new Date(entry.submitted_at) : null;
+  if (phase === 'gw1') return submittedAt;
+  if (phase === 'gw2') return maxDate(submittedAt, MD2_FIRST_KICKOFF);
+  return maxDate(submittedAt, MD3_FIRST_KICKOFF);
+}
+
+function roundNameForPhase(fixtures, phase = currentSquadPhase()) {
+  const needle = phase === 'gw1'
+    ? 'Group Stage - 1'
+    : phase === 'gw2'
+      ? 'Group Stage - 2'
+      : 'Group Stage - 3';
+  return (fixtures || []).find(f => String(f.round || '').includes(needle))?.round
+    || (fixtures || [])[0]?.round
+    || '';
+}
 
 async function boot() {
   mountAuthWidget(document.getElementById('authSlot'));
@@ -767,14 +806,10 @@ async function renderMySquad() {
     .eq('league_id', HALO_LEAGUE_ID).eq('user_id', state.myUserId).maybeSingle();
   if (!entry) { document.getElementById('mySquadStrip').style.display = 'none'; return; }
 
-  // Before the MD2 deadline, homepage scoring should still show the GW1
-  // snapshot so transferred-in players do not appear beside MD1 points. Once
-  // the transfer window closes, the homepage becomes the current MD2 squad.
-  const txClose = state.league?.transfers_open_until
-    ? new Date(state.league.transfers_open_until)
-    : null;
-  const showCurrentSquad = txClose && new Date() >= txClose;
-  const displaySquad = showCurrentSquad ? entry.xi_json : (entry.xi_json_gw1 || entry.xi_json);
+  // Homepage is a scoring view, not an edit view. While MD3 transfers are
+  // open, it must still show the frozen MD2 squad until MD3 kicks off.
+  const phase = currentSquadPhase();
+  const displaySquad = squadForPhase(entry, phase);
 
   // Pull total points + per-match breakdowns + fixtures (for the "vs OPP"
   // / "0 (played, no points)" indicators on each pitch slot).
@@ -801,15 +836,12 @@ async function renderMySquad() {
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
-  // Find the fixture for the squad phase being displayed. Before MD2 lock it
-  // is the first applicable fixture after submission; after MD2 lock it is
-  // the first fixture from the MD2 deadline onward.
+  // Find the fixture for the squad phase being displayed.
   const NATION_ALIAS_HS = {
     'DR Congo':'Congo DR', 'Cape Verde':'Cape Verde Islands',
     'Bosnia and Herzegovina':'Bosnia & Herzegovina', 'Turkey':'Türkiye', 'United States':'USA',
   };
-  const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : null;
-  const fixtureCutoff = showCurrentSquad && txClose ? txClose : submittedAt;
+  const fixtureCutoff = fixtureCutoffForPhase(entry, phase);
   function firstFixtureFor(nation) {
     const fx = NATION_ALIAS_HS[nation] || nation;
     return (fixturesData?.fixtures || []).find(f =>
@@ -1081,9 +1113,17 @@ function renderHeroStatus() {
     if (banner) banner.style.display = 'none';
     ctaBuild.style.display = '';
     const isAr = document.documentElement.lang === 'ar';
+    const closeLabel = txOpen.toLocaleString(isAr ? 'ar-EG' : 'en-GB', {
+      timeZone: 'Africa/Cairo',
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     el.textContent = isAr
-      ? `الميركاتو مفتوح · يقفل ${txOpen.toLocaleString('ar-EG')}`
-      : `Transfer window open · closes ${txOpen.toLocaleString()}`;
+      ? `الميركاتو مفتوح · يقفل ${closeLabel} بتوقيت القاهرة`
+      : `Transfer window open · closes ${closeLabel} Cairo`;
     return;
   }
   // Pre-lock: banner should be hidden regardless of sign-in
@@ -1209,20 +1249,15 @@ async function matchdayPointsForEntries(entryIds) {
       .limit(180),
     supabase
       .from('entries')
-      .select('id, xi_json')
+      .select('id, submitted_at, xi_json, xi_json_gw1, xi_json_gw2')
       .in('id', ids),
   ]);
   if (matchesRes.error) throw matchesRes.error;
   if (entriesRes.error) throw entriesRes.error;
 
   const fixtures = fixturesData.fixtures || [];
-  const txClose = state.league?.transfers_open_until
-    ? new Date(state.league.transfers_open_until)
-    : null;
-  const anchor = fixtures.find(f => !txClose || new Date(f.date) >= txClose)
-    || fixtures.find(f => new Date(f.date) >= new Date())
-    || fixtures[fixtures.length - 1];
-  const roundName = anchor?.round || '';
+  const phase = currentSquadPhase();
+  const roundName = roundNameForPhase(fixtures, phase);
   const matchById = {};
   for (const m of matchesRes.data || []) matchById[String(m.external_id)] = m;
 
@@ -1242,7 +1277,7 @@ async function matchdayPointsForEntries(entryIds) {
   const currentPlayersByEntry = {};
   for (const entry of entriesRes.data || []) {
     const players = {};
-    for (const slot of entry.xi_json || []) {
+    for (const slot of squadForPhase(entry, phase)) {
       if (slot?.wild) continue;
       players[slot.name] = slot;
     }
@@ -1677,17 +1712,13 @@ async function openSquadModal(entryId) {
   const scoreRowByDate = {};
   for (const row of scoreRows) scoreRowByDate[row.match_date] = row;
 
-  const txClose = state.league?.transfers_open_until
-    ? new Date(state.league.transfers_open_until)
-    : null;
-  const showCurrentSquad = txClose && new Date() >= txClose;
+  const phase = currentSquadPhase();
   const playerStats = {};
 
   const totalPts = scoreRows.reduce((s, r) => s + (r.points || 0), 0);
-  // Public squad view should match the scoring phase. Before MD2 kickoff,
-  // show the GW1 snapshot so transferred-in players do not appear beside GW1
-  // points. From MD2 onward, show the current transferred squad.
-  const xi = showCurrentSquad ? (entry.xi_json || []) : ((entry.xi_json_gw1 || entry.xi_json) || []);
+  // Public squad view should match the scoring phase. During the MD3 transfer
+  // window, show the frozen MD2 squad until MD3 actually kicks off.
+  const xi = squadForPhase(entry, phase);
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
 
@@ -1703,8 +1734,7 @@ async function openSquadModal(entryId) {
   // Returns { opp, scored }. "scored" means this current-phase fixture has
   // been scored in fantasy, so an absent player breakdown is a true 0.
   // Unscored/live/upcoming fixtures stay as "vs OPP".
-  const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : new Date();
-  const fixtureCutoff = showCurrentSquad && txClose ? txClose : submittedAt;
+  const fixtureCutoff = fixtureCutoffForPhase(entry, phase);
   function firstApplicableFixture(nation) {
     const fxNation = FIXTURE_NATION_ALIAS[nation] || nation;
     return (fixturesData.fixtures || []).find(f =>

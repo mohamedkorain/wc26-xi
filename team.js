@@ -2,7 +2,7 @@
 
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { setLang, t } from './js/i18n.js';
+import { setLang, t } from './js/i18n.js?v=20260619-md3window';
 import { flagImg } from './js/flags.js';
 
 mountAuthWidget(document.getElementById('authSlot'));
@@ -52,7 +52,7 @@ const MAX_TRANSFERS = 2;
 
   const [entryRes, leagueRes, fixturesRes, teamsRes, matchesRes] = await Promise.all([
     supabase.from('entries')
-      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, transfers_used')
+      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, transfers_used')
       .eq('league_id', HALO_LEAGUE_ID).eq('user_id', u.id).maybeSingle(),
     supabase.from('leagues')
       .select('id, name, locked_at, transfers_open_until')
@@ -103,6 +103,7 @@ function renderTransferBar() {
   const used = state.entry.transfers_used || 0;
   const left = Math.max(0, MAX_TRANSFERS - used);
   const closesAt = openUntil.toLocaleString(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-GB', {
+    timeZone: 'Africa/Cairo',
     weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
   });
   bar.style.display = '';
@@ -636,9 +637,22 @@ function renderEntry() {
 }
 
 function renderTransferHistoryHtml() {
-  const oldXi = state.entry.xi_json_gw1;
-  const newXi = state.entry.xi_json || [];
-  if (!oldXi) {
+  const gw1Xi = state.entry.xi_json_gw1;
+  const gw2Xi = state.entry.xi_json_gw2;
+  const currentXi = state.entry.xi_json || [];
+
+  const groups = [];
+  if (gw1Xi && gw2Xi) {
+    groups.push({ from: 'MD1', to: 'MD2', rows: transferDiffs(gw1Xi, gw2Xi) });
+  } else if (gw1Xi) {
+    groups.push({ from: 'MD1', to: 'MD2', rows: transferDiffs(gw1Xi, currentXi) });
+  }
+  if (gw2Xi) {
+    groups.push({ from: 'MD2', to: 'MD3', rows: transferDiffs(gw2Xi, currentXi) });
+  }
+  const visibleGroups = groups.filter(group => group.rows.length > 0);
+
+  if (!visibleGroups.length) {
     return `
       <h3>${t('tx.hist.title')}</h3>
       <div style="text-align:center;color:var(--text-dim);font-size:13px;padding:8px 0;">
@@ -646,7 +660,17 @@ function renderTransferHistoryHtml() {
       </div>
     `;
   }
-  // Match by slot+wild — the slot index stays stable across a swap.
+
+  return `
+    <h3>${t('tx.hist.title')}</h3>
+    ${visibleGroups.map(group => `
+      <div class="tx-hist-md">${t('tx.hist.md', { from: group.from, to: group.to })}</div>
+      ${group.rows.map(transferRowHtml).join('')}
+    `).join('')}
+  `;
+}
+
+function transferDiffs(oldXi, newXi) {
   const swaps = [];
   for (let i = 0; i < newXi.length; i++) {
     const a = oldXi[i], b = newXi[i];
@@ -655,16 +679,11 @@ function renderTransferHistoryHtml() {
       swaps.push({ out: a, in: b });
     }
   }
-  if (swaps.length === 0) {
-    return `
-      <h3>${t('tx.hist.title')}</h3>
-      <div style="text-align:center;color:var(--text-dim);font-size:13px;padding:8px 0;">
-        ${t('tx.hist.empty')}
-      </div>
-    `;
-  }
-  const groupHeader = `<div class="tx-hist-md">${t('tx.hist.md', { from: 'MD1', to: 'MD2' })}</div>`;
-  const rows = swaps.map(s => `
+  return swaps;
+}
+
+function transferRowHtml(s) {
+  return `
     <div class="tx-swap-pair">
       <div class="tx-swap-side">
         <span class="tx-row-pos">${s.out.wild ? 'WILD' : s.out.role}</span>
@@ -679,11 +698,6 @@ function renderTransferHistoryHtml() {
         <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(s.in.nation)}</span>
       </div>
     </div>
-  `).join('');
-  return `
-    <h3>${t('tx.hist.title')}</h3>
-    ${groupHeader}
-    ${rows}
   `;
 }
 

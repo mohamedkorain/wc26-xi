@@ -226,8 +226,11 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
 
   // GW-SNAPSHOT: choose the scoring squad per fixture kickoff, not per
   // calendar date. 2026-06-18 contains both Colombia-Uzbekistan before the
-  // MD2 deadline and MD2 fixtures after it.
+  // MD2 deadline and MD2 fixtures after it. During the MD3 transfer window,
+  // current xi_json becomes the editable MD3 squad, while xi_json_gw2 remains
+  // the scoring squad for every MD2 fixture.
   const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
+  const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
 
   // Collect playing nations once
   const playingNations = new Set<string>();
@@ -267,6 +270,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
       const gw1Xi = entry.xi_json_gw1
         || ((entry.transfers_used || 0) === 0 ? entry.xi_json : []);
       const gw1Starters = (gw1Xi || []).filter((x: any) => !x.wild);
+      const gw2Starters = (entry.xi_json_gw2 || []).filter((x: any) => !x.wild);
       const currentStarters = (entry.xi_json || []).filter((x: any) => !x.wild);
       const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : null;
 
@@ -278,7 +282,11 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
         // kickoff didn't exist as a squad when it played).
         if (submittedAt && submittedAt > m.kickoff) continue;
 
-        const starters = m.kickoff < MD2_FIRST_KICKOFF ? gw1Starters : currentStarters;
+        const starters = m.kickoff < MD2_FIRST_KICKOFF
+          ? gw1Starters
+          : m.kickoff < MD3_FIRST_KICKOFF
+            ? gw2Starters
+            : currentStarters;
         for (const slot of starters) {
           if (slot.nation !== m.homeNation && slot.nation !== m.awayNation) continue;
           const expectedSide = slot.nation === m.homeNation ? 'home' : 'away';

@@ -2,7 +2,7 @@
 // max 2 per category, wildcard, sub-in step).
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js';
+import { t } from './js/i18n.js?v=20260619-md3window';
 import { flagImg, flagUrl, preloadFlags } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -608,7 +608,16 @@ async function submit() {
   const editUntil = state.lockPassed && state.transferOpen
     ? state.league.transfers_open_until
     : state.league.locked_at;
-  msg.innerHTML = t('submit.saved', { at: new Date(editUntil).toLocaleString() });
+  msg.innerHTML = t('submit.saved', {
+    at: new Date(editUntil).toLocaleString(document.documentElement.lang === 'ar' ? 'ar-EG' : 'en-GB', {
+      timeZone: 'Africa/Cairo',
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  });
   showSubmitConfirmation(name, upserted?.id);
 }
 
