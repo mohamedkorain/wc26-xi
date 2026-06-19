@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260619-mdpointsmodal';
+import { t } from './js/i18n.js?v=20260619-mdpointsfix';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -828,7 +828,7 @@ async function renderMySquad() {
   for (const m of matchesRes.data || []) matchById[String(m.external_id)] = m;
   const scoreRowByDate = {};
   for (const row of scoreRows) scoreRowByDate[row.match_date] = row;
-  const phasePoints = phasePointsFromRows(scoreRows, fixturesData, entry, phase);
+  const phasePoints = phasePointsFromRows(scoreRows, fixturesData, matchById, entry, phase);
   const phasePointsLabel = document.documentElement.lang === 'ar'
     ? `${displayScoreNumber(phasePoints)} نقاط الجولة`
     : `${displayScoreNumber(phasePoints)} round pts`;
@@ -1035,25 +1035,26 @@ function pointsFromStatLine(st) {
     - redCardCount(st);
 }
 
-function phasePointsFromRows(scoreRows, fixturesData, entry, phase = currentSquadPhase()) {
-  const roundName = roundNameForPhase(fixturesData?.fixtures || [], phase);
-  const roundDates = new Set((fixturesData?.fixtures || [])
-    .filter(f => f.round === roundName)
-    .map(fixtureDbDate));
-  if (!roundDates.size) return 0;
-
-  const activePlayers = new Set((squadForPhase(entry, phase) || [])
-    .filter(slot => !slot?.wild)
-    .map(slot => slot.name));
-  if (!activePlayers.size) return 0;
+function phasePointsFromRows(scoreRows, fixturesData, matchById, entry, phase = currentSquadPhase()) {
+  const fixtures = fixturesData?.fixtures || [];
+  const roundName = roundNameForPhase(fixtures, phase);
+  const scoreRowByDate = {};
+  for (const row of scoreRows || []) scoreRowByDate[row.match_date] = row;
 
   let total = 0;
-  for (const row of scoreRows || []) {
-    if (!roundDates.has(row.match_date)) continue;
-    for (const [playerName, st] of Object.entries(row.breakdown || {})) {
-      if (!activePlayers.has(playerName)) continue;
-      total += pointsFromStatLine(st || {});
-    }
+  for (const slot of squadForPhase(entry, phase) || []) {
+    if (slot?.wild) continue;
+    const fxNation = fixtureNationName(slot.nation);
+    const fixture = fixtures.find(f =>
+      f.round === roundName && (f.home === fxNation || f.away === fxNation)
+    );
+    if (!fixture) continue;
+    const dbMatch = matchById?.[String(fixture.id)] || {};
+    if (!dbMatch.scored_at) continue;
+    const row = scoreRowByDate[fixtureDbDate(fixture)];
+    const st = row?.breakdown?.[slot.name];
+    if (!st || Object.keys(st).length === 0) continue;
+    total += pointsFromStatLine(st);
   }
   return total;
 }
@@ -1820,7 +1821,7 @@ async function openSquadModal(entryId) {
   const xi = squadForPhase(entry, phase);
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
-  const phasePoints = phasePointsFromRows(scoreRows, fixturesData, entry, phase);
+  const phasePoints = phasePointsFromRows(scoreRows, fixturesData, matchById, entry, phase);
 
   // Some nations are spelled differently in fixtures.json vs xi_json roster.
   // Map our roster spelling → the fixtures.json spelling.
