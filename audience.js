@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260619-mdpointsfix';
+import { t } from './js/i18n.js?v=20260620-squadpoints';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -840,6 +840,7 @@ async function renderMySquad() {
   const xi = displaySquad || [];
   const starters = xi.filter(x => !x.wild).sort((a, b) => a.slot - b.slot);
   const wild = xi.find(x => x.wild);
+  const playerStats = {};
   const cardEl = document.getElementById('mySquadCard');
   if (!cardEl) return;
 
@@ -870,7 +871,9 @@ async function renderMySquad() {
     const row = scoreRowByDate[(fixture.date || '').slice(0, 10)];
     const st = row?.breakdown?.[item.name];
     if (!st || Object.keys(st).length === 0) return null;
-    return { points: pointsFromStatLine(st), st };
+    const stats = { points: pointsFromStatLine(st), st };
+    playerStats[item.name] = stats;
+    return stats;
   }
 
   // Pitch HTML — show +pts if scored, "0" if their nation played but they
