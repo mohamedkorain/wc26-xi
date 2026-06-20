@@ -47,6 +47,8 @@ const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
   '1489373': ['abunada'],      // 2026-06-13 Qatar-Switzerland
   '1489374': ['kai', 'havertz'], // 2026-06-14 Germany-Curacao
   '1489385': ['semenyo'],      // 2026-06-17 Ghana-Panama
+  '1489389': ['vinicius', 'junior'], // 2026-06-20 Brazil-Haiti
+  '1539006': ['matias', 'galarza'], // 2026-06-20 Turkey-Paraguay
 };
 
 // Map API-Football team name → our canonical nation name in data/teams.json.
