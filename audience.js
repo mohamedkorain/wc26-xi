@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260621-mdtop';
+import { t } from './js/i18n.js?v=20260621-mobilepager';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -29,6 +29,7 @@ const state = {
   league: null,    // { locked_at, ... }
   myUserId: null,
   lbMode: 'overall',
+  lbPage: 0,
 };
 
 const PAGE_SIZE = 60;
@@ -195,21 +196,14 @@ async function renderMyRankCard() {
 
 async function jumpToMyRank(rank) {
   state.lbMode = 'overall';
+  state.lbPage = Math.max(0, Math.ceil(rank / LB_PAGE_SIZE) - 1);
   paintLeaderboardTabs();
-  // Load enough pages to cover the user's rank
-  const neededPages = Math.ceil(rank / LB_PAGE_SIZE);
-  state.lbRows = [];
-  state.lbLoaded = 0;
-  // Fetch fresh count
   const { data: cnt } = await supabase.rpc('entry_count', { p_league_id: HALO_LEAGUE_ID });
   state.lbTotal = cnt ?? 0;
   document.getElementById('lbStats').textContent =
     state.lbTotal === 1 ? t('lb.entries.one') : t('lb.entries.n', { n: state.lbTotal });
   document.getElementById('lbTable').innerHTML = '';
-  // Loop loading pages
-  for (let p = 0; p < neededPages; p++) {
-    await renderLeaderboard(false);
-  }
+  await renderLeaderboard(false);
   // Scroll to my row + flash highlight
   const me = document.querySelector('.lb-row.me');
   if (me) {
@@ -1191,6 +1185,7 @@ function formatRemaining(ms) {
 
 function renderHeroStatus() {
   const el = document.getElementById('heroStatus');
+  el.classList.remove('is-transfer');
   if (!state.league) {
     el.textContent = 'Setup pending — admin must run seed_halo.sql';
     el.style.color = 'var(--accent-2)';
@@ -1224,12 +1219,14 @@ function renderHeroStatus() {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
-    el.textContent = isAr
-      ? `الميركاتو مفتوح · يقفل ${closeLabel} بتوقيت القاهرة`
-      : `Transfer window open · closes ${closeLabel} Cairo`;
+    el.classList.add('is-transfer');
+    el.innerHTML = isAr
+      ? `<span>الميركاتو مفتوح</span><span class="hs-date">يقفل ${escapeHtml(closeLabel)}</span><span>بتوقيت القاهرة</span>`
+      : `<span>Transfer window open</span><span class="hs-date">Closes ${escapeHtml(closeLabel)}</span><span>Cairo time</span>`;
     return;
   }
   // Pre-lock: banner should be hidden regardless of sign-in
@@ -1263,8 +1260,7 @@ function wireLeaderboardTabs() {
       const mode = btn.dataset.lbMode || 'overall';
       if (state.lbMode === mode) return;
       state.lbMode = mode;
-      state.lbRows = [];
-      state.lbLoaded = 0;
+      state.lbPage = 0;
       if (mode === 'topscorers') state._todayScoreRows = null;
       renderLeaderboard(true);
     };
@@ -1467,27 +1463,32 @@ async function renderLeaderboard(reset = true) {
   paintLeaderboardTabs();
   if (state.lbMode === 'topscorers') return renderTopScorersLeaderboard();
 
+  const table = document.getElementById('lbTable');
+  const lbStats = document.getElementById('lbStats');
+  if (!table) return;
+
   if (reset) {
-    state.lbRows = [];
-    state.lbLoaded = 0;
-    // Fetch total count once (cheap RPC)
+    state.lbPage = 0;
+    table.innerHTML = `<div class="lb-empty">${escapeHtml(t('lb.loading'))}</div>`;
     const { data: cnt } = await supabase.rpc('entry_count', { p_league_id: HALO_LEAGUE_ID });
     state.lbTotal = cnt ?? 0;
-    const lbStats = document.getElementById('lbStats');
-    lbStats.textContent = state.lbTotal === 1 ? t('lb.entries.one') : t('lb.entries.n', { n: state.lbTotal });
-    document.getElementById('lbTable').innerHTML = '';
   }
+  if (lbStats) lbStats.textContent = state.lbTotal === 1 ? t('lb.entries.one') : t('lb.entries.n', { n: state.lbTotal || 0 });
 
   if (state.lbTotal === 0) {
-    document.getElementById('lbTable').innerHTML =
+    table.innerHTML =
       `<div class="lb-empty">${t('lb.empty')}</div>`;
     return;
   }
 
-  // Paginated leaderboard query (top points first, ties broken by submission order).
+  const pageCount = Math.max(1, Math.ceil((state.lbTotal || 0) / LB_PAGE_SIZE));
+  state.lbPage = Math.max(0, Math.min(state.lbPage || 0, pageCount - 1));
+
+  // Page-based leaderboard query (top points first, ties broken by submission order).
   // Uses the aggregated view → tiny payload per row.
-  const from = state.lbLoaded;
-  const to   = state.lbLoaded + LB_PAGE_SIZE - 1;
+  const from = state.lbPage * LB_PAGE_SIZE;
+  const to   = from + LB_PAGE_SIZE - 1;
+  table.innerHTML = `<div class="lb-empty">${escapeHtml(t('lb.loading'))}</div>`;
   const { data: rows, error } = await supabase
     .from('leaderboard_totals')
     .select('entry_id, team_name, formation, user_id, submitted_at, total_points')
@@ -1497,7 +1498,7 @@ async function renderLeaderboard(reset = true) {
     .range(from, to);
 
   if (error) {
-    document.getElementById('lbTable').innerHTML =
+    table.innerHTML =
       `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(error.message)} — has supabase/leaderboard_view.sql been run?</div>`;
     return;
   }
@@ -1528,23 +1529,30 @@ async function renderLeaderboard(reset = true) {
     console.error('matchday points fetch failed:', e);
   }
 
-  state.lbRows.push(...(rows || []));
-  state.lbLoaded += (rows || []).length;
-
-  document.getElementById('lbTable').innerHTML = state.lbRows.map((r, i) => `
+  table.innerHTML = (rows || []).map((r, i) => `
     <div class="lb-row clickable${r.user_id === state.myUserId ? ' me' : ''}" data-entry="${r.entry_id}">
-      <div class="lb-rank">${i + 1}${movementHtml(r)}</div>
+      <div class="lb-rank">${displayScoreNumber(from + i + 1)}${movementHtml(r)}</div>
       <div class="lb-team">${escapeHtml(r.team_name)}</div>
       <div class="lb-owner">${escapeHtml(r.ownerName)}</div>
       ${leaderboardPointsCells(r.round_points, r.total_points)}
     </div>
-  `).join('') + renderLoadMore();
+  `).join('') + renderLeaderboardPager();
 
   for (const row of document.querySelectorAll('.lb-row.clickable')) {
     row.onclick = () => openSquadModal(row.dataset.entry);
   }
-  const btn = document.getElementById('lbLoadMore');
-  if (btn) btn.onclick = () => renderLeaderboard(false);
+  const prev = document.getElementById('lbPrevPage');
+  const next = document.getElementById('lbNextPage');
+  if (prev) prev.onclick = () => {
+    if (state.lbPage <= 0) return;
+    state.lbPage -= 1;
+    renderLeaderboard(false);
+  };
+  if (next) next.onclick = () => {
+    if (state.lbPage >= pageCount - 1) return;
+    state.lbPage += 1;
+    renderLeaderboard(false);
+  };
 }
 
 // Top players widget on the homepage. Aggregates per-player stats from the
@@ -1864,14 +1872,20 @@ async function openSquadModal(entryId) {
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 }
 
-function renderLoadMore() {
-  if (state.lbLoaded >= state.lbTotal) {
-    return `<div style="color:var(--text-dim);font-size:12px;padding:10px;text-align:center;">${state.lbTotal} / ${state.lbTotal}</div>`;
-  }
-  const next = Math.min(LB_PAGE_SIZE, state.lbTotal - state.lbLoaded);
-  return `<div style="margin-top:12px;text-align:center;">
-    <button class="ghost-btn" id="lbLoadMore">${t('lb.loadmore', { n: next, rest: state.lbTotal - state.lbLoaded })}</button>
-  </div>`;
+function renderLeaderboardPager() {
+  const pageCount = Math.max(1, Math.ceil((state.lbTotal || 0) / LB_PAGE_SIZE));
+  const page = Math.max(0, Math.min(state.lbPage || 0, pageCount - 1));
+  const label = t('lb.page', {
+    page: displayScoreNumber(page + 1),
+    pages: displayScoreNumber(pageCount),
+  });
+  return `
+    <div class="lb-pager">
+      <button class="ghost-btn lb-page-btn" id="lbPrevPage" ${page <= 0 ? 'disabled' : ''}>${escapeHtml(t('lb.prev'))}</button>
+      <span>${escapeHtml(label)}</span>
+      <button class="ghost-btn lb-page-btn" id="lbNextPage" ${page >= pageCount - 1 ? 'disabled' : ''}>${escapeHtml(t('lb.next'))}</button>
+    </div>
+  `;
 }
 
 function hydrateFilters() {

@@ -2,7 +2,7 @@
 // max 2 per category, wildcard, sub-in step).
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260619-md3window';
+import { t } from './js/i18n.js?v=20260621-mobilepager';
 import { flagImg, flagUrl, preloadFlags } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';

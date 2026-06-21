@@ -36,6 +36,9 @@ const DICT = {
     'lb.entries.one': '1 entry',
     'lb.entries.n':   '{n} entries',
     'lb.loadmore':    'Load {n} more · {rest} remaining',
+    'lb.prev':        'Previous',
+    'lb.next':        'Next',
+    'lb.page':        'Page {page} of {pages}',
     'lb.loading':     'Loading leaderboard...',
     'lb.tab.overall': 'Overall',
     'lb.tab.topscorers':'Matchday Top',
@@ -287,6 +290,9 @@ const DICT = {
     'lb.entries.one': 'تشكيلة واحدة',
     'lb.entries.n':   '{n} تشكيلة',
     'lb.loadmore':    'حمّل {n} كمان · باقي {rest}',
+    'lb.prev':        'السابق',
+    'lb.next':        'التالي',
+    'lb.page':        'صفحة {page} من {pages}',
     'lb.loading':     'تحميل الترتيب...',
     'lb.tab.overall': 'الإجمالي',
     'lb.tab.topscorers':'أعلى نقاط الجولة',
@@ -559,9 +565,31 @@ function applyToDom() {
   }
 }
 
+function wireHeaderMenu() {
+  for (const btn of document.querySelectorAll('.hdr-menu-btn')) {
+    if (btn.dataset.wired === '1') continue;
+    btn.dataset.wired = '1';
+    btn.onclick = () => {
+      const topbar = btn.closest('.topbar');
+      if (!topbar) return;
+      const open = !topbar.classList.contains('menu-open');
+      topbar.classList.toggle('menu-open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    const topbar = btn.closest('.topbar');
+    for (const link of topbar?.querySelectorAll('a') || []) {
+      link.addEventListener('click', () => {
+        topbar.classList.remove('menu-open');
+        btn.setAttribute('aria-expanded', 'false');
+      });
+    }
+  }
+}
+
 // Auto-apply on load
 document.addEventListener('DOMContentLoaded', () => {
   setLang(LANG);
   const btn = document.getElementById('langToggle');
   if (btn) btn.onclick = () => setLang(LANG === 'ar' ? 'en' : 'ar');
+  wireHeaderMenu();
 });
