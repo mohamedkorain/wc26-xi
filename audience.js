@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260621-mobilepager';
+import { t } from './js/i18n.js?v=20260621-mdtoprpc';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -1431,6 +1431,26 @@ async function renderTopScorersLeaderboard() {
   table.innerHTML = `<div class="lb-empty">${escapeHtml(t('lb.loading'))}</div>`;
   try {
     const matchday = await getMatchdayContext();
+    const { data, error } = await supabase.rpc('matchday_top_scorers', {
+      p_dates: matchday.dbDates || [],
+      p_limit: 5,
+      p_league_id: HALO_LEAGUE_ID,
+    });
+    if (!error) {
+      const rows = (data || []).map(row => ({
+        entry_id: row.entry_id,
+        team_name: row.team_name,
+        user_id: row.user_id,
+        ownerName: row.owner_name || '—',
+        round_points: row.round_points || 0,
+        total_points: row.total_points || 0,
+      }));
+      if (lbStats) lbStats.textContent = t('lb.topscorers.stats', { n: displayScoreNumber(rows.length) });
+      paintStaticLeaderboard(rows, t('lb.topscorers.empty'));
+      return;
+    }
+    console.warn('matchday_top_scorers RPC failed, falling back to client aggregation:', error);
+
     const scoreRows = await getTodayScoreRows(matchday);
     const byEntry = {};
     for (const row of scoreRows) {
@@ -1441,7 +1461,7 @@ async function renderTopScorersLeaderboard() {
       .filter(row => row.points !== 0)
       .sort((a, b) => (b.points - a.points))
       .slice(0, 5);
-    if (lbStats) lbStats.textContent = t('lb.topscorers.stats', { n: displayScoreNumber(Object.keys(byEntry).length) });
+    if (lbStats) lbStats.textContent = t('lb.topscorers.stats', { n: displayScoreNumber(totals.length) });
     const entryIds = totals.map(row => row.entry_id);
     const [entries, totalPoints] = await Promise.all([
       entriesById(entryIds),
