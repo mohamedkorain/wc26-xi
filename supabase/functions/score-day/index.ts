@@ -51,6 +51,14 @@ const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
   '1539006': ['matias', 'galarza'], // 2026-06-20 Turkey-Paraguay
 };
 
+// Manual player stat corrections for cases where API-Football's player feed
+// misses a player entirely or cannot be matched to our roster.
+const MANUAL_PLAYER_SCORE_OVERRIDES: Record<string, Record<string, Record<string, number>>> = {
+  '1489390': {
+    'BOUNOU Yassine': { win: 1, full90: 1, cleanSheet: 1 }, // 2026-06-19 Scotland-Morocco
+  },
+};
+
 // Map API-Football team name → our canonical nation name in data/teams.json.
 // API-Football mostly matches; this table is for the diffs.
 const NATION_ALIAS: Record<string, string> = {
@@ -144,6 +152,16 @@ function canonNation(s: string): string {
 
 function isFinishedStatus(status: string): boolean {
   return status === 'FT' || status === 'AET' || status === 'PEN';
+}
+
+function pointsFromManualBreakdown(breakdown: Record<string, number>): number {
+  return (breakdown.win || 0)
+    + (breakdown.full90 || 0)
+    + (breakdown.goals || 0)
+    + (breakdown.assists || 0)
+    + (breakdown.cleanSheet || 0)
+    + (breakdown.mvp || 0)
+    + (breakdown.red || 0);
 }
 
 function fixtureId(fixture: any): string {
@@ -291,6 +309,12 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
             : currentStarters;
         for (const slot of starters) {
           if (slot.nation !== m.homeNation && slot.nation !== m.awayNation) continue;
+          const manualBreakdown = MANUAL_PLAYER_SCORE_OVERRIDES[m.matchId]?.[slot.name];
+          if (manualBreakdown) {
+            totalPts += pointsFromManualBreakdown(manualBreakdown);
+            breakdown[slot.name] = { ...(breakdown[slot.name] || {}), ...manualBreakdown };
+            continue;
+          }
           const expectedSide = slot.nation === m.homeNation ? 'home' : 'away';
           const ev = matchPlayerToEvent(slot, m.events, expectedSide);
           if (!ev) continue;
