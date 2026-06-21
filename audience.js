@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260620-squadpoints';
+import { t } from './js/i18n.js?v=20260621-mdtop';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -110,7 +110,9 @@ async function boot() {
   setInterval(() => { renderCalendar(); renderHeroStatus(); }, 60_000);
   setInterval(() => {
     state._matchdayContext = null;
+    state._todayScoreRows = null;
     renderMatchdayHub();
+    if (state.lbMode === 'topscorers') renderLeaderboard(true);
   }, MATCHDAY_REFRESH_MS);
   setInterval(() => { renderScoringStatus(); }, 5 * 60_000);
 
@@ -1263,6 +1265,7 @@ function wireLeaderboardTabs() {
       state.lbMode = mode;
       state.lbRows = [];
       state.lbLoaded = 0;
+      if (mode === 'topscorers') state._todayScoreRows = null;
       renderLeaderboard(true);
     };
   }
@@ -1425,7 +1428,7 @@ function paintStaticLeaderboard(rows, emptyText) {
   wireLeaderboardRows();
 }
 
-async function renderTodayLeaderboard() {
+async function renderTopScorersLeaderboard() {
   const table = document.getElementById('lbTable');
   const lbStats = document.getElementById('lbStats');
   if (!table) return;
@@ -1442,7 +1445,7 @@ async function renderTodayLeaderboard() {
       .filter(row => row.points !== 0)
       .sort((a, b) => (b.points - a.points))
       .slice(0, 50);
-    if (lbStats) lbStats.textContent = t('lb.today.stats', { n: displayScoreNumber(Object.keys(byEntry).length) });
+    if (lbStats) lbStats.textContent = t('lb.topscorers.stats', { n: displayScoreNumber(Object.keys(byEntry).length) });
     const entryIds = totals.map(row => row.entry_id);
     const [entries, totalPoints] = await Promise.all([
       entriesById(entryIds),
@@ -1454,86 +1457,15 @@ async function renderTodayLeaderboard() {
       round_points: row.points || 0,
       total_points: totalPoints[row.entry_id] || 0,
     })).filter(row => row.team_name);
-    paintStaticLeaderboard(rows, t('lb.today.empty'));
+    paintStaticLeaderboard(rows, t('lb.topscorers.empty'));
   } catch (e) {
-    table.innerHTML = `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(e.message || t('lb.today.empty'))}</div>`;
-  }
-}
-
-async function fetchMoverEntries() {
-  if (state._moverEntries) return state._moverEntries;
-  const rows = [];
-  const pageSize = 1000;
-  const maxRows = 10000;
-  for (let from = 0; from < maxRows; from += pageSize) {
-    const { data, error } = await supabase
-      .from('entries')
-      .select('id, team_name, user_id, rank_current, rank_previous')
-      .eq('league_id', HALO_LEAGUE_ID)
-      .not('rank_current', 'is', null)
-      .not('rank_previous', 'is', null)
-      .order('rank_current', { ascending: true })
-      .range(from, from + pageSize - 1);
-    if (error) throw error;
-    rows.push(...(data || []));
-    if (!data || data.length < pageSize) break;
-  }
-  state._moverEntries = rows;
-  return rows;
-}
-
-async function renderMoversLeaderboard() {
-  const table = document.getElementById('lbTable');
-  const lbStats = document.getElementById('lbStats');
-  if (!table) return;
-  table.innerHTML = `<div class="lb-empty">${escapeHtml(t('lb.loading'))}</div>`;
-  try {
-    const entries = await fetchMoverEntries();
-    const movers = entries
-      .map(row => ({ ...row, movement: (row.rank_previous || 0) - (row.rank_current || 0) }))
-      .filter(row => row.movement > 0)
-      .sort((a, b) => (b.movement - a.movement) || (a.rank_current - b.rank_current))
-      .slice(0, 50);
-    if (lbStats) lbStats.textContent = t('lb.movers.stats', { n: displayScoreNumber(movers.length) });
-    if (!movers.length) {
-      paintStaticLeaderboard([], t('lb.movers.empty'));
-      return;
-    }
-    const [names, totalsRes] = await Promise.all([
-      profileNamesByUserId(movers.map(row => row.user_id)),
-      supabase
-        .from('leaderboard_totals')
-        .select('entry_id, total_points')
-        .in('entry_id', movers.map(row => row.id)),
-    ]);
-    if (totalsRes.error) throw totalsRes.error;
-    const pointsByEntry = {};
-    for (const row of totalsRes.data || []) pointsByEntry[row.entry_id] = row.total_points || 0;
-    const rows = movers.map(row => ({
-      entry_id: row.id,
-      user_id: row.user_id,
-      team_name: row.team_name,
-      ownerName: names[row.user_id] || '—',
-      total_points: pointsByEntry[row.id] || 0,
-      rankMoveHtml: `<span class="lb-mv up" title="Moved up ${row.movement}">+${displayScoreNumber(row.movement)}</span>`,
-    }));
-    let mdPoints = {};
-    try {
-      mdPoints = await matchdayPointsForEntries(rows.map(row => row.entry_id));
-    } catch (e) {
-      console.error('movers matchday points fetch failed:', e);
-    }
-    for (const row of rows) row.round_points = mdPoints[row.entry_id] || 0;
-    paintStaticLeaderboard(rows, t('lb.movers.empty'));
-  } catch (e) {
-    table.innerHTML = `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(e.message || t('lb.movers.empty'))}</div>`;
+    table.innerHTML = `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(e.message || t('lb.topscorers.empty'))}</div>`;
   }
 }
 
 async function renderLeaderboard(reset = true) {
   paintLeaderboardTabs();
-  if (state.lbMode === 'today') return renderTodayLeaderboard();
-  if (state.lbMode === 'movers') return renderMoversLeaderboard();
+  if (state.lbMode === 'topscorers') return renderTopScorersLeaderboard();
 
   if (reset) {
     state.lbRows = [];
