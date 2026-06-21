@@ -1440,7 +1440,7 @@ async function renderTopScorersLeaderboard() {
       .map(([entryId, points]) => ({ entry_id: entryId, points }))
       .filter(row => row.points !== 0)
       .sort((a, b) => (b.points - a.points))
-      .slice(0, 50);
+      .slice(0, 5);
     if (lbStats) lbStats.textContent = t('lb.topscorers.stats', { n: displayScoreNumber(Object.keys(byEntry).length) });
     const entryIds = totals.map(row => row.entry_id);
     const [entries, totalPoints] = await Promise.all([
