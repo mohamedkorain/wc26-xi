@@ -112,7 +112,6 @@ async function boot() {
   setInterval(() => {
     state._matchdayContext = null;
     renderMatchdayHub();
-    if (state.lbMode === 'topscorers') renderLeaderboard(true);
   }, MATCHDAY_REFRESH_MS);
   setInterval(() => { renderScoringStatus(); }, 5 * 60_000);
 
