@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260621-mdtoprpc';
+import { t } from './js/i18n.js?v=20260622-mdtopround';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -111,7 +111,6 @@ async function boot() {
   setInterval(() => { renderCalendar(); renderHeroStatus(); }, 60_000);
   setInterval(() => {
     state._matchdayContext = null;
-    state._todayScoreRows = null;
     renderMatchdayHub();
     if (state.lbMode === 'topscorers') renderLeaderboard(true);
   }, MATCHDAY_REFRESH_MS);
@@ -672,32 +671,6 @@ async function renderMatchdayHub() {
   } catch (e) {
     board.innerHTML = `<div class="hub-skeleton">${escapeHtml(t('hub.unavailable'))}</div>`;
   }
-}
-
-function todayScoreKey(matchday) {
-  return (matchday.dbDates || []).join('|') || matchday.dateKey || '';
-}
-
-async function getTodayScoreRows(matchday) {
-  const key = todayScoreKey(matchday);
-  if (!key || !matchday.dbDates?.length) return [];
-  if (state._todayScoreRows?.key === key) return state._todayScoreRows.rows;
-
-  const rows = [];
-  const pageSize = 1000;
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabase
-      .from('scores')
-      .select('entry_id, points, breakdown, match_date')
-      .in('match_date', matchday.dbDates)
-      .range(from, from + pageSize - 1);
-    if (error) throw error;
-    rows.push(...(data || []));
-    if (!data || data.length < pageSize) break;
-  }
-
-  state._todayScoreRows = { key, rows };
-  return rows;
 }
 
 function formatRosterName(raw) {
@@ -1261,7 +1234,6 @@ function wireLeaderboardTabs() {
       if (state.lbMode === mode) return;
       state.lbMode = mode;
       state.lbPage = 0;
-      if (mode === 'topscorers') state._todayScoreRows = null;
       renderLeaderboard(true);
     };
   }
@@ -1406,6 +1378,47 @@ async function matchdayPointsForEntries(entryIds) {
   return byEntry;
 }
 
+function fixtureRosterAliases(fixtureName) {
+  const names = new Set([fixtureName]);
+  for (const [rosterName, mappedFixtureName] of Object.entries(ROSTER_TO_FIXTURE_NATION)) {
+    if (mappedFixtureName === fixtureName) names.add(rosterName);
+  }
+  return [...names];
+}
+
+async function currentRoundScoredFixturePayload() {
+  const [fixturesData, matchesRes] = await Promise.all([
+    loadFixturesData(),
+    supabase
+      .from('matches')
+      .select('external_id, scored_at')
+      .order('date', { ascending: false })
+      .limit(180),
+  ]);
+  if (matchesRes.error) throw matchesRes.error;
+
+  const fixtures = fixturesData.fixtures || [];
+  const phase = currentSquadPhase();
+  const roundName = roundNameForPhase(fixtures, phase);
+  const matchById = {};
+  for (const m of matchesRes.data || []) matchById[String(m.external_id)] = m;
+
+  const rows = [];
+  const seen = new Set();
+  for (const fixture of fixtures.filter(f => f.round === roundName)) {
+    if (!matchById[String(fixture.id)]?.scored_at) continue;
+    const dbDate = fixtureDbDate(fixture);
+    for (const nation of [...fixtureRosterAliases(fixture.home), ...fixtureRosterAliases(fixture.away)]) {
+      const key = `${nation}|${dbDate}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ nation, db_date: dbDate });
+    }
+  }
+
+  return { phase, fixtures: rows };
+}
+
 function paintStaticLeaderboard(rows, emptyText) {
   const table = document.getElementById('lbTable');
   if (!table) return;
@@ -1430,49 +1443,23 @@ async function renderTopScorersLeaderboard() {
   if (!table) return;
   table.innerHTML = `<div class="lb-empty">${escapeHtml(t('lb.loading'))}</div>`;
   try {
-    const matchday = await getMatchdayContext();
+    const { phase, fixtures } = await currentRoundScoredFixturePayload();
     const { data, error } = await supabase.rpc('matchday_top_scorers', {
-      p_dates: matchday.dbDates || [],
+      p_phase: phase,
+      p_fixtures: fixtures,
       p_limit: 5,
       p_league_id: HALO_LEAGUE_ID,
     });
-    if (!error) {
-      const rows = (data || []).map(row => ({
-        entry_id: row.entry_id,
-        team_name: row.team_name,
-        user_id: row.user_id,
-        ownerName: row.owner_name || '—',
-        round_points: row.round_points || 0,
-        total_points: row.total_points || 0,
-      }));
-      if (lbStats) lbStats.textContent = t('lb.topscorers.stats', { n: displayScoreNumber(rows.length) });
-      paintStaticLeaderboard(rows, t('lb.topscorers.empty'));
-      return;
-    }
-    console.warn('matchday_top_scorers RPC failed, falling back to client aggregation:', error);
-
-    const scoreRows = await getTodayScoreRows(matchday);
-    const byEntry = {};
-    for (const row of scoreRows) {
-      byEntry[row.entry_id] = (byEntry[row.entry_id] || 0) + (row.points || 0);
-    }
-    const totals = Object.entries(byEntry)
-      .map(([entryId, points]) => ({ entry_id: entryId, points }))
-      .filter(row => row.points !== 0)
-      .sort((a, b) => (b.points - a.points))
-      .slice(0, 5);
-    if (lbStats) lbStats.textContent = t('lb.topscorers.stats', { n: displayScoreNumber(totals.length) });
-    const entryIds = totals.map(row => row.entry_id);
-    const [entries, totalPoints] = await Promise.all([
-      entriesById(entryIds),
-      totalPointsForEntries(entryIds),
-    ]);
-    const rows = totals.map(row => ({
-      ...row,
-      ...(entries[row.entry_id] || {}),
-      round_points: row.points || 0,
-      total_points: totalPoints[row.entry_id] || 0,
-    })).filter(row => row.team_name);
+    if (error) throw error;
+    const rows = (data || []).map(row => ({
+      entry_id: row.entry_id,
+      team_name: row.team_name,
+      user_id: row.user_id,
+      ownerName: row.owner_name || '-',
+      round_points: row.round_points || 0,
+      total_points: row.total_points || 0,
+    }));
+    if (lbStats) lbStats.textContent = t('lb.topscorers.stats', { n: displayScoreNumber(rows.length) });
     paintStaticLeaderboard(rows, t('lb.topscorers.empty'));
   } catch (e) {
     table.innerHTML = `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(e.message || t('lb.topscorers.empty'))}</div>`;
