@@ -49,6 +49,7 @@ const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
   '1489385': ['semenyo'],      // 2026-06-17 Ghana-Panama
   '1489389': ['vinicius', 'junior'], // 2026-06-20 Brazil-Haiti
   '1539006': ['matias', 'galarza'], // 2026-06-20 Turkey-Paraguay
+  '1489400': ['maza'],         // 2026-06-23 Jordan-Algeria
 };
 
 // Manual player stat corrections for cases where API-Football's player feed
