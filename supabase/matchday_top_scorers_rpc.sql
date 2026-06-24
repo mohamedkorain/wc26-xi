@@ -9,9 +9,10 @@
 --   [{"nation":"Egypt","db_date":"2026-06-22"}, ...]
 -- including roster/fixture aliases (USA/United States, Türkiye/Turkey, etc.).
 -- This RPC then:
---   - picks the correct squad snapshot for p_phase
---   - counts only non-wildcard starters
---   - matches each player to their current-round fixture date
+--   - starts from already-written public.scores rows
+--   - uses player_pool to keep only players whose nation belongs to the
+--     current-round scored fixture payload
+--   - avoids scanning every entry's squad JSON just to return five rows
 --   - returns only the top rows needed by the UI
 
 create index if not exists scores_match_date_entry_idx
@@ -47,85 +48,64 @@ as $$
     where f.nation is not null
       and f.db_date is not null
   ),
-  entry_squads as (
+  score_lines as (
     select
-      e.id,
-      e.team_name,
-      e.user_id,
-      e.submitted_at,
-      case
-        when p_phase = 'gw1' then coalesce(e.xi_json_gw1, e.xi_json, '[]'::jsonb)
-        when p_phase = 'gw2' then coalesce(e.xi_json_gw2, '[]'::jsonb)
-        else coalesce(e.xi_json, '[]'::jsonb)
-      end as squad
-    from public.entries e
-    where e.league_id = p_league_id
-  ),
-  entry_players as (
-    select
-      es.id as entry_id,
-      es.team_name,
-      es.user_id,
-      es.submitted_at,
-      player->>'name' as player_name,
-      lower(player->>'nation') as nation_key
-    from entry_squads es
-    cross join lateral jsonb_array_elements(es.squad) as p(player)
-    where coalesce((player->>'wild')::boolean, false) = false
-      and player->>'name' is not null
-      and player->>'nation' is not null
+      s.entry_id,
+      p.player_name,
+      p.stats
+    from fixtures fx
+    join public.scores s
+      on s.match_date = fx.db_date
+    cross join lateral jsonb_each(coalesce(s.breakdown, '{}'::jsonb))
+      as p(player_name, stats)
+    join public.player_pool pp
+      on pp.name = p.player_name
+     and lower(pp.nation) = fx.nation_key
   ),
   player_points as (
     select
-      ep.entry_id,
+      sl.entry_id,
       sum(
-        coalesce((st.line->>'win')::int, 0)
-        + coalesce((st.line->>'full90')::int, 0)
-        + coalesce((st.line->>'goals')::int, 0)
-        + coalesce((st.line->>'assists')::int, 0)
-        + coalesce((st.line->>'cleanSheet')::int, 0)
-        + coalesce((st.line->>'mvp')::int, 0)
+        coalesce((sl.stats->>'win')::int, 0)
+        + coalesce((sl.stats->>'full90')::int, 0)
+        + coalesce((sl.stats->>'goals')::int, 0)
+        + coalesce((sl.stats->>'assists')::int, 0)
+        + coalesce((sl.stats->>'cleanSheet')::int, 0)
+        + coalesce((sl.stats->>'mvp')::int, 0)
         - case
-            when st.line ? 'red' then greatest(abs(coalesce((st.line->>'red')::int, 0)), 1)
+            when sl.stats ? 'red' then greatest(abs(coalesce((sl.stats->>'red')::int, 0)), 1)
             else 0
           end
       )::int as round_points
-    from entry_players ep
-    join fixtures fx
-      on fx.nation_key = ep.nation_key
-    join public.scores s
-      on s.entry_id = ep.entry_id
-     and s.match_date = fx.db_date
-    cross join lateral (
-      select s.breakdown -> ep.player_name as line
-    ) st
-    where st.line is not null
-    group by ep.entry_id
+    from score_lines sl
+    group by sl.entry_id
     having sum(
-      coalesce((st.line->>'win')::int, 0)
-      + coalesce((st.line->>'full90')::int, 0)
-      + coalesce((st.line->>'goals')::int, 0)
-      + coalesce((st.line->>'assists')::int, 0)
-      + coalesce((st.line->>'cleanSheet')::int, 0)
-      + coalesce((st.line->>'mvp')::int, 0)
+      coalesce((sl.stats->>'win')::int, 0)
+      + coalesce((sl.stats->>'full90')::int, 0)
+      + coalesce((sl.stats->>'goals')::int, 0)
+      + coalesce((sl.stats->>'assists')::int, 0)
+      + coalesce((sl.stats->>'cleanSheet')::int, 0)
+      + coalesce((sl.stats->>'mvp')::int, 0)
       - case
-          when st.line ? 'red' then greatest(abs(coalesce((st.line->>'red')::int, 0)), 1)
+          when sl.stats ? 'red' then greatest(abs(coalesce((sl.stats->>'red')::int, 0)), 1)
           else 0
         end
     ) <> 0
   )
   select
-    es.id as entry_id,
-    es.team_name,
-    es.user_id,
+    e.id as entry_id,
+    e.team_name,
+    e.user_id,
     coalesce(pd.display_name, '-') as owner_name,
     pp.round_points,
     coalesce(lt.total_points, 0)::int as total_points
   from player_points pp
-  join entry_squads es on es.id = pp.entry_id
-  left join public.leaderboard_totals lt on lt.entry_id = es.id
-  left join public.profile_displays pd on pd.id = es.user_id
-  order by pp.round_points desc, es.submitted_at asc
+  join public.entries e
+    on e.id = pp.entry_id
+   and e.league_id = p_league_id
+  left join public.leaderboard_totals lt on lt.entry_id = e.id
+  left join public.profile_displays pd on pd.id = e.user_id
+  order by pp.round_points desc, e.submitted_at asc
   limit least(greatest(coalesce(p_limit, 5), 1), 50);
 $$;
 

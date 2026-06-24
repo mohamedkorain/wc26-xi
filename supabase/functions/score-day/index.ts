@@ -50,6 +50,11 @@ const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
   '1489389': ['vinicius', 'junior'], // 2026-06-20 Brazil-Haiti
   '1539006': ['matias', 'galarza'], // 2026-06-20 Turkey-Paraguay
   '1489400': ['maza'],         // 2026-06-23 Jordan-Algeria
+  '1489401': ['haaland'],      // 2026-06-23 Norway-Senegal
+  '1489402': ['bellingham'],   // 2026-06-23 England-Ghana
+  '1489403': ['cristian', 'martinez'], // 2026-06-23 Panama-Croatia
+  '1489404': ['cristiano', 'ronaldo'], // 2026-06-23 Portugal-Uzbekistan
+  '1539008': ['munoz'],        // 2026-06-24 Colombia-Congo DR
 };
 
 // Manual player stat corrections for cases where API-Football's player feed
@@ -404,8 +409,6 @@ function buildPlayerEvents(
   const overrideTokens = MANUAL_MVP_OVERRIDES[matchId];
   if (overrideTokens) {
     for (const teamBlock of playersResponse || []) {
-      const side: 'home' | 'away' = canonNation(teamBlock.team.name) === homeNation ? 'home' : 'away';
-      if (winnerSide !== 'draw' && side !== winnerSide) continue;
       for (const p of teamBlock.players || []) {
         const tokens = new Set(normaliseName(p.player.name).split(' '));
         if (overrideTokens.every(tok => tokens.has(tok))) {
