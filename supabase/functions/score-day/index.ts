@@ -55,6 +55,9 @@ const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
 // Manual player stat corrections for cases where API-Football's player feed
 // misses a player entirely or cannot be matched to our roster.
 const MANUAL_PLAYER_SCORE_OVERRIDES: Record<string, Record<string, Record<string, number>>> = {
+  '1539001': {
+    'ONEILL Aiden': { win: 1, full90: 1, cleanSheet: 1 }, // 2026-06-14 Australia-Turkiye
+  },
   '1489390': {
     'BOUNOU Yassine': { win: 1, full90: 1, cleanSheet: 1 }, // 2026-06-19 Scotland-Morocco
   },
@@ -250,6 +253,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
   // MD2 deadline and MD2 fixtures after it. During the MD3 transfer window,
   // current xi_json becomes the editable MD3 squad, while xi_json_gw2 remains
   // the scoring squad for every MD2 fixture.
+  const MD1_LOCK = new Date('2026-06-11T19:00:00.000Z');
   const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
   const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
 
@@ -299,9 +303,15 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
       let totalPts = 0;
 
       for (const m of prepared) {
-        // Late-signup gate per match (an entry created AFTER this match's
-        // kickoff didn't exist as a squad when it played).
-        if (submittedAt && submittedAt > m.kickoff) continue;
+        // Late-signup gate by round deadline, not individual team kickoff.
+        // MD1 teams must have existed at the tournament lock; late joiners
+        // score from the next unlocked round, not from unplayed MD1 teams.
+        const scoringCutoff = m.kickoff < MD2_FIRST_KICKOFF
+          ? MD1_LOCK
+          : m.kickoff < MD3_FIRST_KICKOFF
+            ? MD2_FIRST_KICKOFF
+            : MD3_FIRST_KICKOFF;
+        if (submittedAt && submittedAt > scoringCutoff) continue;
 
         const starters = m.kickoff < MD2_FIRST_KICKOFF
           ? gw1Starters
