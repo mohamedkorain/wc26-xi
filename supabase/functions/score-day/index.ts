@@ -40,9 +40,11 @@ const API_BASE = 'https://v3.football.api-sports.io';
 const WC26_LEAGUE_ID = 1;       // World Cup
 const WC26_SEASON = 2026;
 
-// Manual match-level rulings. By default MVP is API-Football's highest-rated
-// player on the winning team; these entries preserve explicit production
-// overrides when a match is re-scored.
+// Manual match-level rulings. FIFA's official Michelob Ultra Superior Player
+// of the Match page is the MVP source of truth; API-Football ratings are only
+// the fallback/initial guess. Persist FIFA/API differences here so rescoring
+// keeps the official MVP:
+// https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/michelob-ultra-superior-player-of-match-winner
 const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
   '1489373': ['abunada'],      // 2026-06-13 Qatar-Switzerland
   '1489374': ['kai', 'havertz'], // 2026-06-14 Germany-Curacao
@@ -391,9 +393,9 @@ function buildPlayerEvents(
   awayGoals: number,
   matchId: string,
 ): PlayerEvent[] {
-  // MVP is ONE player per match: highest rating on the winning team.
-  // If the match is a draw, MVP goes to the highest-rated player overall.
-  // Manual overrides take precedence.
+  // MVP is ONE player per match. MANUAL_MVP_OVERRIDES must reflect FIFA's
+  // official Player of the Match page; if absent, fall back to API-Football
+  // rating selection.
   const winnerSide: 'home' | 'away' | 'draw' =
     homeGoals > awayGoals ? 'home' : awayGoals > homeGoals ? 'away' : 'draw';
   let mvpId = -1;
