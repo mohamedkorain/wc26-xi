@@ -1285,7 +1285,7 @@ async function entriesById(entryIds) {
 
 function wireLeaderboardRows() {
   for (const row of document.querySelectorAll('.lb-row.clickable')) {
-    row.onclick = () => openSquadModal(row.dataset.entry);
+    row.onclick = () => openSquadModal(row.dataset.entry, row.dataset.squadPhase || undefined);
   }
 }
 
@@ -1442,7 +1442,7 @@ function paintStaticLeaderboard(rows, emptyText) {
     return;
   }
   table.innerHTML = rows.map((r, i) => `
-    <div class="lb-row clickable${r.user_id === state.myUserId ? ' me' : ''}" data-entry="${r.entry_id}">
+    <div class="lb-row clickable${r.user_id === state.myUserId ? ' me' : ''}" data-entry="${r.entry_id}"${r.squad_phase ? ` data-squad-phase="${escapeHtml(r.squad_phase)}"` : ''}>
       <div class="lb-rank">${displayScoreNumber(i + 1)}${r.rankMoveHtml || ''}</div>
       <div class="lb-team">${escapeHtml(r.team_name)}</div>
       <div class="lb-owner">${escapeHtml(r.ownerName || '—')}</div>
@@ -1478,6 +1478,7 @@ async function renderScorersLeaderboard(payloadLoader, statsKey, emptyKey) {
       ownerName: row.owner_name || '-',
       round_points: row.round_points || 0,
       total_points: row.total_points || 0,
+      squad_phase: phase,
     }));
     if (lbStats) lbStats.textContent = t(statsKey, { n: displayScoreNumber(rows.length) });
     paintStaticLeaderboard(rows, t(emptyKey));
@@ -1583,7 +1584,7 @@ async function renderLeaderboard(reset = true) {
   `).join('') + renderLeaderboardPager();
 
   for (const row of document.querySelectorAll('.lb-row.clickable')) {
-    row.onclick = () => openSquadModal(row.dataset.entry);
+    row.onclick = () => openSquadModal(row.dataset.entry, row.dataset.squadPhase || undefined);
   }
   const prev = document.getElementById('lbPrevPage');
   const next = document.getElementById('lbNextPage');
@@ -1780,7 +1781,7 @@ function paintTopPlayers() {
   if (more) more.onclick = () => { tpState.visible += TP_PAGE; paintTopPlayers(); };
 }
 
-async function openSquadModal(entryId) {
+async function openSquadModal(entryId, phaseOverride) {
   const [entryRes, scoresRes, fixturesRes, matchesRes] = await Promise.all([
     supabase.from('entries').select('*').eq('id', entryId).maybeSingle(),
     supabase.from('scores').select('match_date, points, breakdown').eq('entry_id', entryId),
@@ -1800,7 +1801,7 @@ async function openSquadModal(entryId) {
   const scoreRowByDate = {};
   for (const row of scoreRows) scoreRowByDate[row.match_date] = row;
 
-  const phase = currentSquadPhase();
+  const phase = phaseOverride || currentSquadPhase();
   const playerStats = {};
 
   // Public squad view should match the scoring phase. During the MD3 transfer
