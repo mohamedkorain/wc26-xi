@@ -41,6 +41,13 @@ function currentSquadPhase(now = new Date()) {
   return 'current';
 }
 
+function previousSquadPhase(now = new Date()) {
+  const phase = currentSquadPhase(now);
+  if (phase === 'current') return 'gw2';
+  if (phase === 'gw2') return 'gw1';
+  return null;
+}
+
 function squadForPhase(entry, phase = currentSquadPhase()) {
   if (!entry) return [];
   if (phase === 'gw1') return entry.xi_json_gw1 || entry.xi_json || [];
@@ -1385,7 +1392,7 @@ function fixtureRosterAliases(fixtureName) {
   return [...names];
 }
 
-async function currentRoundScoredFixturePayload() {
+async function roundScoredFixturePayload(phase = currentSquadPhase()) {
   const [fixturesData, matchesRes] = await Promise.all([
     loadFixturesData(),
     supabase
@@ -1397,7 +1404,6 @@ async function currentRoundScoredFixturePayload() {
   if (matchesRes.error) throw matchesRes.error;
 
   const fixtures = fixturesData.fixtures || [];
-  const phase = currentSquadPhase();
   const roundName = roundNameForPhase(fixtures, phase);
   const matchById = {};
   for (const m of matchesRes.data || []) matchById[String(m.external_id)] = m;
@@ -1418,6 +1424,16 @@ async function currentRoundScoredFixturePayload() {
   return { phase, fixtures: rows };
 }
 
+async function currentRoundScoredFixturePayload() {
+  return roundScoredFixturePayload(currentSquadPhase());
+}
+
+async function previousRoundScoredFixturePayload() {
+  const phase = previousSquadPhase();
+  if (!phase) return { phase: null, fixtures: [] };
+  return roundScoredFixturePayload(phase);
+}
+
 function paintStaticLeaderboard(rows, emptyText) {
   const table = document.getElementById('lbTable');
   if (!table) return;
@@ -1436,13 +1452,18 @@ function paintStaticLeaderboard(rows, emptyText) {
   wireLeaderboardRows();
 }
 
-async function renderTopScorersLeaderboard() {
+async function renderScorersLeaderboard(payloadLoader, statsKey, emptyKey) {
   const table = document.getElementById('lbTable');
   const lbStats = document.getElementById('lbStats');
   if (!table) return;
   table.innerHTML = `<div class="lb-empty">${escapeHtml(t('lb.loading'))}</div>`;
   try {
-    const { phase, fixtures } = await currentRoundScoredFixturePayload();
+    const { phase, fixtures } = await payloadLoader();
+    if (!phase || !fixtures.length) {
+      if (lbStats) lbStats.textContent = t(statsKey, { n: displayScoreNumber(0) });
+      paintStaticLeaderboard([], t(emptyKey));
+      return;
+    }
     const { data, error } = await supabase.rpc('matchday_top_scorers', {
       p_phase: phase,
       p_fixtures: fixtures,
@@ -1458,16 +1479,33 @@ async function renderTopScorersLeaderboard() {
       round_points: row.round_points || 0,
       total_points: row.total_points || 0,
     }));
-    if (lbStats) lbStats.textContent = t('lb.topscorers.stats', { n: displayScoreNumber(rows.length) });
-    paintStaticLeaderboard(rows, t('lb.topscorers.empty'));
+    if (lbStats) lbStats.textContent = t(statsKey, { n: displayScoreNumber(rows.length) });
+    paintStaticLeaderboard(rows, t(emptyKey));
   } catch (e) {
-    table.innerHTML = `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(e.message || t('lb.topscorers.empty'))}</div>`;
+    table.innerHTML = `<div class="lb-empty" style="color:var(--danger);">${escapeHtml(e.message || t(emptyKey))}</div>`;
   }
+}
+
+async function renderTopScorersLeaderboard() {
+  return renderScorersLeaderboard(
+    currentRoundScoredFixturePayload,
+    'lb.topscorers.stats',
+    'lb.topscorers.empty',
+  );
+}
+
+async function renderLastTopScorersLeaderboard() {
+  return renderScorersLeaderboard(
+    previousRoundScoredFixturePayload,
+    'lb.lasttopscorers.stats',
+    'lb.lasttopscorers.empty',
+  );
 }
 
 async function renderLeaderboard(reset = true) {
   paintLeaderboardTabs();
   if (state.lbMode === 'topscorers') return renderTopScorersLeaderboard();
+  if (state.lbMode === 'lasttopscorers') return renderLastTopScorersLeaderboard();
 
   const table = document.getElementById('lbTable');
   const lbStats = document.getElementById('lbStats');

@@ -852,9 +852,11 @@ input { font-family: inherit; }
 .lb-table { display: flex; flex-direction: column; gap: 6px; }
 .lb-tabs {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 4px;
   margin: 2px 0 12px;
+  max-width: 100%;
   background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -869,6 +871,7 @@ input { font-family: inherit; }
   font-family: inherit;
   font-size: 12px;
   font-weight: 900;
+  white-space: nowrap;
   cursor: pointer;
 }
 .lb-tab.active {
