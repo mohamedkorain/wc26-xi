@@ -2,7 +2,7 @@
 
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { setLang, t } from './js/i18n.js?v=20260621-mobilepager';
+import { setLang, t } from './js/i18n.js?v=20260626-r32window';
 import { flagImg } from './js/flags.js';
 
 mountAuthWidget(document.getElementById('authSlot'));
@@ -52,7 +52,7 @@ const MAX_TRANSFERS = 2;
 
   const [entryRes, leagueRes, fixturesRes, teamsRes, matchesRes] = await Promise.all([
     supabase.from('entries')
-      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, transfers_used')
+      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3, transfers_used')
       .eq('league_id', HALO_LEAGUE_ID).eq('user_id', u.id).maybeSingle(),
     supabase.from('leagues')
       .select('id, name, locked_at, transfers_open_until')
@@ -108,6 +108,7 @@ function renderTransferBar() {
   });
   bar.style.display = '';
   bar.innerHTML = `
+    <div class="tx-window-warning">${t('tx.r32.warn')}</div>
     <div class="tx-left">
       <div class="tx-counter"><span class="tx-num">${left}</span><span class="tx-num-label">${t('tx.left')}</span></div>
       <div class="tx-closes">${escapeHtml(closesAt)}</div>
@@ -639,6 +640,7 @@ function renderEntry() {
 function renderTransferHistoryHtml() {
   const gw1Xi = state.entry.xi_json_gw1;
   const gw2Xi = state.entry.xi_json_gw2;
+  const gw3Xi = state.entry.xi_json_gw3;
   const currentXi = state.entry.xi_json || [];
 
   const groups = [];
@@ -647,8 +649,13 @@ function renderTransferHistoryHtml() {
   } else if (gw1Xi) {
     groups.push({ from: 'MD1', to: 'MD2', rows: transferDiffs(gw1Xi, currentXi) });
   }
-  if (gw2Xi) {
+  if (gw2Xi && gw3Xi) {
+    groups.push({ from: 'MD2', to: 'MD3', rows: transferDiffs(gw2Xi, gw3Xi) });
+  } else if (gw2Xi) {
     groups.push({ from: 'MD2', to: 'MD3', rows: transferDiffs(gw2Xi, currentXi) });
+  }
+  if (gw3Xi) {
+    groups.push({ from: 'MD3', to: 'R32', rows: transferDiffs(gw3Xi, currentXi) });
   }
   const visibleGroups = groups.filter(group => group.rows.length > 0);
 

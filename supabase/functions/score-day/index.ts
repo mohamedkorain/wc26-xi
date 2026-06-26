@@ -257,12 +257,13 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
 
   // GW-SNAPSHOT: choose the scoring squad per fixture kickoff, not per
   // calendar date. 2026-06-18 contains both Colombia-Uzbekistan before the
-  // MD2 deadline and MD2 fixtures after it. During the MD3 transfer window,
-  // current xi_json becomes the editable MD3 squad, while xi_json_gw2 remains
-  // the scoring squad for every MD2 fixture.
+  // MD2 deadline and MD2 fixtures after it. During transfer windows, current
+  // xi_json becomes the editable next-round squad, while the last frozen
+  // xi_json_gw* snapshot remains the scoring squad for the active round.
   const MD1_LOCK = new Date('2026-06-11T19:00:00.000Z');
   const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
   const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
+  const R32_FIRST_KICKOFF = new Date('2026-06-28T19:00:00.000Z');
 
   // Collect playing nations once
   const playingNations = new Set<string>();
@@ -303,6 +304,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
         || ((entry.transfers_used || 0) === 0 ? entry.xi_json : []);
       const gw1Starters = (gw1Xi || []).filter((x: any) => !x.wild);
       const gw2Starters = (entry.xi_json_gw2 || []).filter((x: any) => !x.wild);
+      const gw3Starters = (entry.xi_json_gw3 || entry.xi_json || []).filter((x: any) => !x.wild);
       const currentStarters = (entry.xi_json || []).filter((x: any) => !x.wild);
       const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : null;
 
@@ -317,14 +319,18 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
           ? MD1_LOCK
           : m.kickoff < MD3_FIRST_KICKOFF
             ? MD2_FIRST_KICKOFF
-            : MD3_FIRST_KICKOFF;
+            : m.kickoff < R32_FIRST_KICKOFF
+              ? MD3_FIRST_KICKOFF
+              : R32_FIRST_KICKOFF;
         if (submittedAt && submittedAt > scoringCutoff) continue;
 
         const starters = m.kickoff < MD2_FIRST_KICKOFF
           ? gw1Starters
           : m.kickoff < MD3_FIRST_KICKOFF
             ? gw2Starters
-            : currentStarters;
+            : m.kickoff < R32_FIRST_KICKOFF
+              ? gw3Starters
+              : currentStarters;
         for (const slot of starters) {
           if (slot.nation !== m.homeNation && slot.nation !== m.awayNation) continue;
           const manualBreakdown = MANUAL_PLAYER_SCORE_OVERRIDES[m.matchId]?.[slot.name];

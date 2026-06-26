@@ -1,7 +1,7 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260622-mdtopround';
+import { t } from './js/i18n.js?v=20260626-r32window';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
@@ -9,6 +9,7 @@ const LB_PAGE_SIZE = 20;
 const MATCHDAY_REFRESH_MS = 60_000;
 const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
 const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
+const R32_FIRST_KICKOFF = new Date('2026-06-28T19:00:00.000Z');
 // Curated show/presenter league. Emails are intentionally not shipped; these
 // entry IDs were resolved once from private profiles/admin data.
 const HALLO_AMRIKA_MINI_ENTRY_IDS = [
@@ -38,12 +39,14 @@ let visible = PAGE_SIZE;
 function currentSquadPhase(now = new Date()) {
   if (now < MD2_FIRST_KICKOFF) return 'gw1';
   if (now < MD3_FIRST_KICKOFF) return 'gw2';
+  if (now < R32_FIRST_KICKOFF) return 'gw3';
   return 'current';
 }
 
 function previousSquadPhase(now = new Date()) {
   const phase = currentSquadPhase(now);
-  if (phase === 'current') return 'gw2';
+  if (phase === 'current') return 'gw3';
+  if (phase === 'gw3') return 'gw2';
   if (phase === 'gw2') return 'gw1';
   return null;
 }
@@ -52,6 +55,7 @@ function squadForPhase(entry, phase = currentSquadPhase()) {
   if (!entry) return [];
   if (phase === 'gw1') return entry.xi_json_gw1 || entry.xi_json || [];
   if (phase === 'gw2') return entry.xi_json_gw2 || [];
+  if (phase === 'gw3') return entry.xi_json_gw3 || entry.xi_json || [];
   return entry.xi_json || [];
 }
 
@@ -65,7 +69,8 @@ function fixtureCutoffForPhase(entry, phase = currentSquadPhase()) {
   const submittedAt = entry?.submitted_at ? new Date(entry.submitted_at) : null;
   if (phase === 'gw1') return submittedAt;
   if (phase === 'gw2') return maxDate(submittedAt, MD2_FIRST_KICKOFF);
-  return maxDate(submittedAt, MD3_FIRST_KICKOFF);
+  if (phase === 'gw3') return maxDate(submittedAt, MD3_FIRST_KICKOFF);
+  return maxDate(submittedAt, R32_FIRST_KICKOFF);
 }
 
 function roundNameForPhase(fixtures, phase = currentSquadPhase()) {
@@ -73,7 +78,9 @@ function roundNameForPhase(fixtures, phase = currentSquadPhase()) {
     ? 'Group Stage - 1'
     : phase === 'gw2'
       ? 'Group Stage - 2'
-      : 'Group Stage - 3';
+      : phase === 'gw3'
+        ? 'Group Stage - 3'
+        : 'Round of 32';
   return (fixtures || []).find(f => String(f.round || '').includes(needle))?.round
     || (fixtures || [])[0]?.round
     || '';
@@ -1117,7 +1124,7 @@ const TOURNAMENT_SCHEDULE = [
   { key: 'gw1',     dateUTC: '2026-06-11T19:00:00Z' }, // Mexico opener, Azteca
   { key: 'gw2',     dateUTC: '2026-06-18T16:00:00Z' }, // MD2 first match (Czech vs South Africa, 19:00 Cairo)
   { key: 'gw3',     dateUTC: '2026-06-24T19:00:00Z' }, // MD3 first match (Switzerland vs Canada, 22:00 Cairo)
-  { key: 'r32',     dateUTC: '2026-06-28T16:00:00Z' },
+  { key: 'r32',     dateUTC: '2026-06-28T19:00:00Z' },
   { key: 'r16',     dateUTC: '2026-07-04T16:00:00Z' },
   { key: 'qf',      dateUTC: '2026-07-09T20:00:00Z' },
   { key: 'sf',      dateUTC: '2026-07-14T20:00:00Z' },
@@ -1190,7 +1197,10 @@ function renderHeroStatus() {
 
   // Past initial lock but still in transfer window — open to everyone now.
   if (now >= lock && inTransferWindow) {
-    if (banner) banner.style.display = 'none';
+    if (banner) {
+      banner.textContent = t('tx.r32.warn');
+      banner.style.display = 'block';
+    }
     ctaBuild.style.display = '';
     const isAr = document.documentElement.lang === 'ar';
     const closeLabel = txOpen.toLocaleString(isAr ? 'ar-EG' : 'en-GB', {
@@ -1204,8 +1214,8 @@ function renderHeroStatus() {
     });
     el.classList.add('is-transfer');
     el.innerHTML = isAr
-      ? `<span>الميركاتو مفتوح</span><span class="hs-date">يقفل ${escapeHtml(closeLabel)}</span><span>بتوقيت القاهرة</span>`
-      : `<span>Transfer window open</span><span class="hs-date">Closes ${escapeHtml(closeLabel)}</span><span>Cairo time</span>`;
+      ? `<span>ميركاتو دور الـ٣٢ مفتوح</span><span class="hs-date">يقفل ${escapeHtml(closeLabel)}</span><span>بتوقيت القاهرة</span>`
+      : `<span>R32 transfer window open</span><span class="hs-date">Closes ${escapeHtml(closeLabel)}</span><span>Cairo time</span>`;
     return;
   }
   // Pre-lock: banner should be hidden regardless of sign-in
@@ -1330,7 +1340,7 @@ async function matchdayPointsForEntries(entryIds) {
       .limit(180),
     supabase
       .from('entries')
-      .select('id, submitted_at, xi_json, xi_json_gw1, xi_json_gw2')
+      .select('id, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3')
       .in('id', ids),
   ]);
   if (matchesRes.error) throw matchesRes.error;
