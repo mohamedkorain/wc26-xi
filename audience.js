@@ -74,16 +74,18 @@ function fixtureCutoffForPhase(entry, phase = currentSquadPhase()) {
 }
 
 function roundNameForPhase(fixtures, phase = currentSquadPhase()) {
-  const needle = phase === 'gw1'
-    ? 'Group Stage - 1'
-    : phase === 'gw2'
-      ? 'Group Stage - 2'
-      : phase === 'gw3'
-        ? 'Group Stage - 3'
-        : 'Round of 32';
-  return (fixtures || []).find(f => String(f.round || '').includes(needle))?.round
-    || (fixtures || [])[0]?.round
-    || '';
+  const needles = {
+    gw1: 'Group Stage - 1',
+    gw2: 'Group Stage - 2',
+    gw3: 'Group Stage - 3',
+    current: 'Round of 32',
+  };
+  const needle = needles[phase] || '';
+  if (!needle) return '';
+
+  // Never fall back to another round. After a deadline, a missing fixture list
+  // for the new phase should show 0 round points, not stale previous-round data.
+  return (fixtures || []).find(f => String(f.round || '').includes(needle))?.round || '';
 }
 
 async function boot() {
