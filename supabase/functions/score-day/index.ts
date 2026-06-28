@@ -57,6 +57,30 @@ const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
   '1489403': ['cristian', 'martinez'], // 2026-06-23 Panama-Croatia
   '1489404': ['cristiano', 'ronaldo'], // 2026-06-23 Portugal-Uzbekistan
   '1539008': ['munoz'],        // 2026-06-24 Colombia-Congo DR
+  '1489408': ['johan', 'manzambi'], // 2026-06-24 Switzerland-Canada
+  '1539009': ['kerim', 'alajbegovic'], // 2026-06-24 Bosnia-Qatar
+  '1489405': ['hakimi'],       // 2026-06-24 Morocco-Haiti
+  '1489406': ['vinicius', 'junior'], // 2026-06-24 Scotland-Brazil
+  '1539010': ['mateo', 'chavez'], // 2026-06-25 Czechia-Mexico
+  '1489407': ['thapelo', 'maseko'], // 2026-06-25 South Africa-South Korea
+  '1489409': ['pepe'],         // 2026-06-25 Curacao-Ivory Coast
+  '1489410': ['nilson', 'angulo'], // 2026-06-25 Ecuador-Germany
+  '1539011': ['elanga'],       // 2026-06-25 Japan-Sweden
+  '1489412': ['brobbey'],      // 2026-06-25 Tunisia-Netherlands
+  '1539012': ['guler'],        // 2026-06-26 Turkey-USA
+  '1489411': ['oneill'],       // 2026-06-26 Paraguay-Australia
+  '1489416': ['dembele'],      // 2026-06-26 Norway-France
+  '1539074': ['pape', 'gueye'], // 2026-06-26 Senegal-Iraq
+  '1489414': ['rezaeian'],     // 2026-06-27 Egypt-Iran
+  '1489415': ['trossard'],     // 2026-06-27 New Zealand-Belgium
+  '1489413': ['deroy', 'duarte'], // 2026-06-27 Cape Verde-Saudi Arabia
+  '1489417': ['baena'],        // 2026-06-27 Uruguay-Spain
+  '1489422': ['bellingham'],   // 2026-06-27 Panama-England
+  '1489420': ['petar', 'sucic'], // 2026-06-27 Croatia-Ghana
+  '1489418': ['mahrez'],       // 2026-06-28 Algeria-Austria
+  '1489421': ['celso'],        // 2026-06-28 Jordan-Argentina
+  '1489419': ['diogo', 'costa'], // 2026-06-28 Colombia-Portugal
+  '1539013': ['wissa'],        // 2026-06-28 Congo DR-Uzbekistan
 };
 
 // Manual player stat corrections for cases where API-Football's player feed
