@@ -7,6 +7,7 @@ import { flagImg } from './js/flags.js';
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 const LB_PAGE_SIZE = 20;
 const MATCHDAY_REFRESH_MS = 60_000;
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260628-r32fixtures';
 const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
 const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
 const R32_FIRST_KICKOFF = new Date('2026-06-28T19:00:00.000Z');
@@ -307,7 +308,7 @@ function renderPoolStats() {
 
 function loadFixturesData() {
   if (!state._fixturesCache) {
-    state._fixturesCache = fetch('data/fixtures.json').then(r => r.json());
+    state._fixturesCache = fetch(FIXTURES_DATA_URL).then(r => r.json());
   }
   return state._fixturesCache;
 }
@@ -801,7 +802,7 @@ async function renderMySquad() {
   // / "0 (played, no points)" indicators on each pitch slot).
   const [scoreRows, fixturesData, matchesRes] = await Promise.all([
     supabase.from('scores').select('match_date, points, breakdown').eq('entry_id', entry.id).then(r => r.data || []),
-    state._fixturesCache || fetch('data/fixtures.json').then(r => r.json()).then(d => { state._fixturesCache = Promise.resolve(d); return d; }),
+    state._fixturesCache || fetch(FIXTURES_DATA_URL).then(r => r.json()).then(d => { state._fixturesCache = Promise.resolve(d); return d; }),
     supabase
       .from('matches')
       .select('external_id, date, home, away, status, home_goals, away_goals, scored_at')
@@ -1800,7 +1801,7 @@ async function openSquadModal(entryId, phaseOverride) {
   const [entryRes, scoresRes, fixturesRes, matchesRes] = await Promise.all([
     supabase.from('entries').select('*').eq('id', entryId).maybeSingle(),
     supabase.from('scores').select('match_date, points, breakdown').eq('entry_id', entryId),
-    state._fixturesCache || fetch('data/fixtures.json').then(r => r.json()).then(d => { state._fixturesCache = Promise.resolve(d); return d; }),
+    state._fixturesCache || fetch(FIXTURES_DATA_URL).then(r => r.json()).then(d => { state._fixturesCache = Promise.resolve(d); return d; }),
     supabase
       .from('matches')
       .select('external_id, date, home, away, status, home_goals, away_goals, scored_at')

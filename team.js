@@ -15,6 +15,7 @@ document.getElementById('langToggle').onclick = () => {
 };
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260628-r32fixtures';
 
 // Slot order MUST match xi_json's convention (the same one audience.js uses):
 //   0 GK · 1 LCB · 2 RCB · 3 LB · 4 RB · 5 LCM · 6 RCM
@@ -57,7 +58,7 @@ const MAX_TRANSFERS = 2;
     supabase.from('leagues')
       .select('id, name, locked_at, transfers_open_until')
       .eq('id', HALO_LEAGUE_ID).maybeSingle(),
-    fetch('data/fixtures.json').then(r => r.json()),
+    fetch(FIXTURES_DATA_URL).then(r => r.json()),
     fetch('data/teams.json').then(r => r.json()),
     supabase
       .from('matches')
