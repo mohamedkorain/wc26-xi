@@ -2,7 +2,7 @@
 
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { setLang, t } from './js/i18n.js?v=20260626-r32window';
+import { setLang, t } from './js/i18n.js?v=20260628-r32bonus';
 import { flagImg } from './js/flags.js';
 
 mountAuthWidget(document.getElementById('authSlot'));
@@ -744,6 +744,7 @@ function pointsFromStatLine(st) {
     + (st.assists || 0)
     + (st.cleanSheet || 0)
     + (st.mvp || 0)
+    + (st.r32 || 0)
     - redCardCount(st);
 }
 
@@ -789,6 +790,7 @@ function describeStat(s) {
   if (s.win) parts.push('✅');
   if (s.full90) parts.push('⏱️');
   if (s.mvp) parts.push('⭐');
+  if (s.r32) parts.push('R32');
   if (s.red) parts.push('🟥');
   return parts.join(' ') || '—';
 }
@@ -803,6 +805,7 @@ function describeStatText(s) {
   if (s.assists)    parts.push(`${t('pts.assist')}${s.assists > 1 ? '×' + s.assists : ''}`);
   if (s.cleanSheet) parts.push(t('pts.cleansheet'));
   if (s.mvp)        parts.push(t('pts.mvp'));
+  if (s.r32)        parts.push(t('pts.r32'));
   if (s.red)        parts.push(t('pts.red'));
   return parts.join(document.documentElement.lang === 'ar' ? '، ' : ', ');
 }

@@ -72,6 +72,7 @@ as $$
         + coalesce((sl.stats->>'assists')::int, 0)
         + coalesce((sl.stats->>'cleanSheet')::int, 0)
         + coalesce((sl.stats->>'mvp')::int, 0)
+        + coalesce((sl.stats->>'r32')::int, 0)
         - case
             when sl.stats ? 'red' then greatest(abs(coalesce((sl.stats->>'red')::int, 0)), 1)
             else 0
@@ -86,6 +87,7 @@ as $$
       + coalesce((sl.stats->>'assists')::int, 0)
       + coalesce((sl.stats->>'cleanSheet')::int, 0)
       + coalesce((sl.stats->>'mvp')::int, 0)
+      + coalesce((sl.stats->>'r32')::int, 0)
       - case
           when sl.stats ? 'red' then greatest(abs(coalesce((sl.stats->>'red')::int, 0)), 1)
           else 0

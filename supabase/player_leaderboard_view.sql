@@ -3,8 +3,8 @@
 -- which is what spiked DB CPU. Now it's cached; refreshed by score-day after
 -- each scoring run via the refresh_player_leaderboard() RPC below.
 
-drop view if exists public.player_leaderboard;
 drop materialized view if exists public.player_leaderboard;
+drop view if exists public.player_leaderboard;
 
 create materialized view public.player_leaderboard as
 with unnested as (
@@ -32,6 +32,7 @@ select
     + coalesce((stats->>'assists')::int, 0)
     + coalesce((stats->>'cleanSheet')::int, 0)
     + coalesce((stats->>'mvp')::int, 0)
+    + coalesce((stats->>'r32')::int, 0)
     - case when stats->>'red' is not null then 1 else 0 end
   )::int as total_points
 from deduped
