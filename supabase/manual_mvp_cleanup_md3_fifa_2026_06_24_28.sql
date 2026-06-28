@@ -45,8 +45,8 @@ values
   ('1489420', '2026-06-27', 'Croatia', 'Ghana', 'SUCIC Petar', 'Croatia'),
   ('1489418', '2026-06-28', 'Algeria', 'Austria', 'MAHREZ Riyad', 'Algeria'),
   ('1489421', '2026-06-28', 'Jordan', 'Argentina', 'LO CELSO Giovani', 'Argentina'),
-  ('1489419', '2026-06-28', 'Colombia', 'Portugal', 'DIOGO COSTA', 'Portugal'),
-  ('1539013', '2026-06-28', 'DR Congo', 'Uzbekistan', 'WISSA Yoane', 'DR Congo');
+  ('1489419', '2026-06-27', 'Colombia', 'Portugal', 'DIOGO COSTA', 'Portugal'),
+  ('1539013', '2026-06-27', 'DR Congo', 'Uzbekistan', 'WISSA Yoane', 'DR Congo');
 
 -- Guard against typos in the official mapping before touching scores.
 do $$
