@@ -318,23 +318,55 @@ begin
       and nw.ord = 12
       and (ow.player->>'slot') ~ '^[0-9]+$'
       and (ow.player->>'slot')::int = 11
-      and (starter_change.old_player->>'slot') ~ '^[0-9]+$'
-      and (starter_change.old_player->>'slot')::int = starter_change.ord - 1
-      and not coalesce((starter_change.old_player->>'wild')::boolean, false)
-      and not coalesce((starter_change.old_player->>'empty')::boolean, false)
-      and not coalesce((starter_change.new_player->>'wild')::boolean, false)
-      and not coalesce((starter_change.new_player->>'empty')::boolean, false)
-      and starter_change.new_player->>'name' = ow.player->>'name'
-      and starter_change.new_player->>'nation' = ow.player->>'nation'
-      and (starter_change.new_player->>'slot') ~ '^[0-9]+$'
-      and (starter_change.new_player->>'slot')::int = starter_change.ord - 1
-      and starter_change.new_player->>'role' = public.entry_slot_role((starter_change.ord - 1)::int)
-      and wild_pp.roles @> array[starter_change.new_player->>'role']
-      and nw.player->>'name' = starter_change.old_player->>'name'
-      and nw.player->>'nation' = starter_change.old_player->>'nation'
-      and (nw.player->>'slot') ~ '^[0-9]+$'
-      and (nw.player->>'slot')::int = 11
-      and nullif(nw.player->>'role', '') is null
+      and (
+        (
+          -- Normal wildcard swap: real starter <-> bench wildcard.
+          (starter_change.old_player->>'slot') ~ '^[0-9]+$'
+          and (starter_change.old_player->>'slot')::int = starter_change.ord - 1
+          and not coalesce((starter_change.old_player->>'wild')::boolean, false)
+          and not coalesce((starter_change.old_player->>'empty')::boolean, false)
+          and not coalesce((starter_change.new_player->>'wild')::boolean, false)
+          and not coalesce((starter_change.new_player->>'empty')::boolean, false)
+          and starter_change.new_player->>'name' = ow.player->>'name'
+          and starter_change.new_player->>'nation' = ow.player->>'nation'
+          and (starter_change.new_player->>'slot') ~ '^[0-9]+$'
+          and (starter_change.new_player->>'slot')::int = starter_change.ord - 1
+          and starter_change.new_player->>'role' = public.entry_slot_role((starter_change.ord - 1)::int)
+          and wild_pp.roles @> array[starter_change.new_player->>'role']
+          and nw.player->>'name' = starter_change.old_player->>'name'
+          and nw.player->>'nation' = starter_change.old_player->>'nation'
+          and (nw.player->>'slot') ~ '^[0-9]+$'
+          and (nw.player->>'slot')::int = 11
+          and not coalesce((nw.player->>'empty')::boolean, false)
+          and nullif(nw.player->>'role', '') is null
+        )
+        or
+        (
+          -- R16 special case: bench wildcard fills an empty same-role
+          -- starter slot, and the bench wildcard slot becomes empty.
+          (starter_change.ord - 1) between 0 and 10
+          and (starter_change.old_player->>'slot') ~ '^[0-9]+$'
+          and (starter_change.old_player->>'slot')::int = starter_change.ord - 1
+          and coalesce((starter_change.old_player->>'empty')::boolean, false)
+          and not coalesce((starter_change.old_player->>'wild')::boolean, false)
+          and starter_change.old_player->>'role' = public.entry_slot_role((starter_change.ord - 1)::int)
+          and not coalesce((starter_change.new_player->>'wild')::boolean, false)
+          and not coalesce((starter_change.new_player->>'empty')::boolean, false)
+          and starter_change.new_player->>'name' = ow.player->>'name'
+          and starter_change.new_player->>'nation' = ow.player->>'nation'
+          and (starter_change.new_player->>'slot') ~ '^[0-9]+$'
+          and (starter_change.new_player->>'slot')::int = starter_change.ord - 1
+          and starter_change.new_player->>'role' = public.entry_slot_role((starter_change.ord - 1)::int)
+          and wild_pp.roles @> array[starter_change.new_player->>'role']
+          and coalesce((nw.player->>'wild')::boolean, false)
+          and coalesce((nw.player->>'empty')::boolean, false)
+          and (nw.player->>'slot') ~ '^[0-9]+$'
+          and (nw.player->>'slot')::int = 11
+          and nullif(nw.player->>'name', '') is null
+          and nullif(nw.player->>'nation', '') is null
+          and nullif(nw.player->>'role', '') is null
+        )
+      )
   )
     into v_is_wildcard_swap;
 

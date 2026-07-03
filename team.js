@@ -474,10 +474,10 @@ async function openWildcardSwapModal() {
   await loadGlobalPlayerPts();
 
   const xi = state.entry.xi_json || [];
-  const wild = xi.find(p => p.wild);
+  const wild = xi.find(p => p.wild && !p.empty);
   const roles = playerRoles(wild);
   const starters = xi
-    .filter(p => !p.wild && !p.empty)
+    .filter(p => !p.wild)
     .filter(p => roles.includes(p.role || slotRole(p.slot)))
     .sort((a, b) => Number(a.slot) - Number(b.slot));
 
@@ -499,7 +499,7 @@ async function openWildcardSwapModal() {
       <div class="tx-step">
         <div class="tx-step-label">${t('tx.wild.pick')}</div>
         <div class="tx-out-list" id="wildSwapList">
-          ${starters.length ? starters.map(p => txRowHtml(p, true)).join('') : `<div class="tx-empty">${t('tx.wild.none')}</div>`}
+          ${starters.length ? starters.map(p => p.empty ? txEmptyRowHtml(p) : txRowHtml(p, true)).join('') : `<div class="tx-empty">${t('tx.wild.none')}</div>`}
         </div>
       </div>
     </div>
@@ -526,15 +526,25 @@ async function commitWildcardSwap(wild, starter, modal) {
     role: starterRole,
     wild: false,
     bucket: starter.bucket || bucketForRole(starterRole),
+    empty: false,
   };
-  const starterAsWild = {
-    ...starter,
-    slot: 11,
-    tag: 'WILD',
-    role: null,
-    wild: true,
-    bucket: 'WILD',
-  };
+  const starterAsWild = starter.empty
+    ? {
+        slot: 11,
+        tag: 'WILD',
+        role: null,
+        bucket: 'WILD',
+        wild: true,
+        empty: true,
+      }
+    : {
+        ...starter,
+        slot: 11,
+        tag: 'WILD',
+        role: null,
+        wild: true,
+        bucket: 'WILD',
+      };
   const newXi = (state.entry.xi_json || []).map(p => {
     if (p === starter) return wildAsStarter;
     if (p === wild) return starterAsWild;
@@ -565,6 +575,22 @@ function emptySlotFor(out) {
     wild: false,
     empty: true,
   };
+}
+
+function txEmptyRowHtml(p) {
+  const role = p.role || slotRole(p.slot);
+  return `
+    <button class="tx-row" data-slot="${p.slot}">
+      <span class="tx-row-pos">${escapeHtml(role)}</span>
+      <span class="tx-row-flag"></span>
+      <span class="tx-row-name">
+        <b>${escapeHtml(t('tx.empty.slot'))}</b>
+        <span class="tx-row-meta">${escapeHtml(t('slot.empty'))}</span>
+      </span>
+      <span class="tx-row-pts">0</span>
+      <span class="tx-row-next"></span>
+    </button>
+  `;
 }
 
 function playerInSlot(out, inn) {
