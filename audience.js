@@ -1,16 +1,17 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260628-r32bonus';
+import { t } from './js/i18n.js?v=20260703-r16';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 const LB_PAGE_SIZE = 20;
 const MATCHDAY_REFRESH_MS = 60_000;
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260628-r32fixtures';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260703-r16';
 const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
 const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
 const R32_FIRST_KICKOFF = new Date('2026-06-28T19:00:00.000Z');
+const R16_FIRST_KICKOFF = new Date('2026-07-04T16:00:00.000Z');
 // Curated show/presenter league. Emails are intentionally not shipped; these
 // entry IDs were resolved once from private profiles/admin data.
 const HALLO_AMRIKA_MINI_ENTRY_IDS = [
@@ -41,12 +42,14 @@ function currentSquadPhase(now = new Date()) {
   if (now < MD2_FIRST_KICKOFF) return 'gw1';
   if (now < MD3_FIRST_KICKOFF) return 'gw2';
   if (now < R32_FIRST_KICKOFF) return 'gw3';
+  if (now < R16_FIRST_KICKOFF) return 'r32';
   return 'current';
 }
 
 function previousSquadPhase(now = new Date()) {
   const phase = currentSquadPhase(now);
-  if (phase === 'current') return 'gw3';
+  if (phase === 'current') return 'r32';
+  if (phase === 'r32') return 'gw3';
   if (phase === 'gw3') return 'gw2';
   if (phase === 'gw2') return 'gw1';
   return null;
@@ -57,6 +60,7 @@ function squadForPhase(entry, phase = currentSquadPhase()) {
   if (phase === 'gw1') return entry.xi_json_gw1 || entry.xi_json || [];
   if (phase === 'gw2') return entry.xi_json_gw2 || [];
   if (phase === 'gw3') return entry.xi_json_gw3 || entry.xi_json || [];
+  if (phase === 'r32') return entry.xi_json_r32 || entry.xi_json || [];
   return entry.xi_json || [];
 }
 
@@ -71,7 +75,8 @@ function fixtureCutoffForPhase(entry, phase = currentSquadPhase()) {
   if (phase === 'gw1') return submittedAt;
   if (phase === 'gw2') return maxDate(submittedAt, MD2_FIRST_KICKOFF);
   if (phase === 'gw3') return maxDate(submittedAt, MD3_FIRST_KICKOFF);
-  return maxDate(submittedAt, R32_FIRST_KICKOFF);
+  if (phase === 'r32') return maxDate(submittedAt, R32_FIRST_KICKOFF);
+  return maxDate(submittedAt, R16_FIRST_KICKOFF);
 }
 
 function roundNameForPhase(fixtures, phase = currentSquadPhase()) {
@@ -79,7 +84,8 @@ function roundNameForPhase(fixtures, phase = currentSquadPhase()) {
     gw1: 'Group Stage - 1',
     gw2: 'Group Stage - 2',
     gw3: 'Group Stage - 3',
-    current: 'Round of 32',
+    r32: 'Round of 32',
+    current: 'Round of 16',
   };
   const needle = needles[phase] || '';
   if (!needle) return '';
@@ -868,6 +874,12 @@ async function renderMySquad() {
   const slotsHtml = starters.map((item, i) => {
     try {
       const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
+      if (item?.empty) {
+        return `<div class="pitch-slot empty" style="left:${coord.x}%;top:${coord.y}%;">
+          <div class="ps-empty">${escapeHtml(t('slot.empty'))}</div>
+          <div class="ps-tag">${escapeHtml(coord.tag || item.role || '')}</div>
+        </div>`;
+      }
       const name = displayLast(item) || '?';
       const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
       const extra = name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : '';
@@ -952,6 +964,12 @@ async function renderMySquad() {
 function simpleSquadCardHtml(starters, wild) {
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag || item.role || '' };
+    if (item?.empty) {
+      return `<div class="pitch-slot empty" style="left:${coord.x}%;top:${coord.y}%;">
+        <div class="ps-empty">${escapeHtml(t('slot.empty'))}</div>
+        <div class="ps-tag">${escapeHtml(coord.tag || item.role || '')}</div>
+      </div>`;
+    }
     const name = displayLast(item) || '?';
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
     let flag = '';
@@ -1032,7 +1050,7 @@ function phasePointsFromRows(scoreRows, fixturesData, matchById, entry, phase = 
 
   let total = 0;
   for (const slot of squadForPhase(entry, phase) || []) {
-    if (slot?.wild) continue;
+    if (slot?.wild || slot?.empty || !slot?.name || !slot?.nation) continue;
     const fxNation = fixtureNationName(slot.nation);
     const fixture = fixtures.find(f =>
       f.round === roundName && (f.home === fxNation || f.away === fxNation)
@@ -1089,6 +1107,7 @@ function statPointParts(st) {
 function renderScoreDetails(playerStats, starters) {
   const rows = starters
     .map(item => {
+      if (item?.empty) return '';
       const ps = playerStats[item.name];
       if (!ps || !ps.st || Object.keys(ps.st).length === 0) return '';
       const parts = statPointParts(ps.st);
@@ -1204,7 +1223,7 @@ function renderHeroStatus() {
   // Past initial lock but still in transfer window — open to everyone now.
   if (now >= lock && inTransferWindow) {
     if (banner) {
-      banner.textContent = t('tx.r32.warn');
+      banner.textContent = t('tx.r16.warn');
       banner.style.display = 'block';
     }
     ctaBuild.style.display = '';
@@ -1219,9 +1238,7 @@ function renderHeroStatus() {
       minute: '2-digit',
     });
     el.classList.add('is-transfer');
-    el.innerHTML = isAr
-      ? `<span>ميركاتو دور الـ٣٢ مفتوح</span><span class="hs-date">يقفل ${escapeHtml(closeLabel)}</span><span>بتوقيت القاهرة</span>`
-      : `<span>R32 transfer window open</span><span class="hs-date">Closes ${escapeHtml(closeLabel)}</span><span>Cairo time</span>`;
+    el.innerHTML = `<span>${escapeHtml(t('tx.r16.open'))}</span><span class="hs-date">${escapeHtml(t('tx.r16.closes', { date: closeLabel }))}</span><span>${escapeHtml(t('time.cairo'))}</span>`;
     return;
   }
   // Pre-lock: banner should be hidden regardless of sign-in
@@ -1346,7 +1363,7 @@ async function matchdayPointsForEntries(entryIds) {
       .limit(180),
     supabase
       .from('entries')
-      .select('id, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3')
+      .select('id, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3, xi_json_r32')
       .in('id', ids),
   ]);
   if (matchesRes.error) throw matchesRes.error;
@@ -1375,7 +1392,7 @@ async function matchdayPointsForEntries(entryIds) {
   for (const entry of entriesRes.data || []) {
     const players = {};
     for (const slot of squadForPhase(entry, phase)) {
-      if (slot?.wild) continue;
+      if (slot?.wild || slot?.empty || !slot?.name) continue;
       players[slot.name] = slot;
     }
     currentPlayersByEntry[entry.id] = players;
@@ -1868,6 +1885,12 @@ async function openSquadModal(entryId, phaseOverride) {
   const ptsLabel = isAr ? 'نقاط' : 'pts';
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
+    if (item?.empty) {
+      return `<div class="pitch-slot empty" style="left:${coord.x}%;top:${coord.y}%;">
+        <div class="ps-empty">${escapeHtml(t('slot.empty'))}</div>
+        <div class="ps-tag">${escapeHtml(coord.tag || item.role || '')}</div>
+      </div>`;
+    }
     const name = displayLast(item) || '?';
     const sz = name.length >= 16 ? 8 : name.length >= 13 ? 9 : name.length >= 10 ? 10 : 11;
     const extra = name.length >= 13 ? 'letter-spacing:-0.3px;max-width:140px;' : '';

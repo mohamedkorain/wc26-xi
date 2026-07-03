@@ -1854,9 +1854,10 @@ input { font-family: inherit; }
   background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px;
   color: var(--text); font-size: 13px; font-family: inherit;
 }
-.tx-out-list, .tx-in-list {
+.tx-out-list, .tx-in-list, .tx-refill-list {
   display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto;
 }
+.tx-refill-list { margin-bottom: 8px; max-height: 190px; }
 .tx-row {
   display: grid;
   grid-template-columns: 44px 24px 1fr auto auto;

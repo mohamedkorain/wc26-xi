@@ -2,7 +2,7 @@
 
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { setLang, t } from './js/i18n.js?v=20260628-r32bonus';
+import { setLang, t } from './js/i18n.js?v=20260703-r16';
 import { flagImg } from './js/flags.js';
 
 mountAuthWidget(document.getElementById('authSlot'));
@@ -15,7 +15,9 @@ document.getElementById('langToggle').onclick = () => {
 };
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260628-r32fixtures';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260703-r16';
+const R16_OUT_COUNT = 4;
+const R16_IN_COUNT = 2;
 
 // Slot order MUST match xi_json's convention (the same one audience.js uses):
 //   0 GK · 1 LCB · 2 RCB · 3 LB · 4 RB · 5 LCM · 6 RCM
@@ -53,7 +55,7 @@ const MAX_TRANSFERS = 2;
 
   const [entryRes, leagueRes, fixturesRes, teamsRes, matchesRes] = await Promise.all([
     supabase.from('entries')
-      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3, transfers_used')
+      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3, xi_json_r32, transfers_used')
       .eq('league_id', HALO_LEAGUE_ID).eq('user_id', u.id).maybeSingle(),
     supabase.from('leagues')
       .select('id, name, locked_at, transfers_open_until')
@@ -109,7 +111,7 @@ function renderTransferBar() {
   });
   bar.style.display = '';
   bar.innerHTML = `
-    <div class="tx-window-warning">${t('tx.r32.warn')}</div>
+    <div class="tx-window-warning">${t('tx.r16.warn')}</div>
     <div class="tx-left">
       <div class="tx-counter"><span class="tx-num">${left}</span><span class="tx-num-label">${t('tx.left')}</span></div>
       <div class="tx-closes">${escapeHtml(closesAt)}</div>
@@ -241,30 +243,36 @@ async function loadGlobalPlayerPts() {
   return totals;
 }
 
-// Bundled 2-transfer flow:
-//  Step 1 — pick 1st OUT, then 1st IN  (single tap each)
-//  Step 2 — pick 2nd OUT, then 2nd IN
-//  Step 3 — confirm both. One UPDATE; transfers_used jumps from 0 to 2.
+// R16 transfer flow:
+//  Step 1 — pick exactly 4 starter slots OUT.
+//  Step 2 — choose exactly 2 of those slots to refill with same-role players.
+//  Step 3 — confirm. Remaining 2 removed slots become explicit empty slots.
 async function openTransferModal() {
   await ensurePlayersLoaded();
   await loadGlobalPlayerPts();
 
   const xi = state.entry.xi_json || [];
+  const starters = xi
+    .filter(p => !p.wild && !p.empty)
+    .sort((a, b) => Number(a.slot) - Number(b.slot));
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.innerHTML = `
     <div class="modal-card" style="max-width:620px;">
       <button class="modal-x" id="txX">×</button>
       <h2 class="modal-title">${t('tx.title')}</h2>
-      <p class="modal-sub" id="txProgress">Swap 1 of 2</p>
+      <p class="modal-sub" id="txProgress">${t('tx.r16.rule')}</p>
 
       <div class="tx-step" id="txOutPanel">
         <div class="tx-step-label">${t('tx.outpick')}</div>
+        <p class="modal-sub" id="txOutHint" style="margin:0 0 8px;"></p>
         <div class="tx-out-list" id="txOutList"></div>
+        <button class="tx-btn" id="txOutContinue" style="width:100%;margin-top:12px;" disabled>${t('tx.next')}</button>
       </div>
 
       <div class="tx-step" id="txInPanel" style="display:none;">
         <div class="tx-step-label" id="txInLabel">${t('tx.inpick')}</div>
+        <div class="tx-refill-list" id="txRefillList"></div>
         <input type="search" id="txSearch" placeholder="${t('tx.search')}" class="tx-search" />
         <div class="tx-in-list" id="txInList"></div>
       </div>
@@ -280,98 +288,134 @@ async function openTransferModal() {
   document.getElementById('txX').onclick = () => modal.remove();
   modal.onclick = e => { if (e.target === modal) modal.remove(); };
 
-  // State of the bundled flow
-  const swaps = [];               // [{out, in}, {out, in}]
-  let step = 0;                   // 0 = picking 1st out; 1 = picking 1st in; 2 = picking 2nd out; etc.
+  const selectedOut = [];
+  const refills = [];
+  let activeOut = null;
 
   function renderOutList() {
-    // Skip players already chosen as OUT in this session
-    const alreadyOut = new Set(swaps.map(s => s.out));
-    const html = xi
-      .filter(p => !alreadyOut.has(p))
-      .map(p => txRowHtml(p, true)).join('');
+    const selected = new Set(selectedOut);
+    const html = starters
+      .map(p => txRowHtml(p, true, selected.has(p))).join('');
     document.getElementById('txOutList').innerHTML = html;
+    document.getElementById('txOutHint').textContent = t('tx.outcount', {
+      picked: selectedOut.length,
+      total: R16_OUT_COUNT,
+    });
+    document.getElementById('txOutContinue').disabled = selectedOut.length !== R16_OUT_COUNT;
     document.querySelectorAll('#txOutList .tx-row').forEach(btn => {
       btn.onclick = () => {
-        const pick = xi.find(p => String(p.slot) === btn.dataset.slot && (btn.dataset.wild === '1') === !!p.wild);
+        const pick = starters.find(p => String(p.slot) === btn.dataset.slot);
         if (!pick) return;
-        swaps.push({ out: pick, in: null });
-        showInPanel();
+        const idx = selectedOut.indexOf(pick);
+        if (idx >= 0) {
+          selectedOut.splice(idx, 1);
+        } else if (selectedOut.length < R16_OUT_COUNT) {
+          selectedOut.push(pick);
+        }
+        renderOutList();
       };
     });
   }
 
-  function showOutPanel() {
-    document.getElementById('txProgress').textContent = `Swap ${swaps.length + 1} of 2`;
-    document.getElementById('txOutPanel').style.display = '';
-    document.getElementById('txInPanel').style.display = 'none';
-    document.getElementById('txSummary').style.display = 'none';
-    renderOutList();
-  }
-
   function showInPanel() {
-    const current = swaps[swaps.length - 1];
-    document.getElementById('txProgress').textContent = `Swap ${swaps.length} of 2 — replacing ${displayLast(current.out)}`;
+    activeOut = selectedOut.find(p => !refills.some(r => r.out === p)) || null;
+    document.getElementById('txProgress').textContent = t('tx.incount', {
+      picked: refills.length,
+      total: R16_IN_COUNT,
+    });
     document.getElementById('txOutPanel').style.display = 'none';
     document.getElementById('txInPanel').style.display = '';
     document.getElementById('txSearch').value = '';
-    document.getElementById('txInLabel').textContent = `${t('tx.inpick')}: ${displayLast(current.out)} (${current.out.nation})`;
+    document.getElementById('txSummary').style.display = 'none';
+    renderRefillSlots();
     renderInCandidates();
   }
 
-  function renderInCandidates() {
-    const current = swaps[swaps.length - 1];
-    const out = current.out;
-    const list = document.getElementById('txInList');
-    const q = (document.getElementById('txSearch').value || '').toLowerCase().trim();
+  function renderRefillSlots() {
+    document.getElementById('txRefillList').innerHTML = selectedOut.map(out => {
+      const refill = refills.find(r => r.out === out);
+      const active = activeOut === out ? ' selected' : '';
+      const status = refill
+        ? `${escapeHtml(displayLast(refill.in))}`
+        : (refills.length >= R16_IN_COUNT ? escapeHtml(t('tx.empty.slot')) : escapeHtml(t('tx.pick.slot')));
+      return `
+        <button class="tx-row${active}" data-slot="${out.slot}" style="grid-template-columns:44px 24px 1fr auto;">
+          <span class="tx-row-pos">${escapeHtml(out.role || slotRole(out.slot))}</span>
+          <span class="tx-row-flag">${flagImg(out.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}</span>
+          <span class="tx-row-name">
+            <b>${escapeHtml(displayLast(out))}</b>
+            <span class="tx-row-meta">${escapeHtml(out.nation)}</span>
+          </span>
+          <span class="tx-row-next">${status}</span>
+        </button>
+      `;
+    }).join('');
 
-    const wildSlot = !!out.wild;
-    const requiredRoles = wildSlot ? null : new Set([out.role, ...(out.roles || [])]);
+    document.querySelectorAll('#txRefillList .tx-row').forEach(btn => {
+      btn.onclick = () => {
+        const pick = selectedOut.find(p => String(p.slot) === btn.dataset.slot);
+        if (!pick || refills.some(r => r.out === pick) || refills.length >= R16_IN_COUNT) return;
+        activeOut = pick;
+        renderRefillSlots();
+        renderInCandidates();
+      };
+    });
+
+    document.getElementById('txInLabel').textContent = activeOut
+      ? `${t('tx.inpick')}: ${displayLast(activeOut)} (${activeOut.nation})`
+      : t('tx.inpick');
+  }
+
+  function renderInCandidates() {
+    const list = document.getElementById('txInList');
+    if (refills.length >= R16_IN_COUNT) {
+      showSummary();
+      return;
+    }
+    if (!activeOut) {
+      list.innerHTML = `<div class="tx-empty">${t('tx.pick.slot')}</div>`;
+      return;
+    }
+    const out = activeOut;
+    const q = (document.getElementById('txSearch').value || '').toLowerCase().trim();
+    const outRole = out.role || slotRole(out.slot);
+    const requiredRoles = new Set([outRole]);
 
     // Players already in the squad + players being transferred OUT this session
-    // are excluded (you can't pick a player you're swapping out as your IN).
+    // are excluded, except the selected OUT players whose slots are being freed.
     const inUseIds = new Set();
-    for (const p of xi) inUseIds.add(playerKey(p));
-    // …but the ones you're swapping OUT freed up
-    for (const s of swaps) {
-      if (s.in) inUseIds.add(playerKey(s.in));
+    const outSet = new Set(selectedOut);
+    for (const p of xi) {
+      if (!p.empty && !outSet.has(p)) inUseIds.add(playerKey(p));
+    }
+    for (const r of refills) {
+      if (r.in) inUseIds.add(playerKey(r.in));
     }
 
-    // Arab constraint: simulate the post-transfer squad and require ≥1 Arab.
-    const futureSquad = xi.map(p => {
-      const s = swaps.find(sw => sw.out === p);
-      return s?.in || p;
-    });
-    const arabsAfter = futureSquad.filter(p => p !== out && p.arab).length;
-    const mustBeArab = arabsAfter === 0;
-
-    // Max 3 picks from any single nation across the whole 12-player squad.
-    // Count what the squad will look like AFTER all applied swaps but BEFORE
-    // we add the candidate currently being chosen (the `out` slot is empty
-    // for the purposes of this check).
     const NATION_CAP = 3;
     const nationCount = {};
-    for (const p of futureSquad) {
-      if (p === out) continue;
+    for (const p of xi) {
+      if (p.empty || outSet.has(p)) continue;
       nationCount[p.nation] = (nationCount[p.nation] || 0) + 1;
+    }
+    for (const r of refills) {
+      if (!r.in) continue;
+      nationCount[r.in.nation] = (nationCount[r.in.nation] || 0) + 1;
     }
 
     let filtered = state.players.filter(p => {
       const id = p.no + '|' + p.nation + '|' + p.name;
       if (inUseIds.has(id)) return false;
-      if (mustBeArab && !p.arab) return false;
       if ((nationCount[p.nation] || 0) >= NATION_CAP) return false;
-      if (requiredRoles) {
-        const roles = new Set(p.roles || [p.role].filter(Boolean));
-        if (![...requiredRoles].some(r => roles.has(r))) return false;
-      }
+      const roles = new Set(p.roles || [p.role].filter(Boolean));
+      if (![...requiredRoles].some(r => roles.has(r))) return false;
       if (q && !(p.name?.toLowerCase().includes(q) || (p.club || '').toLowerCase().includes(q))) return false;
       return true;
     });
     filtered.sort((a, b) => (globalPlayerPts?.[b.name] || 0) - (globalPlayerPts?.[a.name] || 0));
 
     if (filtered.length === 0) {
-      list.innerHTML = `<div class="tx-empty">${mustBeArab ? t('tx.arabwarn') : '—'}</div>`;
+      list.innerHTML = `<div class="tx-empty">—</div>`;
       return;
     }
     list.innerHTML = filtered.slice(0, 100).map(p => txRowHtml(p, false)).join('');
@@ -380,40 +424,49 @@ async function openTransferModal() {
         const id = btn.dataset.id;
         const pick = filtered.find(p => playerKey(p) === id);
         if (!pick) return;
-        swaps[swaps.length - 1].in = pick;
-        if (swaps.length < 2) {
-          showOutPanel();          // pick 2nd swap
-        } else {
+        refills.push({ out: activeOut, in: pick });
+        activeOut = selectedOut.find(p => !refills.some(r => r.out === p)) || null;
+        if (refills.length >= R16_IN_COUNT) {
           showSummary();
+        } else {
+          renderRefillSlots();
+          renderInCandidates();
         }
       };
     });
   }
 
   function showSummary() {
-    document.getElementById('txProgress').textContent = `2 of 2 picked`;
+    document.getElementById('txProgress').textContent = t('tx.summary.r16');
     document.getElementById('txOutPanel').style.display = 'none';
     document.getElementById('txInPanel').style.display = 'none';
     document.getElementById('txSummary').style.display = '';
-    document.getElementById('txSwapsView').innerHTML = swaps.map((s, i) => `
+    document.getElementById('txSwapsView').innerHTML = selectedOut.map(out => {
+      const refill = refills.find(r => r.out === out);
+      const inHtml = refill ? `
+        ${flagImg(refill.in.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}
+        <b>${escapeHtml(displayLast(refill.in))}</b>
+      ` : `<b>${escapeHtml(t('tx.empty.slot'))}</b>`;
+      return `
       <div class="tx-swap-pair">
         <div class="tx-swap-side">
-          <span class="tx-row-pos">${s.out.wild ? 'WILD' : s.out.role}</span>
-          ${flagImg(s.out.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}
-          <b>${escapeHtml(displayLast(s.out))}</b>
+          <span class="tx-row-pos">${out.role || slotRole(out.slot)}</span>
+          ${flagImg(out.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}
+          <b>${escapeHtml(displayLast(out))}</b>
         </div>
         <span class="tx-swap-arrow">→</span>
         <div class="tx-swap-side">
-          ${flagImg(s.in.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}
-          <b>${escapeHtml(displayLast(s.in))}</b>
+          ${inHtml}
         </div>
       </div>
-    `).join('');
-    document.getElementById('txConfirmBtn').onclick = () => commitBothTransfers(swaps, modal);
+    `;
+    }).join('');
+    document.getElementById('txConfirmBtn').onclick = () => commitR16Transfers(selectedOut, refills, modal);
   }
 
   document.getElementById('txSearch').addEventListener('input', renderInCandidates);
-  showOutPanel();
+  document.getElementById('txOutContinue').onclick = showInPanel;
+  renderOutList();
 }
 
 async function openWildcardSwapModal() {
@@ -424,7 +477,7 @@ async function openWildcardSwapModal() {
   const wild = xi.find(p => p.wild);
   const roles = playerRoles(wild);
   const starters = xi
-    .filter(p => !p.wild)
+    .filter(p => !p.wild && !p.empty)
     .filter(p => roles.includes(p.role || slotRole(p.slot)))
     .sort((a, b) => Number(a.slot) - Number(b.slot));
 
@@ -502,24 +555,54 @@ async function commitWildcardSwap(wild, starter, modal) {
   location.reload();
 }
 
-async function commitBothTransfers(swaps, modal) {
-  // Build the new xi_json by applying both swaps at once.
+function emptySlotFor(out) {
+  const role = out.role || slotRole(out.slot);
+  return {
+    slot: Number(out.slot),
+    tag: out.tag || role,
+    role,
+    bucket: out.bucket || bucketForRole(role),
+    wild: false,
+    empty: true,
+  };
+}
+
+function playerInSlot(out, inn) {
+  const role = out.role || slotRole(out.slot);
+  return {
+    ...out,
+    no: inn.no,
+    name: inn.name,
+    shirt_name: inn.shirt_name,
+    first: inn.first,
+    last: inn.last,
+    club: inn.club,
+    nation: inn.nation,
+    nation_code: inn.nation_code,
+    category: inn.category,
+    arab: inn.arab,
+    slot: Number(out.slot),
+    tag: out.tag || role,
+    role,
+    bucket: out.bucket || bucketForRole(role),
+    wild: false,
+    empty: false,
+  };
+}
+
+async function commitR16Transfers(selectedOut, refills, modal) {
+  if (selectedOut.length !== R16_OUT_COUNT || refills.length !== R16_IN_COUNT) {
+    alert(t('tx.invalid.r16'));
+    return;
+  }
+
+  const outSet = new Set(selectedOut);
   const newXi = (state.entry.xi_json || []).map(p => {
-    const s = swaps.find(sw => sw.out === p);
-    if (!s) return p;
-    const inn = s.in;
-    return {
-      ...p,
-      no: inn.no, name: inn.name, shirt_name: inn.shirt_name,
-      first: inn.first, last: inn.last, club: inn.club,
-      nation: inn.nation, nation_code: inn.nation_code,
-      category: inn.category, arab: inn.arab,
-    };
+    if (!outSet.has(p)) return p;
+    const refill = refills.find(r => r.out === p);
+    return refill ? playerInSlot(p, refill.in) : emptySlotFor(p);
   });
-  // Snapshot the GW1 lineup (the squad scoring the in-progress matchday)
-  // BEFORE we overwrite xi_json with the next-GW lineup. This keeps GW1
-  // scoring fair — transferred-in players don't retroactively earn points
-  // for matches they were never on the squad for.
+
   const update = { xi_json: newXi, transfers_used: (state.entry.transfers_used || 0) + 2 };
   if (!state.entry.xi_json_gw1) {
     update.xi_json_gw1 = state.entry.xi_json;
@@ -536,7 +619,7 @@ async function commitBothTransfers(swaps, modal) {
 // Render one row of the transfer modal — used for BOTH the OUT list (current
 // squad) and the IN list (candidates). Shows: flag · pos · name (club) ·
 // nation small · pts · next match.
-function txRowHtml(p, isOut) {
+function txRowHtml(p, isOut, selected = false) {
   const pos = p.wild ? 'WILD' : (p.role || (p.roles && p.roles[0]) || '');
   const pts = globalPlayerPts?.[p.name] || 0;
   const ownership = ownershipLabel(p.name, p.nation);
@@ -548,7 +631,7 @@ function txRowHtml(p, isOut) {
     ownership ? escapeHtml(ownership) : '',
   ].filter(Boolean).join(' · ');
   return `
-    <button class="tx-row${isOut ? '' : ' in'}" ${isOut ? `data-slot="${p.slot}" data-wild="${p.wild ? 1 : 0}"` : `data-id="${escapeHtml(playerKey(p))}"`}>
+    <button class="tx-row${isOut ? '' : ' in'}${selected ? ' selected' : ''}" ${isOut ? `data-slot="${p.slot}" data-wild="${p.wild ? 1 : 0}"` : `data-id="${escapeHtml(playerKey(p))}"`}>
       <span class="tx-row-pos">${pos}</span>
       <span class="tx-row-flag">${flag}</span>
       <span class="tx-row-name">
@@ -561,8 +644,8 @@ function txRowHtml(p, isOut) {
   `;
 }
 
-// (Old single-transfer helpers replaced by commitBothTransfers + the bundled
-//  flow inside openTransferModal.)
+// (Old two-swap helpers replaced by commitR16Transfers + the R16 flow inside
+// openTransferModal.)
 
 function renderEntry() {
   const total = state.scores.reduce((sum, s) => sum + (s.points || 0), 0);
@@ -587,6 +670,12 @@ function renderEntry() {
 
   const slotsHtml = starters.map((item, i) => {
     const coord = PITCH_COORDS[i] || { x: 50, y: 50, tag: item.tag };
+    if (item?.empty) {
+      return `<div class="pitch-slot empty" style="left:${coord.x}%;top:${coord.y}%;direction:ltr;">
+        <div class="ps-empty">${escapeHtml(t('slot.empty'))}</div>
+        <div class="ps-tag">${escapeHtml(coord.tag || item.role || '')}</div>
+      </div>`;
+    }
     const name = displayLast(item) || '?';
     const next = nextGameFor(item.nation);
     const stats = statsForFixture(item, next, scoreRowByDate);
@@ -642,6 +731,7 @@ function renderTransferHistoryHtml() {
   const gw1Xi = state.entry.xi_json_gw1;
   const gw2Xi = state.entry.xi_json_gw2;
   const gw3Xi = state.entry.xi_json_gw3;
+  const r32Xi = state.entry.xi_json_r32;
   const currentXi = state.entry.xi_json || [];
 
   const groups = [];
@@ -655,8 +745,13 @@ function renderTransferHistoryHtml() {
   } else if (gw2Xi) {
     groups.push({ from: 'MD2', to: 'MD3', rows: transferDiffs(gw2Xi, currentXi) });
   }
-  if (gw3Xi) {
+  if (gw3Xi && r32Xi) {
+    groups.push({ from: 'MD3', to: 'R32', rows: transferDiffs(gw3Xi, r32Xi) });
+  } else if (gw3Xi) {
     groups.push({ from: 'MD3', to: 'R32', rows: transferDiffs(gw3Xi, currentXi) });
+  }
+  if (r32Xi) {
+    groups.push({ from: 'R32', to: 'R16', rows: transferDiffs(r32Xi, currentXi) });
   }
   const visibleGroups = groups.filter(group => group.rows.length > 0);
 
@@ -691,6 +786,14 @@ function transferDiffs(oldXi, newXi) {
 }
 
 function transferRowHtml(s) {
+  const inSide = s.in?.empty ? `
+    <b>${escapeHtml(t('tx.empty.slot'))}</b>
+    <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(s.in.role || '')}</span>
+  ` : `
+    ${flagImg(s.in.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}
+    <b>${escapeHtml(displayLast(s.in))}</b>
+    <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(s.in.nation)}</span>
+  `;
   return `
     <div class="tx-swap-pair">
       <div class="tx-swap-side">
@@ -701,9 +804,7 @@ function transferRowHtml(s) {
       </div>
       <span class="tx-swap-arrow">→</span>
       <div class="tx-swap-side">
-        ${flagImg(s.in.nation_code, { width: 20, cls: 'flag-img', fallback: '' })}
-        <b>${escapeHtml(displayLast(s.in))}</b>
-        <span style="color:var(--text-dim);font-size:11px;">${escapeHtml(s.in.nation)}</span>
+        ${inSide}
       </div>
     </div>
   `;
