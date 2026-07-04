@@ -33,6 +33,7 @@ select
     + coalesce((stats->>'cleanSheet')::int, 0)
     + coalesce((stats->>'mvp')::int, 0)
     + coalesce((stats->>'r32')::int, 0)
+    + coalesce((stats->>'r16')::int, 0)
     - case when stats->>'red' is not null then 1 else 0 end
   )::int as total_points
 from deduped

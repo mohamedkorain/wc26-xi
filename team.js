@@ -873,6 +873,7 @@ function pointsFromStatLine(st) {
     + (st.cleanSheet || 0)
     + (st.mvp || 0)
     + (st.r32 || 0)
+    + (st.r16 || 0)
     - redCardCount(st);
 }
 
@@ -919,6 +920,7 @@ function describeStat(s) {
   if (s.full90) parts.push('⏱️');
   if (s.mvp) parts.push('⭐');
   if (s.r32) parts.push('R32');
+  if (s.r16) parts.push('R16');
   if (s.red) parts.push('🟥');
   return parts.join(' ') || '—';
 }
@@ -934,6 +936,7 @@ function describeStatText(s) {
   if (s.cleanSheet) parts.push(t('pts.cleansheet'));
   if (s.mvp)        parts.push(t('pts.mvp'));
   if (s.r32)        parts.push(t('pts.r32'));
+  if (s.r16)        parts.push(t('pts.r16'));
   if (s.red)        parts.push(t('pts.red'));
   return parts.join(document.documentElement.lang === 'ar' ? '، ' : ', ');
 }

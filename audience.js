@@ -1039,6 +1039,7 @@ function pointsFromStatLine(st) {
     + (st.cleanSheet || 0)
     + (st.mvp || 0)
     + (st.r32 || 0)
+    + (st.r16 || 0)
     - redCardCount(st);
 }
 
@@ -1067,7 +1068,7 @@ function phasePointsFromRows(scoreRows, fixturesData, matchById, entry, phase = 
 }
 
 function addStatTotals(into, st) {
-  for (const k of ['goals','assists','cleanSheet','win','full90','mvp','r32']) {
+  for (const k of ['goals','assists','cleanSheet','win','full90','mvp','r32','r16']) {
     if (st[k]) into[k] = (into[k] || 0) + st[k];
   }
   const reds = redCardCount(st);
@@ -1084,6 +1085,7 @@ function describeStatTextLocal(s) {
   if (s.cleanSheet) parts.push(t('pts.cleansheet'));
   if (s.mvp)        parts.push(t('pts.mvp'));
   if (s.r32)        parts.push(t('pts.r32'));
+  if (s.r16)        parts.push(t('pts.r16'));
   if (s.red) {
     const reds = redCardCount(s);
     parts.push(`${t('pts.red')}${reds > 1 ? '×' + reds : ''}`);
@@ -1100,6 +1102,7 @@ function statPointParts(st) {
   if (st.cleanSheet) parts.push({ code: 'CS',  label: t('pts.cleansheet'), value: st.cleanSheet });
   if (st.mvp)        parts.push({ code: 'MVP', label: t('pts.mvp'),        value: st.mvp });
   if (st.r32)        parts.push({ code: 'R32', label: t('pts.r32'),        value: st.r32 });
+  if (st.r16)        parts.push({ code: 'R16', label: t('pts.r16'),        value: st.r16 });
   if (st.red)        parts.push({ code: 'RC',  label: t('pts.red'),        value: -redCardCount(st) });
   return parts;
 }

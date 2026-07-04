@@ -88,6 +88,15 @@ const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
   '1565177': ['mbappe'],       // 2026-06-30 France-Sweden
   '1564789': ['nusa'],         // 2026-06-30 Ivory Coast-Norway
   '1567306': ['quinones'],     // 2026-07-01 Mexico-Ecuador
+  '1567307': ['harry', 'kane'], // 2026-07-01 England-Congo DR
+  '1562586': ['malik', 'tillman'], // 2026-07-02 USA-Bosnia
+  '1567308': ['youri', 'tielemans'], // 2026-07-01 Belgium-Senegal
+  '1567309': ['cristiano', 'ronaldo'], // 2026-07-02 Portugal-Croatia
+  '1567311': ['lamine', 'yamal'], // 2026-07-02 Spain-Austria
+  '1567312': ['breel', 'embolo'], // 2026-07-03 Switzerland-Algeria
+  '1565179': ['lionel', 'messi'], // 2026-07-03 Argentina-Cape Verde
+  '1567310': ['luis', 'diaz'],  // 2026-07-04 Colombia-Ghana
+  '1565178': ['mohamed', 'salah'], // 2026-07-03 Australia-Egypt
 };
 
 // Manual player stat corrections for cases where API-Football's player feed
