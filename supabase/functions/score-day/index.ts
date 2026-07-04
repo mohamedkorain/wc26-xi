@@ -233,6 +233,24 @@ function fixtureStatusBucket(status: string): 'finished' | 'live' | 'scheduled' 
   return 'scheduled';
 }
 
+function winnerSideFromFixture(
+  fixture: any,
+  homeGoals: number,
+  awayGoals: number,
+): 'home' | 'away' | 'draw' {
+  if (fixture.fixture.status.short === 'PEN') {
+    const homePens = fixture.score?.penalty?.home;
+    const awayPens = fixture.score?.penalty?.away;
+    if (typeof homePens === 'number' && typeof awayPens === 'number') {
+      if (homePens > awayPens) return 'home';
+      if (awayPens > homePens) return 'away';
+    }
+  }
+  if (homeGoals > awayGoals) return 'home';
+  if (awayGoals > homeGoals) return 'away';
+  return 'draw';
+}
+
 async function refreshFixtureSummary(fixture: any): Promise<any> {
   const homeNation = canonNation(fixture.teams.home.name);
   const awayNation = canonNation(fixture.teams.away.name);
@@ -243,6 +261,7 @@ async function refreshFixtureSummary(fixture: any): Promise<any> {
   const awayGoals = fixture.goals.away ?? 0;
   const kickoff = new Date(fixture.fixture.date);
   const bucket = fixtureStatusBucket(status);
+  const winnerSide = winnerSideFromFixture(fixture, homeGoals, awayGoals);
 
   await supa.from('matches').upsert({
     external_id: matchId, date: dateStr,
@@ -251,7 +270,7 @@ async function refreshFixtureSummary(fixture: any): Promise<any> {
     status: bucket,
   }, { onConflict: 'external_id' });
 
-  return { matchId, homeNation, awayNation, homeGoals, awayGoals, kickoff, bucket };
+  return { matchId, homeNation, awayNation, homeGoals, awayGoals, kickoff, bucket, winnerSide };
 }
 
 // Per-fixture preparation: upsert matches row, fetch API stats, return
@@ -259,7 +278,7 @@ async function refreshFixtureSummary(fixture: any): Promise<any> {
 // (so we don't score in-progress matches).
 async function prepareFixture(fixture: any): Promise<any> {
   const summary = await refreshFixtureSummary(fixture);
-  const { matchId, homeNation, awayNation, homeGoals, awayGoals, kickoff, bucket } = summary;
+  const { matchId, homeNation, awayNation, homeGoals, awayGoals, kickoff, bucket, winnerSide } = summary;
 
   if (bucket !== 'finished') return null;
 
@@ -267,9 +286,9 @@ async function prepareFixture(fixture: any): Promise<any> {
     apiFetch(`/fixtures/events?fixture=${matchId}`),
     apiFetch(`/fixtures/players?fixture=${matchId}`),
   ]);
-  const rawEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation, homeGoals, awayGoals, matchId);
+  const rawEvents = buildPlayerEvents(playersRes.response, eventsRes.response, homeNation, awayNation, matchId, winnerSide);
   return {
-    matchId, homeNation, awayNation, homeGoals, awayGoals, kickoff,
+    matchId, homeNation, awayNation, homeGoals, awayGoals, kickoff, winnerSide,
     events: enrichEvents(rawEvents),
   };
 }
@@ -380,7 +399,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
           const ev = matchPlayerToEvent(slot, m.events, expectedSide);
           if (!ev) continue;
           const { points, breakdown: b } = scorePlayer(
-            ev, slot.role ? [slot.role] : [], m.homeNation, m.homeGoals, m.awayGoals,
+            ev, slot.role ? [slot.role] : [], m.homeNation, m.homeGoals, m.awayGoals, m.winnerSide,
           );
           totalPts += points;
           // If somehow the same player shows in two fixtures the same day
@@ -432,15 +451,12 @@ function buildPlayerEvents(
   eventsResponse: any[],
   homeNation: string,
   awayNation: string,
-  homeGoals: number,
-  awayGoals: number,
   matchId: string,
+  winnerSide: 'home' | 'away' | 'draw',
 ): PlayerEvent[] {
   // MVP is ONE player per match. MANUAL_MVP_OVERRIDES must reflect FIFA's
   // official Player of the Match page; if absent, fall back to API-Football
   // rating selection.
-  const winnerSide: 'home' | 'away' | 'draw' =
-    homeGoals > awayGoals ? 'home' : awayGoals > homeGoals ? 'away' : 'draw';
   let mvpId = -1;
   let mvpRating = 0;
   for (const teamBlock of playersResponse || []) {

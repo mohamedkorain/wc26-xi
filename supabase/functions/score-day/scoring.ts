@@ -37,6 +37,7 @@ export function scorePlayer(
   matchHomeTeam: string,
   matchHomeGoals: number,
   matchAwayGoals: number,
+  winnerSide?: 'home' | 'away' | 'draw',
 ): { points: number; breakdown: Record<string, number> } {
   const breakdown: Record<string, number> = {};
   let pts = 0;
@@ -45,7 +46,7 @@ export function scorePlayer(
   const playerOnHomeSide = ev.team === 'home';
   const teamGoalsFor   = playerOnHomeSide ? matchHomeGoals : matchAwayGoals;
   const teamGoalsAgainst = playerOnHomeSide ? matchAwayGoals : matchHomeGoals;
-  const teamWon = teamGoalsFor > teamGoalsAgainst;
+  const teamWon = winnerSide ? ev.team === winnerSide : teamGoalsFor > teamGoalsAgainst;
   const cleanSheet = teamGoalsAgainst === 0;
 
   // 1. Team win (+1 if played 1'+)
