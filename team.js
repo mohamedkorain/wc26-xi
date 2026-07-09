@@ -2,7 +2,7 @@
 
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { setLang, t } from './js/i18n.js?v=20260703-r16';
+import { setLang, t } from './js/i18n.js?v=20260709-qf';
 import { flagImg } from './js/flags.js';
 
 mountAuthWidget(document.getElementById('authSlot'));
@@ -15,7 +15,7 @@ document.getElementById('langToggle').onclick = () => {
 };
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260703-r16';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260709-qf';
 const R16_OUT_COUNT = 4;
 const R16_IN_COUNT = 2;
 
@@ -874,6 +874,7 @@ function pointsFromStatLine(st) {
     + (st.mvp || 0)
     + (st.r32 || 0)
     + (st.r16 || 0)
+    + (st.qf || 0)
     - redCardCount(st);
 }
 
@@ -921,6 +922,7 @@ function describeStat(s) {
   if (s.mvp) parts.push('⭐');
   if (s.r32) parts.push('R32');
   if (s.r16) parts.push('R16');
+  if (s.qf) parts.push('QF');
   if (s.red) parts.push('🟥');
   return parts.join(' ') || '—';
 }
@@ -937,6 +939,7 @@ function describeStatText(s) {
   if (s.mvp)        parts.push(t('pts.mvp'));
   if (s.r32)        parts.push(t('pts.r32'));
   if (s.r16)        parts.push(t('pts.r16'));
+  if (s.qf)         parts.push(t('pts.qf'));
   if (s.red)        parts.push(t('pts.red'));
   return parts.join(document.documentElement.lang === 'ar' ? '، ' : ', ');
 }

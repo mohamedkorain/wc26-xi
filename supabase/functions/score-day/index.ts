@@ -97,6 +97,15 @@ const MANUAL_MVP_OVERRIDES: Record<string, string[]> = {
   '1565179': ['lionel', 'messi'], // 2026-07-03 Argentina-Cape Verde
   '1567310': ['luis', 'diaz'],  // 2026-07-04 Colombia-Ghana
   '1565178': ['mohamed', 'salah'], // 2026-07-03 Australia-Egypt
+  // Round of 16 — FIFA official Player of the Match (matches 89-96).
+  '1569870': ['orlando', 'gill'], // 2026-07-04 Paraguay-France (losing-side GK)
+  '1567824': ['ounahi'],       // 2026-07-04 Canada-Morocco
+  '1568100': ['haaland'],      // 2026-07-05 Brazil-Norway
+  '1570714': ['bellingham'],   // 2026-07-06 Mexico-England
+  '1576756': ['rodri'],        // 2026-07-06 Portugal-Spain
+  '1570715': ['ketelaere'],    // 2026-07-07 USA-Belgium
+  '1576804': ['lionel', 'messi'], // 2026-07-07 Argentina-Egypt
+  '1576805': ['kobel'],        // 2026-07-07 Switzerland-Colombia (PSO 4-3)
 };
 
 // Manual player stat corrections for cases where API-Football's player feed

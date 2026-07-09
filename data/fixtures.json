@@ -1059,6 +1059,102 @@
    "away": "Ghana",
    "home_goals": null,
    "away_goals": null
+  },
+  {
+   "id": 1569870,
+   "date": "2026-07-04T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Round of 16",
+   "status": "FT",
+   "home": "Paraguay",
+   "away": "France",
+   "home_goals": null,
+   "away_goals": null
+  },
+  {
+   "id": 1567824,
+   "date": "2026-07-04T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Round of 16",
+   "status": "FT",
+   "home": "Canada",
+   "away": "Morocco",
+   "home_goals": null,
+   "away_goals": null
+  },
+  {
+   "id": 1568100,
+   "date": "2026-07-05T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Round of 16",
+   "status": "FT",
+   "home": "Brazil",
+   "away": "Norway",
+   "home_goals": null,
+   "away_goals": null
+  },
+  {
+   "id": 1570714,
+   "date": "2026-07-06T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Round of 16",
+   "status": "FT",
+   "home": "Mexico",
+   "away": "England",
+   "home_goals": null,
+   "away_goals": null
+  },
+  {
+   "id": 1576756,
+   "date": "2026-07-06T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Round of 16",
+   "status": "FT",
+   "home": "Portugal",
+   "away": "Spain",
+   "home_goals": null,
+   "away_goals": null
+  },
+  {
+   "id": 1570715,
+   "date": "2026-07-07T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Round of 16",
+   "status": "FT",
+   "home": "USA",
+   "away": "Belgium",
+   "home_goals": null,
+   "away_goals": null
+  },
+  {
+   "id": 1576804,
+   "date": "2026-07-07T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Round of 16",
+   "status": "FT",
+   "home": "Argentina",
+   "away": "Egypt",
+   "home_goals": null,
+   "away_goals": null
+  },
+  {
+   "id": 1576805,
+   "date": "2026-07-07T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Round of 16",
+   "status": "FT",
+   "home": "Switzerland",
+   "away": "Colombia",
+   "home_goals": null,
+   "away_goals": null
   }
  ]
 }
