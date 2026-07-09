@@ -2,7 +2,7 @@
 
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { setLang, t } from './js/i18n.js?v=20260709-qf';
+import { setLang, t } from './js/i18n.js?v=20260709-qf2';
 import { flagImg } from './js/flags.js';
 
 mountAuthWidget(document.getElementById('authSlot'));
@@ -15,9 +15,9 @@ document.getElementById('langToggle').onclick = () => {
 };
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260709-qf';
-const R16_OUT_COUNT = 4;
-const R16_IN_COUNT = 2;
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260709-qf2';
+const QF_OUT_COUNT = 3;
+const QF_IN_COUNT = 1;
 
 // Slot order MUST match xi_json's convention (the same one audience.js uses):
 //   0 GK · 1 LCB · 2 RCB · 3 LB · 4 RB · 5 LCM · 6 RCM
@@ -42,7 +42,7 @@ const state = {
   players: [],   // flat list, loaded lazily on first transfer-modal open
 };
 
-const MAX_TRANSFERS = 2;
+const MAX_TRANSFERS = 1;
 
 (async () => {
   const u = await currentUser();
@@ -55,7 +55,7 @@ const MAX_TRANSFERS = 2;
 
   const [entryRes, leagueRes, fixturesRes, teamsRes, matchesRes] = await Promise.all([
     supabase.from('entries')
-      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3, xi_json_r32, transfers_used')
+      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3, xi_json_r32, xi_json_r16, transfers_used')
       .eq('league_id', HALO_LEAGUE_ID).eq('user_id', u.id).maybeSingle(),
     supabase.from('leagues')
       .select('id, name, locked_at, transfers_open_until')
@@ -111,7 +111,7 @@ function renderTransferBar() {
   });
   bar.style.display = '';
   bar.innerHTML = `
-    <div class="tx-window-warning">${t('tx.r16.warn')}</div>
+    <div class="tx-window-warning">${t('tx.qf.warn')}</div>
     <div class="tx-left">
       <div class="tx-counter"><span class="tx-num">${left}</span><span class="tx-num-label">${t('tx.left')}</span></div>
       <div class="tx-closes">${escapeHtml(closesAt)}</div>
@@ -261,7 +261,7 @@ async function openTransferModal() {
     <div class="modal-card" style="max-width:620px;">
       <button class="modal-x" id="txX">×</button>
       <h2 class="modal-title">${t('tx.title')}</h2>
-      <p class="modal-sub" id="txProgress">${t('tx.r16.rule')}</p>
+      <p class="modal-sub" id="txProgress">${t('tx.qf.rule')}</p>
 
       <div class="tx-step" id="txOutPanel">
         <div class="tx-step-label">${t('tx.outpick')}</div>
@@ -299,9 +299,9 @@ async function openTransferModal() {
     document.getElementById('txOutList').innerHTML = html;
     document.getElementById('txOutHint').textContent = t('tx.outcount', {
       picked: selectedOut.length,
-      total: R16_OUT_COUNT,
+      total: QF_OUT_COUNT,
     });
-    document.getElementById('txOutContinue').disabled = selectedOut.length !== R16_OUT_COUNT;
+    document.getElementById('txOutContinue').disabled = selectedOut.length !== QF_OUT_COUNT;
     document.querySelectorAll('#txOutList .tx-row').forEach(btn => {
       btn.onclick = () => {
         const pick = starters.find(p => String(p.slot) === btn.dataset.slot);
@@ -309,7 +309,7 @@ async function openTransferModal() {
         const idx = selectedOut.indexOf(pick);
         if (idx >= 0) {
           selectedOut.splice(idx, 1);
-        } else if (selectedOut.length < R16_OUT_COUNT) {
+        } else if (selectedOut.length < QF_OUT_COUNT) {
           selectedOut.push(pick);
         }
         renderOutList();
@@ -321,7 +321,7 @@ async function openTransferModal() {
     activeOut = selectedOut.find(p => !refills.some(r => r.out === p)) || null;
     document.getElementById('txProgress').textContent = t('tx.incount', {
       picked: refills.length,
-      total: R16_IN_COUNT,
+      total: QF_IN_COUNT,
     });
     document.getElementById('txOutPanel').style.display = 'none';
     document.getElementById('txInPanel').style.display = '';
@@ -337,7 +337,7 @@ async function openTransferModal() {
       const active = activeOut === out ? ' selected' : '';
       const status = refill
         ? `${escapeHtml(displayLast(refill.in))}`
-        : (refills.length >= R16_IN_COUNT ? escapeHtml(t('tx.empty.slot')) : escapeHtml(t('tx.pick.slot')));
+        : (refills.length >= QF_IN_COUNT ? escapeHtml(t('tx.empty.slot')) : escapeHtml(t('tx.pick.slot')));
       return `
         <button class="tx-row${active}" data-slot="${out.slot}" style="grid-template-columns:44px 24px 1fr auto;">
           <span class="tx-row-pos">${escapeHtml(out.role || slotRole(out.slot))}</span>
@@ -354,7 +354,7 @@ async function openTransferModal() {
     document.querySelectorAll('#txRefillList .tx-row').forEach(btn => {
       btn.onclick = () => {
         const pick = selectedOut.find(p => String(p.slot) === btn.dataset.slot);
-        if (!pick || refills.some(r => r.out === pick) || refills.length >= R16_IN_COUNT) return;
+        if (!pick || refills.some(r => r.out === pick) || refills.length >= QF_IN_COUNT) return;
         activeOut = pick;
         renderRefillSlots();
         renderInCandidates();
@@ -368,7 +368,7 @@ async function openTransferModal() {
 
   function renderInCandidates() {
     const list = document.getElementById('txInList');
-    if (refills.length >= R16_IN_COUNT) {
+    if (refills.length >= QF_IN_COUNT) {
       showSummary();
       return;
     }
@@ -426,7 +426,7 @@ async function openTransferModal() {
         if (!pick) return;
         refills.push({ out: activeOut, in: pick });
         activeOut = selectedOut.find(p => !refills.some(r => r.out === p)) || null;
-        if (refills.length >= R16_IN_COUNT) {
+        if (refills.length >= QF_IN_COUNT) {
           showSummary();
         } else {
           renderRefillSlots();
@@ -437,7 +437,7 @@ async function openTransferModal() {
   }
 
   function showSummary() {
-    document.getElementById('txProgress').textContent = t('tx.summary.r16');
+    document.getElementById('txProgress').textContent = t('tx.summary.qf');
     document.getElementById('txOutPanel').style.display = 'none';
     document.getElementById('txInPanel').style.display = 'none';
     document.getElementById('txSummary').style.display = '';
@@ -617,8 +617,8 @@ function playerInSlot(out, inn) {
 }
 
 async function commitR16Transfers(selectedOut, refills, modal) {
-  if (selectedOut.length !== R16_OUT_COUNT || refills.length !== R16_IN_COUNT) {
-    alert(t('tx.invalid.r16'));
+  if (selectedOut.length !== QF_OUT_COUNT || refills.length !== QF_IN_COUNT) {
+    alert(t('tx.invalid.qf'));
     return;
   }
 
@@ -629,7 +629,7 @@ async function commitR16Transfers(selectedOut, refills, modal) {
     return refill ? playerInSlot(p, refill.in) : emptySlotFor(p);
   });
 
-  const update = { xi_json: newXi, transfers_used: (state.entry.transfers_used || 0) + 2 };
+  const update = { xi_json: newXi, transfers_used: (state.entry.transfers_used || 0) + 1 };
   if (!state.entry.xi_json_gw1) {
     update.xi_json_gw1 = state.entry.xi_json;
   }
@@ -758,6 +758,7 @@ function renderTransferHistoryHtml() {
   const gw2Xi = state.entry.xi_json_gw2;
   const gw3Xi = state.entry.xi_json_gw3;
   const r32Xi = state.entry.xi_json_r32;
+  const r16Xi = state.entry.xi_json_r16;
   const currentXi = state.entry.xi_json || [];
 
   const groups = [];
@@ -776,8 +777,13 @@ function renderTransferHistoryHtml() {
   } else if (gw3Xi) {
     groups.push({ from: 'MD3', to: 'R32', rows: transferDiffs(gw3Xi, currentXi) });
   }
-  if (r32Xi) {
+  if (r32Xi && r16Xi) {
+    groups.push({ from: 'R32', to: 'R16', rows: transferDiffs(r32Xi, r16Xi) });
+  } else if (r32Xi) {
     groups.push({ from: 'R32', to: 'R16', rows: transferDiffs(r32Xi, currentXi) });
+  }
+  if (r16Xi) {
+    groups.push({ from: 'R16', to: 'QF', rows: transferDiffs(r16Xi, currentXi) });
   }
   const visibleGroups = groups.filter(group => group.rows.length > 0);
 

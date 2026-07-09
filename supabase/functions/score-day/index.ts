@@ -333,6 +333,10 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
   const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
   const R32_FIRST_KICKOFF = new Date('2026-06-28T19:00:00.000Z');
   const R16_FIRST_KICKOFF = new Date('2026-07-04T16:00:00.000Z');
+  // First quarter-final kickoff (France-Morocco is 2026-07-09). Any fixture
+  // on/after this boundary scores the editable current xi_json (the QF squad);
+  // R16 fixtures (07-04..07-07) keep scoring the frozen xi_json_r16 snapshot.
+  const QF_FIRST_KICKOFF = new Date('2026-07-09T00:00:00.000Z');
 
   // Collect playing nations once
   const playingNations = new Set<string>();
@@ -375,6 +379,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
       const gw2Starters = (entry.xi_json_gw2 || []).filter((x: any) => !x.wild && !x.empty);
       const gw3Starters = (entry.xi_json_gw3 || entry.xi_json || []).filter((x: any) => !x.wild && !x.empty);
       const r32Starters = (entry.xi_json_r32 || entry.xi_json || []).filter((x: any) => !x.wild && !x.empty);
+      const r16Starters = (entry.xi_json_r16 || entry.xi_json || []).filter((x: any) => !x.wild && !x.empty);
       const currentStarters = (entry.xi_json || []).filter((x: any) => !x.wild && !x.empty);
       const submittedAt = entry.submitted_at ? new Date(entry.submitted_at) : null;
 
@@ -393,7 +398,9 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
               ? MD3_FIRST_KICKOFF
               : m.kickoff < R16_FIRST_KICKOFF
                 ? R32_FIRST_KICKOFF
-                : R16_FIRST_KICKOFF;
+                : m.kickoff < QF_FIRST_KICKOFF
+                  ? R16_FIRST_KICKOFF
+                  : QF_FIRST_KICKOFF;
         if (submittedAt && submittedAt > scoringCutoff) continue;
 
         const starters = m.kickoff < MD2_FIRST_KICKOFF
@@ -404,7 +411,9 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
               ? gw3Starters
               : m.kickoff < R16_FIRST_KICKOFF
                 ? r32Starters
-                : currentStarters;
+                : m.kickoff < QF_FIRST_KICKOFF
+                  ? r16Starters
+                  : currentStarters;
         for (const slot of starters) {
           if (slot.nation !== m.homeNation && slot.nation !== m.awayNation) continue;
           const manualBreakdown = MANUAL_PLAYER_SCORE_OVERRIDES[m.matchId]?.[slot.name];

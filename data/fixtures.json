@@ -1155,6 +1155,18 @@
    "away": "Colombia",
    "home_goals": null,
    "away_goals": null
+  },
+  {
+   "id": 1578539,
+   "date": "2026-07-09T19:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Quarter-finals",
+   "status": "NS",
+   "home": "France",
+   "away": "Morocco",
+   "home_goals": null,
+   "away_goals": null
   }
  ]
 }
