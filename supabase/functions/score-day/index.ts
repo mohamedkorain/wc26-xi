@@ -333,10 +333,15 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
   const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
   const R32_FIRST_KICKOFF = new Date('2026-06-28T19:00:00.000Z');
   const R16_FIRST_KICKOFF = new Date('2026-07-04T16:00:00.000Z');
-  // First quarter-final kickoff (France-Morocco is 2026-07-09). Any fixture
-  // on/after this boundary scores the editable current xi_json (the QF squad);
-  // R16 fixtures (07-04..07-07) keep scoring the frozen xi_json_r16 snapshot.
+  // Snapshot-bucketing boundary: any fixture on/after this scores the editable
+  // current xi_json (the QF squad); R16 fixtures (07-04..07-07) keep scoring the
+  // frozen xi_json_r16 snapshot. Kept at 00:00 so France-Morocco (07-09, any
+  // time) buckets as QF.
   const QF_FIRST_KICKOFF = new Date('2026-07-09T00:00:00.000Z');
+  // Late-joiner eligibility cutoff for QF fixtures = the QF transfer deadline,
+  // NOT the bucketing boundary. Someone who joined before the deadline must
+  // score QF even though they submitted after 00:00 UTC on 07-09.
+  const QF_DEADLINE = new Date('2026-07-09T19:00:00.000Z');
 
   // Collect playing nations once
   const playingNations = new Set<string>();
@@ -400,7 +405,7 @@ async function processDate(dateStr: string, prepared: any[]): Promise<boolean> {
                 ? R32_FIRST_KICKOFF
                 : m.kickoff < QF_FIRST_KICKOFF
                   ? R16_FIRST_KICKOFF
-                  : QF_FIRST_KICKOFF;
+                  : QF_DEADLINE;
         if (submittedAt && submittedAt > scoringCutoff) continue;
 
         const starters = m.kickoff < MD2_FIRST_KICKOFF
