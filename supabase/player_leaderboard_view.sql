@@ -35,6 +35,7 @@ select
     + coalesce((stats->>'r32')::int, 0)
     + coalesce((stats->>'r16')::int, 0)
     + coalesce((stats->>'qf')::int, 0)
+    + coalesce((stats->>'sf')::int, 0)
     - case when stats->>'red' is not null then 1 else 0 end
   )::int as total_points
 from deduped

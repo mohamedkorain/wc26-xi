@@ -1,13 +1,13 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260709-qf3';
+import { t } from './js/i18n.js?v=20260713-qf4';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 const LB_PAGE_SIZE = 20;
 const MATCHDAY_REFRESH_MS = 60_000;
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260709-qf3';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260713-qf4';
 const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
 const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
 const R32_FIRST_KICKOFF = new Date('2026-06-28T19:00:00.000Z');
@@ -1047,6 +1047,7 @@ function pointsFromStatLine(st) {
     + (st.r32 || 0)
     + (st.r16 || 0)
     + (st.qf || 0)
+    + (st.sf || 0)
     - redCardCount(st);
 }
 
@@ -1075,7 +1076,7 @@ function phasePointsFromRows(scoreRows, fixturesData, matchById, entry, phase = 
 }
 
 function addStatTotals(into, st) {
-  for (const k of ['goals','assists','cleanSheet','win','full90','mvp','r32','r16','qf']) {
+  for (const k of ['goals','assists','cleanSheet','win','full90','mvp','r32','r16','qf','sf']) {
     if (st[k]) into[k] = (into[k] || 0) + st[k];
   }
   const reds = redCardCount(st);
@@ -1094,6 +1095,7 @@ function describeStatTextLocal(s) {
   if (s.r32)        parts.push(t('pts.r32'));
   if (s.r16)        parts.push(t('pts.r16'));
   if (s.qf)         parts.push(t('pts.qf'));
+  if (s.sf)         parts.push(t('pts.sf'));
   if (s.red) {
     const reds = redCardCount(s);
     parts.push(`${t('pts.red')}${reds > 1 ? '×' + reds : ''}`);
@@ -1112,6 +1114,7 @@ function statPointParts(st) {
   if (st.r32)        parts.push({ code: 'R32', label: t('pts.r32'),        value: st.r32 });
   if (st.r16)        parts.push({ code: 'R16', label: t('pts.r16'),        value: st.r16 });
   if (st.qf)         parts.push({ code: 'QF',  label: t('pts.qf'),         value: st.qf });
+  if (st.sf)         parts.push({ code: 'SF',  label: t('pts.sf'),         value: st.sf });
   if (st.red)        parts.push({ code: 'RC',  label: t('pts.red'),        value: -redCardCount(st) });
   return parts;
 }

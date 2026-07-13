@@ -1167,6 +1167,42 @@
    "away": "Morocco",
    "home_goals": null,
    "away_goals": null
+  },
+  {
+   "id": 400021538,
+   "date": "2026-07-10T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Quarter-finals",
+   "status": "FT",
+   "home": "Spain",
+   "away": "Belgium",
+   "home_goals": 2,
+   "away_goals": 1
+  },
+  {
+   "id": 400021539,
+   "date": "2026-07-11T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Quarter-finals",
+   "status": "FT",
+   "home": "Norway",
+   "away": "England",
+   "home_goals": 1,
+   "away_goals": 2
+  },
+  {
+   "id": 400021537,
+   "date": "2026-07-11T18:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Quarter-finals",
+   "status": "FT",
+   "home": "Argentina",
+   "away": "Switzerland",
+   "home_goals": 3,
+   "away_goals": 1
   }
  ]
 }
