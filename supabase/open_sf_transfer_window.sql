@@ -69,6 +69,8 @@ begin
                  and tgname = 'log_entry_transfer_update_trg') then
       execute 'alter table public.entries disable trigger log_entry_transfer_update_trg';
     end if;
+    execute 'alter table public.entries disable trigger validate_entry_lineup_write_trg';
+    execute 'alter table public.entries disable trigger entries_xi_sync_trg';
 
     begin
       update public.entries
@@ -85,6 +87,8 @@ begin
 
     execute 'alter table public.entries enable trigger guard_locked_entry_transfer_trg';
     execute 'alter table public.entries enable trigger log_entry_transfer_update_trg';
+    execute 'alter table public.entries enable trigger validate_entry_lineup_write_trg';
+    execute 'alter table public.entries enable trigger entries_xi_sync_trg';
   end if;
 
   update public.leagues
