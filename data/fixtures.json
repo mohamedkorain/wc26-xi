@@ -1203,6 +1203,30 @@
    "away": "Switzerland",
    "home_goals": 3,
    "away_goals": 1
+  },
+  {
+   "id": 400021541,
+   "date": "2026-07-14T19:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Semi-finals",
+   "status": "NS",
+   "home": "France",
+   "away": "Spain",
+   "home_goals": null,
+   "away_goals": null
+  },
+  {
+   "id": 400021540,
+   "date": "2026-07-15T19:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Semi-finals",
+   "status": "NS",
+   "home": "England",
+   "away": "Argentina",
+   "home_goals": null,
+   "away_goals": null
   }
  ]
 }
