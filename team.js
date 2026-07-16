@@ -2,7 +2,7 @@
 
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { setLang, t } from './js/i18n.js?v=20260713-sf2';
+import { setLang, t } from './js/i18n.js?v=20260717-sf3';
 import { flagImg } from './js/flags.js';
 
 mountAuthWidget(document.getElementById('authSlot'));
@@ -15,7 +15,7 @@ document.getElementById('langToggle').onclick = () => {
 };
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260713-sf2';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260717-sf3';
 const QF_OUT_COUNT = 3;
 const QF_IN_COUNT = 1;
 
@@ -888,6 +888,8 @@ function pointsFromStatLine(st) {
     + (st.r16 || 0)
     + (st.qf || 0)
     + (st.sf || 0)
+    + (st.final || 0)
+    + (st.champion || 0)
     - redCardCount(st);
 }
 
@@ -937,6 +939,8 @@ function describeStat(s) {
   if (s.r16) parts.push('R16');
   if (s.qf) parts.push('QF');
   if (s.sf) parts.push('SF');
+  if (s.final) parts.push('FIN');
+  if (s.champion) parts.push('🏆');
   if (s.red) parts.push('🟥');
   return parts.join(' ') || '—';
 }
@@ -955,6 +959,8 @@ function describeStatText(s) {
   if (s.r16)        parts.push(t('pts.r16'));
   if (s.qf)         parts.push(t('pts.qf'));
   if (s.sf)         parts.push(t('pts.sf'));
+  if (s.final)      parts.push(t('pts.final'));
+  if (s.champion)   parts.push(t('pts.champion'));
   if (s.red)        parts.push(t('pts.red'));
   return parts.join(document.documentElement.lang === 'ar' ? '، ' : ', ');
 }

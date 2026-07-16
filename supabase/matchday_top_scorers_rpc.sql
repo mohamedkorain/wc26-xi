@@ -76,6 +76,8 @@ as $$
         + coalesce((sl.stats->>'r16')::int, 0)
         + coalesce((sl.stats->>'qf')::int, 0)
         + coalesce((sl.stats->>'sf')::int, 0)
+        + coalesce((sl.stats->>'final')::int, 0)
+        + coalesce((sl.stats->>'champion')::int, 0)
         - case
             when sl.stats ? 'red' then greatest(abs(coalesce((sl.stats->>'red')::int, 0)), 1)
             else 0
@@ -94,6 +96,8 @@ as $$
       + coalesce((sl.stats->>'r16')::int, 0)
       + coalesce((sl.stats->>'qf')::int, 0)
         + coalesce((sl.stats->>'sf')::int, 0)
+        + coalesce((sl.stats->>'final')::int, 0)
+        + coalesce((sl.stats->>'champion')::int, 0)
       - case
           when sl.stats ? 'red' then greatest(abs(coalesce((sl.stats->>'red')::int, 0)), 1)
           else 0

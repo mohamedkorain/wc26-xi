@@ -1210,11 +1210,11 @@
    "venue": "",
    "city": "",
    "round": "Semi-finals",
-   "status": "NS",
+   "status": "FT",
    "home": "France",
    "away": "Spain",
-   "home_goals": null,
-   "away_goals": null
+   "home_goals": 0,
+   "away_goals": 2
   },
   {
    "id": 400021540,
@@ -1222,11 +1222,11 @@
    "venue": "",
    "city": "",
    "round": "Semi-finals",
-   "status": "NS",
+   "status": "FT",
    "home": "England",
    "away": "Argentina",
-   "home_goals": null,
-   "away_goals": null
+   "home_goals": 1,
+   "away_goals": 2
   }
  ]
 }
