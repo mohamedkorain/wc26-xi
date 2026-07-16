@@ -1227,6 +1227,18 @@
    "away": "Argentina",
    "home_goals": 1,
    "away_goals": 2
+  },
+  {
+   "id": 400021543,
+   "date": "2026-07-19T19:00:00+00:00",
+   "venue": "",
+   "city": "",
+   "round": "Final",
+   "status": "NS",
+   "home": "Spain",
+   "away": "Argentina",
+   "home_goals": null,
+   "away_goals": null
   }
  ]
 }

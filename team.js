@@ -2,7 +2,7 @@
 
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { setLang, t } from './js/i18n.js?v=20260717-sf3';
+import { setLang, t } from './js/i18n.js?v=20260717-final1';
 import { flagImg } from './js/flags.js';
 
 mountAuthWidget(document.getElementById('authSlot'));
@@ -15,7 +15,7 @@ document.getElementById('langToggle').onclick = () => {
 };
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260717-sf3';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260717-final1';
 const QF_OUT_COUNT = 3;
 const QF_IN_COUNT = 1;
 
@@ -55,7 +55,7 @@ const MAX_TRANSFERS = 1;
 
   const [entryRes, leagueRes, fixturesRes, teamsRes, matchesRes] = await Promise.all([
     supabase.from('entries')
-      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3, xi_json_r32, xi_json_r16, xi_json_qf, transfers_used')
+      .select('id, team_name, formation, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3, xi_json_r32, xi_json_r16, xi_json_qf, xi_json_sf, transfers_used')
       .eq('league_id', HALO_LEAGUE_ID).eq('user_id', u.id).maybeSingle(),
     supabase.from('leagues')
       .select('id, name, locked_at, transfers_open_until')
@@ -111,7 +111,7 @@ function renderTransferBar() {
   });
   bar.style.display = '';
   bar.innerHTML = `
-    <div class="tx-window-warning">${t('tx.sf.warn')}</div>
+    <div class="tx-window-warning">${t('tx.final.warn')}</div>
     <div class="tx-left">
       <div class="tx-counter"><span class="tx-num">${left}</span><span class="tx-num-label">${t('tx.left')}</span></div>
       <div class="tx-closes">${escapeHtml(closesAt)}</div>
@@ -261,7 +261,7 @@ async function openTransferModal() {
     <div class="modal-card" style="max-width:620px;">
       <button class="modal-x" id="txX">×</button>
       <h2 class="modal-title">${t('tx.title')}</h2>
-      <p class="modal-sub" id="txProgress">${t('tx.sf.rule')}</p>
+      <p class="modal-sub" id="txProgress">${t('tx.final.rule')}</p>
 
       <div class="tx-step" id="txOutPanel">
         <div class="tx-step-label">${t('tx.outpick')}</div>
@@ -437,7 +437,7 @@ async function openTransferModal() {
   }
 
   function showSummary() {
-    document.getElementById('txProgress').textContent = t('tx.summary.sf');
+    document.getElementById('txProgress').textContent = t('tx.summary.final');
     document.getElementById('txOutPanel').style.display = 'none';
     document.getElementById('txInPanel').style.display = 'none';
     document.getElementById('txSummary').style.display = '';
@@ -618,7 +618,7 @@ function playerInSlot(out, inn) {
 
 async function commitR16Transfers(selectedOut, refills, modal) {
   if (selectedOut.length !== QF_OUT_COUNT || refills.length !== QF_IN_COUNT) {
-    alert(t('tx.invalid.sf'));
+    alert(t('tx.invalid.final'));
     return;
   }
 
@@ -760,6 +760,7 @@ function renderTransferHistoryHtml() {
   const r32Xi = state.entry.xi_json_r32;
   const r16Xi = state.entry.xi_json_r16;
   const qfXi = state.entry.xi_json_qf;
+  const sfXi = state.entry.xi_json_sf;
   const currentXi = state.entry.xi_json || [];
 
   const groups = [];
@@ -788,8 +789,13 @@ function renderTransferHistoryHtml() {
   } else if (r16Xi) {
     groups.push({ from: 'R16', to: 'QF', rows: transferDiffs(r16Xi, currentXi) });
   }
-  if (qfXi) {
+  if (qfXi && sfXi) {
+    groups.push({ from: 'QF', to: 'SF', rows: transferDiffs(qfXi, sfXi) });
+  } else if (qfXi) {
     groups.push({ from: 'QF', to: 'SF', rows: transferDiffs(qfXi, currentXi) });
+  }
+  if (sfXi) {
+    groups.push({ from: 'SF', to: 'Final', rows: transferDiffs(sfXi, currentXi) });
   }
   const visibleGroups = groups.filter(group => group.rows.length > 0);
 

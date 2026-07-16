@@ -1,19 +1,20 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260717-sf3';
+import { t } from './js/i18n.js?v=20260717-final1';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 const LB_PAGE_SIZE = 20;
 const MATCHDAY_REFRESH_MS = 60_000;
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260717-sf3';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260717-final1';
 const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
 const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
 const R32_FIRST_KICKOFF = new Date('2026-06-28T19:00:00.000Z');
 const R16_FIRST_KICKOFF = new Date('2026-07-04T16:00:00.000Z');
 const QF_FIRST_KICKOFF = new Date('2026-07-09T19:00:00.000Z');
 const SF_FIRST_KICKOFF = new Date('2026-07-14T19:00:00.000Z');
+const FINAL_FIRST_KICKOFF = new Date('2026-07-19T19:00:00.000Z');
 // Curated show/presenter league. Emails are intentionally not shipped; these
 // entry IDs were resolved once from private profiles/admin data.
 const HALLO_AMRIKA_MINI_ENTRY_IDS = [
@@ -47,12 +48,14 @@ function currentSquadPhase(now = new Date()) {
   if (now < R16_FIRST_KICKOFF) return 'r32';
   if (now < QF_FIRST_KICKOFF) return 'r16';
   if (now < SF_FIRST_KICKOFF) return 'qf';
+  if (now < FINAL_FIRST_KICKOFF) return 'sf';
   return 'current';
 }
 
 function previousSquadPhase(now = new Date()) {
   const phase = currentSquadPhase(now);
-  if (phase === 'current') return 'qf';
+  if (phase === 'current') return 'sf';
+  if (phase === 'sf') return 'qf';
   if (phase === 'qf') return 'r16';
   if (phase === 'r16') return 'r32';
   if (phase === 'r32') return 'gw3';
@@ -69,6 +72,7 @@ function squadForPhase(entry, phase = currentSquadPhase()) {
   if (phase === 'r32') return entry.xi_json_r32 || entry.xi_json || [];
   if (phase === 'r16') return entry.xi_json_r16 || entry.xi_json || [];
   if (phase === 'qf') return entry.xi_json_qf || entry.xi_json || [];
+  if (phase === 'sf') return entry.xi_json_sf || entry.xi_json || [];
   return entry.xi_json || [];
 }
 
@@ -86,7 +90,8 @@ function fixtureCutoffForPhase(entry, phase = currentSquadPhase()) {
   if (phase === 'r32') return maxDate(submittedAt, R32_FIRST_KICKOFF);
   if (phase === 'r16') return maxDate(submittedAt, R16_FIRST_KICKOFF);
   if (phase === 'qf') return maxDate(submittedAt, QF_FIRST_KICKOFF);
-  return maxDate(submittedAt, SF_FIRST_KICKOFF);
+  if (phase === 'sf') return maxDate(submittedAt, SF_FIRST_KICKOFF);
+  return maxDate(submittedAt, FINAL_FIRST_KICKOFF);
 }
 
 function roundNameForPhase(fixtures, phase = currentSquadPhase()) {
@@ -97,7 +102,8 @@ function roundNameForPhase(fixtures, phase = currentSquadPhase()) {
     r32: 'Round of 32',
     r16: 'Round of 16',
     qf: 'Quarter-finals',
-    current: 'Semi-finals',
+    sf: 'Semi-finals',
+    current: 'Final',
   };
   const needle = needles[phase] || '';
   if (!needle) return '';
@@ -1250,7 +1256,7 @@ function renderHeroStatus() {
   // Past initial lock but still in transfer window — open to everyone now.
   if (now >= lock && inTransferWindow) {
     if (banner) {
-      banner.textContent = t('tx.sf.warn');
+      banner.textContent = t('tx.final.warn');
       banner.style.display = 'block';
     }
     ctaBuild.style.display = '';
@@ -1265,7 +1271,7 @@ function renderHeroStatus() {
       minute: '2-digit',
     });
     el.classList.add('is-transfer');
-    el.innerHTML = `<span>${escapeHtml(t('tx.sf.open'))}</span><span class="hs-date">${escapeHtml(t('tx.sf.closes', { date: closeLabel }))}</span><span>${escapeHtml(t('time.cairo'))}</span>`;
+    el.innerHTML = `<span>${escapeHtml(t('tx.final.open'))}</span><span class="hs-date">${escapeHtml(t('tx.final.closes', { date: closeLabel }))}</span><span>${escapeHtml(t('time.cairo'))}</span>`;
     return;
   }
   // Pre-lock: banner should be hidden regardless of sign-in
@@ -1390,7 +1396,7 @@ async function matchdayPointsForEntries(entryIds) {
       .limit(180),
     supabase
       .from('entries')
-      .select('id, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3, xi_json_r32, xi_json_r16, xi_json_qf')
+      .select('id, submitted_at, xi_json, xi_json_gw1, xi_json_gw2, xi_json_gw3, xi_json_r32, xi_json_r16, xi_json_qf, xi_json_sf')
       .in('id', ids),
   ]);
   if (matchesRes.error) throw matchesRes.error;
