@@ -1,13 +1,13 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260720-final2';
+import { t } from './js/i18n.js?v=20260720-final3';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 const LB_PAGE_SIZE = 20;
 const MATCHDAY_REFRESH_MS = 60_000;
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260720-final2';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260720-final3';
 const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
 const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
 const R32_FIRST_KICKOFF = new Date('2026-06-28T19:00:00.000Z');
@@ -131,6 +131,7 @@ async function boot() {
 
   // Render above-the-fold stuff IMMEDIATELY
   renderHeroStatus();
+  renderChampionBanner();
   renderMatchdayHub();
   renderScoringStatus();
   renderMySquad();
@@ -1225,6 +1226,62 @@ function formatRemaining(ms) {
   if (d > 0) return `${d}${t('cal.d')} ${h}${t('cal.h')}`;
   if (h > 0) return `${h}${t('cal.h')} ${m}${t('cal.m')}`;
   return `${m}${t('cal.m')}`;
+}
+
+// Tournament-over celebration: shows the World Cup winner + the top-3 game
+// coaches. Data-driven — only renders once the Final fixture is marked FT.
+async function renderChampionBanner() {
+  const el = document.getElementById('championBanner');
+  if (!el) return;
+  let fixtures = [];
+  try {
+    const data = await (state._fixturesCache || fetch(FIXTURES_DATA_URL).then(r => r.json()));
+    state._fixturesCache = Promise.resolve(data);
+    fixtures = data.fixtures || [];
+  } catch (e) { return; }
+  const fx = fixtures.find(f => String(f.round || '') === 'Final'
+    && f.status === 'FT' && f.home_goals != null && f.away_goals != null);
+  if (!fx) return; // Final not decided yet — stay hidden
+  const champName = fx.home_goals > fx.away_goals ? fx.home : fx.away;
+  const champCode = state.teams.find(x => x.name === champName)?.code || '';
+
+  let top = [];
+  try {
+    const { data } = await supabase
+      .from('leaderboard_totals')
+      .select('team_name, submitted_at, total_points')
+      .order('total_points', { ascending: false })
+      .order('submitted_at', { ascending: true })
+      .limit(3);
+    top = data || [];
+  } catch (e) { /* podium optional */ }
+
+  const medals = ['🥇', '🥈', '🥉'];
+  const podium = top.map((r, i) => `
+    <div class="champ-podium-row">
+      <span class="champ-medal">${medals[i] || ''}</span>
+      <span class="champ-team">${escapeHtml(r.team_name || '—')}</span>
+      <span class="champ-pts">${(r.total_points || 0).toLocaleString()} <em>${escapeHtml(t('champ.pts'))}</em></span>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div class="champ-inner">
+      <div class="champ-eyebrow">${escapeHtml(t('champ.eyebrow'))}</div>
+      <div class="champ-nation">
+        ${flagImg(champCode, { width: 60, cls: 'champ-flag', fallback: '' })}
+        <span class="champ-nation-name">${escapeHtml(champName)}</span>
+        <span class="champ-trophy">🏆</span>
+      </div>
+      <div class="champ-sub">${escapeHtml(t('champ.worldchamps'))}</div>
+      ${podium ? `
+      <div class="champ-divider"></div>
+      <div class="champ-game-title">${escapeHtml(t('champ.gamewinners'))}</div>
+      <div class="champ-podium">${podium}</div>` : ''}
+    </div>`;
+  el.style.display = '';
+  // The "deadline passed / updating" banner is now stale once the winner is up.
+  const lb = document.getElementById('lockBanner');
+  if (lb) lb.style.display = 'none';
 }
 
 function renderHeroStatus() {
