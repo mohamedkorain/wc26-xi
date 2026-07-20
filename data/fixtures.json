@@ -1234,11 +1234,11 @@
    "venue": "",
    "city": "",
    "round": "Final",
-   "status": "NS",
+   "status": "FT",
    "home": "Spain",
    "away": "Argentina",
-   "home_goals": null,
-   "away_goals": null
+   "home_goals": 1,
+   "away_goals": 0
   }
  ]
 }

@@ -1,13 +1,13 @@
 // HALLO AMRIKA audience view — public, read-only.
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { t } from './js/i18n.js?v=20260717-final1';
+import { t } from './js/i18n.js?v=20260720-final2';
 import { flagImg } from './js/flags.js';
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
 const LB_PAGE_SIZE = 20;
 const MATCHDAY_REFRESH_MS = 60_000;
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260717-final1';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260720-final2';
 const MD2_FIRST_KICKOFF = new Date('2026-06-18T16:00:00.000Z');
 const MD3_FIRST_KICKOFF = new Date('2026-06-24T19:00:00.000Z');
 const R32_FIRST_KICKOFF = new Date('2026-06-28T19:00:00.000Z');

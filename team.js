@@ -2,7 +2,7 @@
 
 import { supabase } from './js/supabase-client.js';
 import { mountAuthWidget, currentUser } from './js/auth.js';
-import { setLang, t } from './js/i18n.js?v=20260717-final1';
+import { setLang, t } from './js/i18n.js?v=20260720-final2';
 import { flagImg } from './js/flags.js';
 
 mountAuthWidget(document.getElementById('authSlot'));
@@ -15,7 +15,7 @@ document.getElementById('langToggle').onclick = () => {
 };
 
 const HALO_LEAGUE_ID = '11111111-1111-1111-1111-111111111111';
-const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260717-final1';
+const FIXTURES_DATA_URL = 'data/fixtures.json?v=20260720-final2';
 const QF_OUT_COUNT = 3;
 const QF_IN_COUNT = 1;
 
